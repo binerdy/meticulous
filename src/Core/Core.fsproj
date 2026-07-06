@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- F# compiles files in the order listed here. A file may only use things
+       defined in files above it. -->
+  <ItemGroup>
+    <Compile Include="Ast.fs" />
+    <Compile Include="Tokenizer.fs" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="Engine.fs" />
+    <Compile Include="Render.fs" />
+    <Compile Include="Api.fs" />
+  </ItemGroup>
+
+</Project>

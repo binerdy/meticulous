@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "meticulous",
+  "scopeName": "source.meticulous",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#heading" },
+    { "include": "#statement" },
+    { "include": "#relation" },
+    { "include": "#string" },
+    { "include": "#operator" },
+    { "include": "#constant" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "//.*$",
+      "name": "comment.line.double-slash.meticulous"
+    },
+    "heading": {
+      "match": "^\\s*(#{1,6})\\s+(.*)$",
+      "captures": {
+        "1": { "name": "punctuation.definition.heading.meticulous" },
+        "2": { "name": "markup.heading.meticulous" }
+      }
+    },
+    "statement": {
+      "match": "^\\s*(prop|claim|table|check|argument|premise|conclude)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.meticulous" }
+      }
+    },
+    "relation": {
+      "match": "\\b(supports|contradicts|entails|presupposes|equivalent-to|equivalent)\\b",
+      "name": "keyword.other.relation.meticulous"
+    },
+    "string": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.meticulous"
+    },
+    "operator": {
+      "match": "->|<->|→|↔|∧|∨|¬|⊕|&|\\||~|!|\\b(and|or|not|implies|iff|xor)\\b",
+      "name": "keyword.operator.logical.meticulous"
+    },
+    "constant": {
+      "match": "\\b(true|false)\\b|⊤|⊥",
+      "name": "constant.language.meticulous"
+    }
+  }
+}

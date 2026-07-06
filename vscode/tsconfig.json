@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/core", "node_modules"]
+}

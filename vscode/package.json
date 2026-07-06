@@ -1,0 +1,75 @@
+{
+  "name": "meticulous",
+  "displayName": "meticulous",
+  "description": "A philosophical DSL: propositions, truth tables, and structural relations, with live preview.",
+  "version": "0.0.1",
+  "publisher": "meticulous-lang",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CHANGE-ME/meticulous.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Visualization"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "meticulous",
+        "aliases": ["meticulous", "Meticulous"],
+        "extensions": [".met"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "meticulous",
+        "scopeName": "source.meticulous",
+        "path": "./syntaxes/meticulous.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "meticulous.showPreview",
+        "title": "meticulous: Open Preview",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "meticulous.showPreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorLangId == meticulous"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "meticulous.showPreview",
+          "when": "editorLangId == meticulous",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile:fable": "dotnet fable ../src/Core/Core.fsproj -o src/core --noCache",
+    "compile:bundle": "node esbuild.mjs",
+    "compile": "npm run compile:fable && npm run compile:bundle",
+    "typecheck": "tsc --noEmit",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.24.0",
+    "ovsx": "^0.10.1",
+    "typescript": "^5.6.0"
+  }
+}
