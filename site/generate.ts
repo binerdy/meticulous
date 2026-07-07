@@ -22,7 +22,7 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function page(title: string, body: string, depth: number): string {
+function page(title: string, body: string, depth: number, wide = false): string {
   const base = depth === 0 ? "." : "..";
   return `<!DOCTYPE html>
 <html lang="en">
@@ -37,10 +37,11 @@ function page(title: string, body: string, depth: number): string {
   <a class="brand" href="${base}/index.html">meticulous</a>
   <a href="${base}/index.html#language">language</a>
   <a href="${base}/index.html#examples">examples</a>
+  <a href="${base}/playground.html">playground</a>
   <a href="${REPO}">github</a>
   <a href="${REPO}/releases/latest">install</a>
 </nav></header>
-<main>
+<main${wide ? ` class="wide"` : ""}>
 ${body}
 </main>
 <footer class="site">Rendered by the meticulous engine itself — the same F# core (via Fable)
@@ -64,6 +65,7 @@ interface ExampleInfo {
   slug: string;
   title: string;
   chips: string[];
+  source: string;
 }
 
 const examples: ExampleInfo[] = [];
@@ -84,7 +86,7 @@ for (const file of readdirSync(EXAMPLES).filter((f) => f.endsWith(".met")).sort(
         .filter((c) => c !== "")
     ),
   ];
-  examples.push({ slug, title, chips });
+  examples.push({ slug, title, chips, source });
 
   const body = `<h1>${escapeHtml(title)}</h1>
 <p><a href="${REPO}/blob/main/examples/${file}">examples/${file}</a></p>
@@ -153,4 +155,26 @@ ${gallery}
 
 writeFileSync(path.join(OUT, "index.html"), page("meticulous — a philosophical DSL", index, 0));
 
-console.log(`site: ${examples.length} example pages + index written to _site/`);
+// ---- playground --------------------------------------------------------------
+
+const exampleData = examples.map(({ slug, title, source }) => ({ slug, title, source }));
+
+const playground = `<div class="pg">
+  <div class="pg-pane">
+    <div class="pg-toolbar">
+      <select id="example-picker"><option value="">— load an example —</option></select>
+      <button id="share">copy share link</button>
+    </div>
+    <textarea id="input" spellcheck="false" autocomplete="off"></textarea>
+  </div>
+  <div class="pg-pane">
+    <div class="pg-toolbar"><span class="section-label" style="margin:0">rendered by the engine</span></div>
+    <div id="output" class="rendered pg-output"></div>
+  </div>
+</div>
+<script>window.METICULOUS_EXAMPLES = ${JSON.stringify(exampleData)};</script>
+<script src="./playground.js"></script>`;
+
+writeFileSync(path.join(OUT, "playground.html"), page("playground", playground, 0, true));
+
+console.log(`site: ${examples.length} example pages + index + playground written to _site/`);

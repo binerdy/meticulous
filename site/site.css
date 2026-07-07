@@ -157,3 +157,24 @@ ul.gallery a { display: block; padding: .55rem .8rem; text-decoration: none; fon
 ul.gallery .sub { display: block; font-weight: 400; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
 
 footer.site { max-width: 780px; margin: 0 auto; padding: 1rem 1.25rem 2.5rem; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); }
+
+/* ---- playground ---- */
+main.wide { max-width: 1500px; }
+.pg { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; align-items: start; margin-top: 1rem; }
+@media (max-width: 900px) { .pg { grid-template-columns: 1fr; } }
+.pg-toolbar { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; min-height: 2rem; }
+.pg-toolbar select, .pg-toolbar button {
+  font: inherit; font-size: .85rem; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: .3em .7em; cursor: pointer;
+}
+.pg-toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+#input {
+  width: 100%; min-height: 72vh; resize: vertical;
+  font-family: var(--mono); font-size: .9rem; line-height: 1.55;
+  color: var(--fg); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 1rem 1.1rem; outline: none; tab-size: 2;
+}
+#input:focus { border-color: var(--accent); }
+.pg-output { min-height: 72vh; margin: 0; overflow-x: auto; }

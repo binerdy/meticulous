@@ -60,7 +60,7 @@
     "compile:bundle": "node esbuild.mjs",
     "compile": "npm run compile:fable && npm run compile:bundle",
     "typecheck": "tsc --noEmit",
-    "build:site": "esbuild ../site/generate.ts --bundle --platform=node --outfile=../site/generate.cjs --log-level=warning && node ../site/generate.cjs",
+    "build:site": "esbuild ../site/generate.ts --bundle --platform=node --outfile=../site/generate.cjs --log-level=warning && node ../site/generate.cjs && esbuild ../site/playground.ts --bundle --minify --outfile=../_site/playground.js --log-level=warning",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package",
     "publish": "vsce publish"
