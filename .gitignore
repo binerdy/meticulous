@@ -480,3 +480,9 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+## meticulous: generated output (rebuilt by `npm run compile` / `dotnet fable`)
+build/js/
+vscode/src/core/
+vscode/dist/
+*.vsix

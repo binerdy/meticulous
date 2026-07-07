@@ -1,0 +1,89 @@
+name: Release
+
+# Publishes the VS Code extension when a merge to main bumps the version in
+# vscode/package.json. The guard is a git tag: if v<version> already exists,
+# nothing is published; if it doesn't, we publish and create the tag — so
+# releasing is simply "bump the version, merge to main".
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # to push the release tag and create the GitHub release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so tag lookup sees all tags
+
+      - name: Read version and check tag
+        id: version
+        run: |
+          VERSION=$(node -p "require('./vscode/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION already released — skipping."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION is new — releasing."
+          fi
+
+      - name: Set up .NET
+        if: steps.version.outputs.new == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Set up Node
+        if: steps.version.outputs.new == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+
+      - name: Restore .NET tools (Fable)
+        if: steps.version.outputs.new == 'true'
+        run: dotnet tool restore
+
+      - name: F# tests
+        if: steps.version.outputs.new == 'true'
+        run: dotnet test meticulous.slnx --nologo
+
+      - name: Build extension
+        if: steps.version.outputs.new == 'true'
+        working-directory: vscode
+        run: |
+          npm ci
+          npm run compile
+          npx vsce package
+
+      - name: Publish to VS Code Marketplace
+        if: steps.version.outputs.new == 'true' && secrets.VSCE_PAT != ''
+        working-directory: vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath meticulous-${{ steps.version.outputs.version }}.vsix
+
+      - name: Publish to Open VSX (VSCodium etc.)
+        if: steps.version.outputs.new == 'true' && secrets.OVSX_PAT != ''
+        working-directory: vscode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish meticulous-${{ steps.version.outputs.version }}.vsix --pat "$OVSX_PAT"
+
+      - name: Tag and create GitHub release
+        if: steps.version.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+          gh release create "v${{ steps.version.outputs.version }}" \
+            vscode/meticulous-${{ steps.version.outputs.version }}.vsix \
+            --title "meticulous v${{ steps.version.outputs.version }}" \
+            --generate-notes

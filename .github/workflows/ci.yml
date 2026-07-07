@@ -1,0 +1,54 @@
+name: CI
+
+# Runs on every pull request and every push to main:
+# F# tests, Fable compilation, TypeScript type-check, extension bundle + package.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+
+      - name: Restore .NET tools (Fable)
+        run: dotnet tool restore
+
+      - name: F# tests
+        run: dotnet test meticulous.slnx --nologo
+
+      - name: Install extension dependencies
+        working-directory: vscode
+        run: npm ci
+
+      - name: Compile (Fable + bundle)
+        working-directory: vscode
+        run: npm run compile
+
+      - name: Type-check TypeScript
+        working-directory: vscode
+        run: npm run typecheck
+
+      - name: Package extension
+        working-directory: vscode
+        run: npx vsce package
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: meticulous-vsix
+          path: vscode/*.vsix

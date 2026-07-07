@@ -1,0 +1,8 @@
+# Only ship what the extension needs at runtime: dist/, syntaxes/,
+# language-configuration.json, README, LICENSE, package.json.
+src/**
+node_modules/**
+esbuild.mjs
+tsconfig.json
+dist/**/*.map
+.vscodeignore
