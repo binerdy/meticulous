@@ -1,0 +1,30 @@
+# Modus tollendo ponens
+
+The mode that affirms by denying: one of two options must hold,
+the first is ruled out, so the second follows.
+
+// Props gloss the *atoms* — the smallest statements that are just true or
+// false on their own. Compound sentences ("either day or night") are not
+// props; they are claims built *from* props.
+
+prop day : It is day
+prop night : It is night
+
+// Claims name the compounds. With the props glossed, each claim reads
+// itself back as an English sentence in the preview.
+
+claim C1 : day or night
+claim C2 : not day
+
+// Claim names resolve inside arguments, so the premises can simply cite
+// C1 and C2 instead of repeating their formulas.
+
+argument tollendo-ponens {
+  premise C1
+  premise C2
+  ---
+  conclude night
+}
+
+// The engine checks validity by truth table, recognizes the form under
+// both of its names, and derives the conclusion step by step.

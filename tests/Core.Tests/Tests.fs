@@ -172,6 +172,23 @@ let ``names the fallacy of affirming the consequent`` () =
         recognizedName fallacies [ "p -> q"; "q" ] "p"
     )
 
+[<Fact>]
+let ``recognizes modus tollendo ponens under its Latin name`` () =
+    // Disjunctive syllogism IS modus tollendo ponens — the display shows both.
+    let doc =
+        "argument day-night {\n  premise day or night\n  premise not day\n  ---\n  conclude night\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+    Assert.Equal("disjunctive syllogism (modus tollendo ponens)", arg.form)
+
+[<Fact>]
+let ``recognizes modus ponendo tollens`` () =
+    // Not both; the first holds; so the second fails.
+    Assert.Equal(
+        Some "ponendo-tollens",
+        recognizedName validForms [ "not (p and q)"; "p" ] "not q"
+    )
+
 // ---- M3: proof generation ----------------------------------------------------
 
 [<Fact>]
@@ -227,7 +244,8 @@ let ``analyze handles argument blocks and names forms and fallacies`` () =
     let blocks = analyze argumentDoc
     let mp = blocks |> Array.find (fun b -> b.name = "mp")
     Assert.Equal("valid", mp.verdict)
-    Assert.Equal("modus ponens", mp.form)  // claim reference resolved, then recognized
+    // Claim reference resolved, then recognized — shown with its Latin alias.
+    Assert.Equal("modus ponens (modus ponendo ponens)", mp.form)
     Assert.NotEmpty mp.proof
     let oops = blocks |> Array.find (fun b -> b.name = "oops")
     Assert.Equal("invalid", oops.verdict)

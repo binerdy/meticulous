@@ -132,6 +132,14 @@ function argumentBlock(defs, name, premises, conclusion) {
     const rc = resolve(defs, conclusion);
     const check = checkArgument(rp, rc);
     const recognized = recognize(check.IsValid ? validForms : fallacies, rp, rc);
+    const displayTitle = (form) => {
+        if (form.Aka === "") {
+            return form.Title;
+        }
+        else {
+            return ((form.Title + " (") + form.Aka) + ")";
+        }
+    };
     const proofSteps = check.IsValid ? defaultArg(prove(rp, rc), empty_1()) : empty_1();
     const repairs = check.IsValid ? empty_1() : suggestRepairs(rp, rc);
     let explanation;
@@ -150,11 +158,11 @@ function argumentBlock(defs, name, premises, conclusion) {
     const premises_1 = toArray(map(toUnicode, rp));
     const conclusion_1 = toUnicode(rc);
     const verdict = check.IsValid ? "valid" : "invalid";
-    const form_1 = defaultArg(check.IsValid ? map_1((f) => f.Title, recognized) : undefined, "");
-    const fallacy = defaultArg(check.IsValid ? undefined : map_1((f_1) => f_1.Title, recognized), "");
+    const form_2 = defaultArg(check.IsValid ? map_1(displayTitle, recognized) : undefined, "");
+    const fallacy = defaultArg(check.IsValid ? undefined : map_1(displayTitle, recognized), "");
     const suggestion = toArray(map(toUnicode, repairs));
     const proof = toArray(mapIndexed(proofRow, proofSteps));
-    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(check.Atoms), toArray(map((env) => toArray(map((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map((_arg) => false, check.Counterexamples)), empty.line, premises_1, conclusion_1, form_1, fallacy, explanation, suggestion, proof, empty.relations);
+    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(check.Atoms), toArray(map((env) => toArray(map((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map((_arg) => false, check.Counterexamples)), empty.line, premises_1, conclusion_1, form_2, fallacy, explanation, suggestion, proof, empty.relations);
 }
 
 function relationWhy(_arg) {

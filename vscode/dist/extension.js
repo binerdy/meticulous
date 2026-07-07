@@ -4896,10 +4896,11 @@ var FormKind = class extends Union {
   }
 };
 var ArgumentForm = class extends Record {
-  constructor(Name, Title, Premises, Conclusion, Kind, Note) {
+  constructor(Name, Title, Aka, Premises, Conclusion, Kind, Note) {
     super();
     this.Name = Name;
     this.Title = Title;
+    this.Aka = Aka;
     this.Premises = Premises;
     this.Conclusion = Conclusion;
     this.Kind = Kind;
@@ -4910,7 +4911,7 @@ var \u03C6 = new Formula(0, ["\u03C6"]);
 var \u03C8 = new Formula(0, ["\u03C8"]);
 var \u03C7 = new Formula(0, ["\u03C7"]);
 var \u03C9 = new Formula(0, ["\u03C9"]);
-var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second."), new ArgumentForm("constructive-dilemma", "constructive dilemma", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("simplification", "simplification", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
+var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
 var validForms = filter2((f) => equals(f.Kind, new FormKind(0, [])), forms);
 var fallacies = filter2((f) => equals(f.Kind, new FormKind(1, [])), forms);
 
@@ -5995,6 +5996,13 @@ function argumentBlock(defs, name, premises, conclusion) {
   const rc = resolve(defs, conclusion);
   const check = checkArgument(rp, rc);
   const recognized = recognize(check.IsValid ? validForms : fallacies, rp, rc);
+  const displayTitle = (form) => {
+    if (form.Aka === "") {
+      return form.Title;
+    } else {
+      return form.Title + " (" + form.Aka + ")";
+    }
+  };
   const proofSteps = check.IsValid ? defaultArg(prove(rp, rc), empty2()) : empty2();
   const repairs = check.IsValid ? empty2() : suggestRepairs(rp, rc);
   let explanation;
@@ -6011,11 +6019,11 @@ function argumentBlock(defs, name, premises, conclusion) {
   const premises_1 = toArray(map4(toUnicode, rp));
   const conclusion_1 = toUnicode(rc);
   const verdict = check.IsValid ? "valid" : "invalid";
-  const form_1 = defaultArg(check.IsValid ? map((f) => f.Title, recognized) : void 0, "");
-  const fallacy = defaultArg(check.IsValid ? void 0 : map((f_1) => f_1.Title, recognized), "");
+  const form_2 = defaultArg(check.IsValid ? map(displayTitle, recognized) : void 0, "");
+  const fallacy = defaultArg(check.IsValid ? void 0 : map(displayTitle, recognized), "");
   const suggestion = toArray(map4(toUnicode, repairs));
   const proof = toArray(mapIndexed(proofRow, proofSteps));
-  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(check.Atoms), toArray(map4((env) => toArray(map4((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map4((_arg) => false, check.Counterexamples)), empty5.line, premises_1, conclusion_1, form_1, fallacy, explanation, suggestion, proof, empty5.relations);
+  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(check.Atoms), toArray(map4((env) => toArray(map4((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map4((_arg) => false, check.Counterexamples)), empty5.line, premises_1, conclusion_1, form_2, fallacy, explanation, suggestion, proof, empty5.relations);
 }
 function relationWhy(_arg) {
   switch (_arg.tag) {

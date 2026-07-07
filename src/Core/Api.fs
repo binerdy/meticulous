@@ -135,6 +135,12 @@ module Api =
         let recognized =
             recognize (if check.IsValid then validForms else fallacies) rp rc
 
+        // A form is shown with its traditional alias when it has one,
+        // e.g. "disjunctive syllogism (modus tollendo ponens)".
+        let displayTitle (form: ArgumentForm) =
+            if form.Aka = "" then form.Title
+            else form.Title + " (" + form.Aka + ")"
+
         let proofSteps =
             if check.IsValid then prove rp rc |> Option.defaultValue [] else []
 
@@ -159,8 +165,8 @@ module Api =
             premises = rp |> List.map toUnicode |> List.toArray
             conclusion = toUnicode rc
             verdict = if check.IsValid then "valid" else "invalid"
-            form = (if check.IsValid then recognized |> Option.map (fun f -> f.Title) else None) |> Option.defaultValue ""
-            fallacy = (if check.IsValid then None else recognized |> Option.map (fun f -> f.Title)) |> Option.defaultValue ""
+            form = (if check.IsValid then recognized |> Option.map displayTitle else None) |> Option.defaultValue ""
+            fallacy = (if check.IsValid then None else recognized |> Option.map displayTitle) |> Option.defaultValue ""
             note = explanation
             suggestion = repairs |> List.map toUnicode |> List.toArray
             proof = proofSteps |> List.mapi proofRow |> List.toArray

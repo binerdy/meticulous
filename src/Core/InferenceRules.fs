@@ -26,6 +26,7 @@ module InferenceRules =
     type ArgumentForm =
         { Name: string             // machine name, e.g. "modus-ponens" (used for /snippets)
           Title: string            // display name, e.g. "modus ponens"
+          Aka: string              // traditional/Latin alias, e.g. "modus tollendo ponens" ("" if none)
           Premises: Formula list   // premise patterns (atoms are metavariables)
           Conclusion: Formula      // conclusion pattern
           Kind: FormKind
@@ -42,6 +43,7 @@ module InferenceRules =
         [ // ---- valid inference rules ----
           { Name = "modus-ponens"
             Title = "modus ponens"
+            Aka = "modus ponendo ponens"
             Premises = [ Implies(φ, ψ); φ ]
             Conclusion = ψ
             Kind = ValidForm
@@ -49,6 +51,7 @@ module InferenceRules =
 
           { Name = "modus-tollens"
             Title = "modus tollens"
+            Aka = "modus tollendo tollens"
             Premises = [ Implies(φ, ψ); Not ψ ]
             Conclusion = Not φ
             Kind = ValidForm
@@ -56,6 +59,7 @@ module InferenceRules =
 
           { Name = "hypothetical-syllogism"
             Title = "hypothetical syllogism"
+            Aka = ""
             Premises = [ Implies(φ, ψ); Implies(ψ, χ) ]
             Conclusion = Implies(φ, χ)
             Kind = ValidForm
@@ -63,13 +67,23 @@ module InferenceRules =
 
           { Name = "disjunctive-syllogism"
             Title = "disjunctive syllogism"
+            Aka = "modus tollendo ponens"
             Premises = [ Or(φ, ψ); Not φ ]
             Conclusion = ψ
             Kind = ValidForm
-            Note = "One of two options; the first is out; so it's the second." }
+            Note = "One of two options; the first is out; so it's the second — affirming by denying." }
+
+          { Name = "ponendo-tollens"
+            Title = "modus ponendo tollens"
+            Aka = ""
+            Premises = [ Not(And(φ, ψ)); φ ]
+            Conclusion = Not ψ
+            Kind = ValidForm
+            Note = "The two can't both hold; the first does; so the second fails — denying by affirming." }
 
           { Name = "constructive-dilemma"
             Title = "constructive dilemma"
+            Aka = ""
             Premises = [ Implies(φ, ψ); Implies(χ, ω); Or(φ, χ) ]
             Conclusion = Or(ψ, ω)
             Kind = ValidForm
@@ -77,6 +91,7 @@ module InferenceRules =
 
           { Name = "simplification"
             Title = "simplification"
+            Aka = ""
             Premises = [ And(φ, ψ) ]
             Conclusion = φ
             Kind = ValidForm
@@ -84,6 +99,7 @@ module InferenceRules =
 
           { Name = "conjunction"
             Title = "conjunction"
+            Aka = ""
             Premises = [ φ; ψ ]
             Conclusion = And(φ, ψ)
             Kind = ValidForm
@@ -91,6 +107,7 @@ module InferenceRules =
 
           { Name = "addition"
             Title = "addition"
+            Aka = ""
             Premises = [ φ ]
             Conclusion = Or(φ, ψ)
             Kind = ValidForm
@@ -98,6 +115,7 @@ module InferenceRules =
 
           { Name = "double-negation-intro"
             Title = "double negation (intro)"
+            Aka = ""
             Premises = [ φ ]
             Conclusion = Not(Not φ)
             Kind = ValidForm
@@ -105,6 +123,7 @@ module InferenceRules =
 
           { Name = "double-negation-elim"
             Title = "double negation (elim)"
+            Aka = ""
             Premises = [ Not(Not φ) ]
             Conclusion = φ
             Kind = ValidForm
@@ -113,6 +132,7 @@ module InferenceRules =
           // ---- fallacies: invalid forms that *look* valid ----
           { Name = "affirming-the-consequent"
             Title = "affirming the consequent"
+            Aka = ""
             Premises = [ Implies(φ, ψ); ψ ]
             Conclusion = φ
             Kind = FallacyForm
@@ -120,6 +140,7 @@ module InferenceRules =
 
           { Name = "denying-the-antecedent"
             Title = "denying the antecedent"
+            Aka = ""
             Premises = [ Implies(φ, ψ); Not φ ]
             Conclusion = Not ψ
             Kind = FallacyForm
@@ -127,6 +148,7 @@ module InferenceRules =
 
           { Name = "affirming-a-disjunct"
             Title = "affirming a disjunct"
+            Aka = ""
             Premises = [ Or(φ, ψ); φ ]
             Conclusion = Not ψ
             Kind = FallacyForm
@@ -134,6 +156,7 @@ module InferenceRules =
 
           { Name = "illicit-conversion"
             Title = "illicit conversion"
+            Aka = ""
             Premises = [ Implies(φ, ψ) ]
             Conclusion = Implies(ψ, φ)
             Kind = FallacyForm
