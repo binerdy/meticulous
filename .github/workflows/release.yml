@@ -14,6 +14,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # Secrets surfaced as job env so steps can test them in `if:` conditions
+      # (the `secrets` context itself is not allowed there — using it makes the
+      # whole workflow fail to parse).
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,17 +69,13 @@ jobs:
           npx vsce package
 
       - name: Publish to VS Code Marketplace
-        if: steps.version.outputs.new == 'true' && secrets.VSCE_PAT != ''
+        if: steps.version.outputs.new == 'true' && env.VSCE_PAT != ''
         working-directory: vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx vsce publish --packagePath meticulous-${{ steps.version.outputs.version }}.vsix
 
       - name: Publish to Open VSX (VSCodium etc.)
-        if: steps.version.outputs.new == 'true' && secrets.OVSX_PAT != ''
+        if: steps.version.outputs.new == 'true' && env.OVSX_PAT != ''
         working-directory: vscode
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: npx ovsx publish meticulous-${{ steps.version.outputs.version }}.vsix --pat "$OVSX_PAT"
 
       - name: Tag and create GitHub release
