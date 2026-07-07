@@ -488,3 +488,4 @@ vscode/dist/
 *.vsix
 _site/
 site/generate.cjs
+.claude/
