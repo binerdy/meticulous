@@ -1,0 +1,14 @@
+# Modus ponendo tollens
+
+prop rain: It is raining
+prop dry: The street is dry
+
+claim C1: not (rain and dry)
+claim C2: rain
+
+argument ponendo-tollens {
+  premise C1
+  premise C2
+  ---
+  conclude not dry
+}
