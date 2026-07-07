@@ -20,7 +20,10 @@ const STYLE = `
   .prop .colon { opacity: .5; margin: 0 .5em; }
   .prop .gloss { font-family: var(--vscode-font-family); opacity: .85; }
   .claim .formula { margin-left: .75em; }
-  .check { font-family: var(--vscode-editor-font-family); margin: .5rem 0; display: flex; align-items: center; gap: .75em; }
+  .check { font-family: var(--vscode-editor-font-family); margin: .5rem 0; }
+  .check > div { display: flex; align-items: center; gap: .75em; }
+  .reading { font-family: var(--vscode-font-family); font-style: italic; opacity: .7; margin: .1rem 0 .1rem 1.5rem; }
+  .note-inline { font-style: italic; opacity: .65; font-size: .85em; margin-left: .6em; }
   figure.statement { margin: .8rem 0; }
   figure.statement figcaption { margin-bottom: .35rem; display: flex; align-items: center; gap: .5em; }
   .check-label { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; }
@@ -34,10 +37,43 @@ const STYLE = `
   .badge-tautology, .badge-equivalent { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
   .badge-contradiction, .badge-not-equivalent { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
   .badge-contingent { background: var(--vscode-editorWarning-foreground, #cca700); color: #100c02; }
+  .badge-valid { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
+  .badge-invalid { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }
   code { background: var(--vscode-textCodeBlock-background, #8882); padding: 0 .3em; border-radius: 3px; }
+
+  /* arguments */
+  figure.argument { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.argument figcaption { display: flex; align-items: center; gap: .5em; margin-bottom: .5rem; }
+  .arg-name { font-weight: 600; font-family: var(--vscode-editor-font-family); }
+  .chip { font-size: .72rem; padding: .1em .6em; border-radius: 999px; border: 1px solid var(--vscode-widget-border, #8884); }
+  .chip-form { border-color: var(--vscode-testing-iconPassed, #3fb950); }
+  .chip-fallacy { border-color: var(--vscode-testing-iconFailed, #f85149); color: var(--vscode-testing-iconFailed, #f85149); }
+  .derivation { font-family: var(--vscode-editor-font-family); margin: .3rem 0 .3rem .5rem; }
+  .derivation .premise { padding: .1rem 0; }
+  .derivation .conclusion { border-top: 1px solid var(--vscode-foreground); margin-top: .25rem; padding-top: .25rem; width: fit-content; min-width: 12em; }
+  .note { opacity: .75; font-style: italic; margin: .35rem 0; }
+  .counterexample { margin: .5rem 0; }
+  .cx-label { display: block; font-size: .78rem; opacity: .7; margin-bottom: .3rem; }
+  .repair { margin: .5rem 0; padding: .45rem .7rem; border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700); background: var(--vscode-textCodeBlock-background, #8881); }
+  .repair .formula { font-family: var(--vscode-editor-font-family); font-weight: 600; }
+  .repair .or { opacity: .6; }
+  table.proof { font-family: var(--vscode-editor-font-family); border-collapse: collapse; margin: .5rem 0 .2rem; }
+  table.proof td { padding: .12em .6em .12em 0; }
+  .step-no { opacity: .55; }
+  .step-why { opacity: .7; font-size: .85em; }
+
+  /* relations (analyze) */
+  figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.relations figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }
+  figure.relations table { border-collapse: collapse; }
+  figure.relations td { padding: .15em .8em .15em 0; }
+  .rel-claim { font-family: var(--vscode-editor-font-family); font-weight: 600; }
+  .rel-kind { opacity: .9; }
+  .rel-detail { opacity: .6; font-size: .85em; }
+  .rel-independent { opacity: .45; }
 `;
 
 function wrapHtml(body: string): string {

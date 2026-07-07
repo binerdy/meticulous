@@ -170,21 +170,96 @@ module Parser =
                 |> Result.bind (fun lf -> parseFormula r |> Result.map (fun rf -> Some(Check(Equivalent(lf, rf)))))
             | None -> parseFormula rest |> Result.map (fun f -> Some(Check(Verdict f)))
 
+        elif line = "analyze" then
+            Ok(Some Analyze)
+
+        elif line.StartsWith "argument" then
+            // Argument *blocks* are assembled in parseLines below; a header
+            // reaching this function means the opening brace was missing.
+            Error "an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"
+
         else
             // Anything we don't recognise is plain prose.
             Ok(Some(Prose line))
 
+    /// Parse the interior of an `argument name { ... }` block.
+    /// `body` carries (lineNumber, rawLine) for everything between the braces.
+    /// On success we get one Argument statement; on failure, every error found.
+    let private parseArgumentBlock name headerLine (body: (int * string) list) : Result<Statement, (int * string) list> =
+        let mutable premises = []
+        let mutable conclusion = None
+        let mutable errors = []
+
+        for (no, raw) in body do
+            let line = (stripComment raw).Trim()
+            if line = "" then
+                () // blank line — fine
+            elif line.Length >= 3 && line |> Seq.forall (fun c -> c = '-') then
+                () // the `---` inference line: decoration between premises and conclusion
+            elif line.StartsWith "premise " then
+                match parseFormula (line.Substring 8) with
+                | Ok f -> premises <- premises @ [ f ]
+                | Error e -> errors <- errors @ [ no, e ]
+            elif line.StartsWith "conclude " then
+                match parseFormula (line.Substring 9), conclusion with
+                | Ok f, None -> conclusion <- Some f
+                | Ok _, Some _ -> errors <- errors @ [ no, "an argument can only have one `conclude`" ]
+                | Error e, _ -> errors <- errors @ [ no, e ]
+            else
+                errors <- errors @ [ no, "expected `premise`, `---`, or `conclude` inside an argument" ]
+
+        match errors, premises, conclusion with
+        | [], [], _ -> Error [ headerLine, "an argument needs at least one `premise`" ]
+        | [], _, None -> Error [ headerLine, "an argument needs a `conclude` line" ]
+        | [], _, Some c -> Ok(Argument(name, premises, c))
+        | errs, _, _ -> Error errs
+
+    /// Parse a whole source into (lineNumber, statement-or-error) entries,
+    /// grouping multi-line `argument { }` blocks into single statements.
+    /// This per-line shape lets callers be *resilient*: one bad line becomes
+    /// one error entry while everything around it still parses.
+    let parseLines (source: string) : (int * Result<Statement option, string>) list =
+        let lines = source.Replace("\r\n", "\n").Split('\n')
+        let results = ResizeArray()
+        let mutable i = 0
+
+        while i < lines.Length do
+            let no = i + 1
+            let line = (stripComment lines.[i]).Trim()
+
+            if line.StartsWith "argument " && line.EndsWith "{" then
+                // Collect the block body up to the closing brace.
+                let name = line.Substring(9, line.Length - 10).Trim()
+                let body = ResizeArray()
+                let mutable j = i + 1
+                let mutable closed = false
+                while not closed && j < lines.Length do
+                    if (stripComment lines.[j]).Trim() = "}" then closed <- true
+                    else
+                        body.Add(j + 1, lines.[j])
+                        j <- j + 1
+
+                if not closed then
+                    results.Add(no, Error "this `argument {` is never closed with `}`")
+                    i <- lines.Length
+                else
+                    match parseArgumentBlock name no (List.ofSeq body) with
+                    | Ok st -> results.Add(no, Ok(Some st))
+                    | Error errs -> for (n, e) in errs do results.Add(n, Error e)
+                    i <- j + 1
+            else
+                results.Add(no, parseLine lines.[i])
+                i <- i + 1
+
+        List.ofSeq results
+
     /// Parse a whole document. Collects every parse error with its line number
     /// so the editor can show them all at once, rather than stopping at the first.
     let parseDocument (source: string) : Result<Document, (int * string) list> =
-        let lines = source.Replace("\r\n", "\n").Split('\n')
-        let mutable statements = []
-        let mutable errors = []
-        lines
-        |> Array.iteri (fun i line ->
-            match parseLine line with
-            | Ok (Some st) -> statements <- st :: statements
-            | Ok None -> ()
-            | Error e -> errors <- (i + 1, e) :: errors)
-        if List.isEmpty errors then Ok(List.rev statements)
-        else Error(List.rev errors)
+        let parsed = parseLines source
+        let errors =
+            parsed |> List.choose (fun (no, r) -> match r with Error e -> Some(no, e) | _ -> None)
+        if List.isEmpty errors then
+            Ok(parsed |> List.choose (fun (_, r) -> match r with Ok st -> st | Error _ -> None))
+        else
+            Error errors

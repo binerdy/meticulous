@@ -6,6 +6,7 @@ prop p : It is raining
 prop q : The ground is wet
 
 claim C1 : p -> q
+claim C2 : q -> p
 
 // A truth table for the named claim:
 table C1
@@ -16,3 +17,12 @@ table p and not p
 
 // Material implication really is equivalent to "not p, or q":
 check C1 equivalent (not p or q)
+
+argument pundit-one {
+  premise rain -> wet
+  premise rain
+  ---
+  conclude wet
+}
+
+analyze

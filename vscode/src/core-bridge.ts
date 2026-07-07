@@ -9,17 +9,34 @@ import { analyze as fableAnalyze } from "./core/Api.js";
 /** One rendered block. Mirrors `Meticulous.Api.BlockView` in Api.fs.
  *  Which fields are meaningful depends on `kind`. */
 export interface BlockView {
-  kind: "heading" | "prose" | "prop" | "claim" | "table" | "check" | "error";
+  kind:
+    | "heading"
+    | "prose"
+    | "prop"
+    | "claim"
+    | "table"
+    | "check"
+    | "argument"
+    | "relations"
+    | "error";
   level: number;      // heading depth
   title: string;      // heading text / prose text / error message
-  name: string;       // prop or claim name
+  name: string;       // prop / claim / argument name
   gloss: string;      // prop meaning
   formula: string;    // rendered formula (minimal parens, Unicode operators)
-  verdict: string;    // tautology | contradiction | contingent | equivalent | not-equivalent
-  atoms: string[];    // truth-table column names
-  rows: boolean[][];  // one row per assignment: value for each atom
-  results: boolean[]; // the formula's value in each row (parallel to rows)
+  verdict: string;    // tautology | contradiction | contingent | equivalent | not-equivalent | valid | invalid
+  atoms: string[];    // table column names (for arguments: counterexample columns)
+  rows: boolean[][];  // one row per assignment (for arguments: counterexamples)
+  results: boolean[]; // the formula/conclusion value in each row (parallel to rows)
   line: number;       // 1-based line, for error blocks
+  premises: string[];   // argument premises, rendered
+  conclusion: string;   // argument conclusion, rendered
+  form: string;         // recognized valid form ("modus ponens"), or ""
+  fallacy: string;      // recognized fallacy ("affirming the consequent"), or ""
+  note: string;         // one-line explanation of the form/fallacy
+  suggestion: string[]; // missing premises that would repair an invalid argument
+  proof: string[][];    // derivation steps: [number, formula, justification]
+  relations: string[][]; // from `analyze`: [left, relation, right]
 }
 
 export const analyze = fableAnalyze as unknown as (source: string) => BlockView[];

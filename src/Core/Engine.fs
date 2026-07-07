@@ -11,19 +11,25 @@ module Engine =
     /// recursively. Claim names are just abbreviations: `table C1` should behave
     /// exactly as if you'd written C1's formula in full. Props (which have no
     /// entry in `defs`) are left as plain atoms.
-    let rec resolve (defs: Map<string, Formula>) (f: Formula) : Formula =
-        match f with
-        | Atom n ->
-            match Map.tryFind n defs with
-            | Some body -> resolve defs body
-            | None -> Atom n
-        | Const _ -> f
-        | Not a -> Not(resolve defs a)
-        | And(a, b) -> And(resolve defs a, resolve defs b)
-        | Or(a, b) -> Or(resolve defs a, resolve defs b)
-        | Xor(a, b) -> Xor(resolve defs a, resolve defs b)
-        | Implies(a, b) -> Implies(resolve defs a, resolve defs b)
-        | Iff(a, b) -> Iff(resolve defs a, resolve defs b)
+    ///
+    /// The `seen` set guards against a claim that (directly or via another
+    /// claim) refers to itself — we stop expanding instead of looping forever.
+    let resolve (defs: Map<string, Formula>) (formula: Formula) : Formula =
+        let rec go (seen: Set<string>) f =
+            match f with
+            | Atom n when not (Set.contains n seen) ->
+                match Map.tryFind n defs with
+                | Some body -> go (Set.add n seen) body
+                | None -> Atom n
+            | Atom n -> Atom n
+            | Const _ -> f
+            | Not a -> Not(go seen a)
+            | And(a, b) -> And(go seen a, go seen b)
+            | Or(a, b) -> Or(go seen a, go seen b)
+            | Xor(a, b) -> Xor(go seen a, go seen b)
+            | Implies(a, b) -> Implies(go seen a, go seen b)
+            | Iff(a, b) -> Iff(go seen a, go seen b)
+        go Set.empty formula
 
     /// All distinct atom names in a formula, in order of first appearance.
     /// (Order matters so the truth table columns read left-to-right naturally.)
@@ -92,3 +98,67 @@ module Engine =
     /// assignment — i.e. when `a <-> b` is a tautology.
     let equivalent (a: Formula) (b: Formula) : bool =
         (truthTable (Iff(a, b))).Verdict = Tautology
+
+    /// Find one assignment where two formulas disagree — the concrete situation
+    /// showing they are *not* the same claim. None when they are equivalent.
+    let distinguishing (a: Formula) (b: Formula) : Map<string, bool> option =
+        let names = atoms (Iff(a, b))
+        assignments names |> List.tryFind (fun env -> eval env a <> eval env b)
+
+    /// A small helper we use below: is this formula a tautology?
+    let private tautology (f: Formula) : bool =
+        (truthTable f).Verdict = Tautology
+
+    // ---- Arguments ---------------------------------------------------------
+
+    /// The result of checking an argument. An argument is *valid* when there is
+    /// no possible assignment that makes every premise true but the conclusion
+    /// false. Each such assignment is a *counterexample* — the exact situation
+    /// in which the argument fails — and we keep them all for display.
+    type ArgumentCheck =
+        { Atoms: string list
+          Counterexamples: Map<string, bool> list
+          IsValid: bool }
+
+    let checkArgument (premises: Formula list) (conclusion: Formula) : ArgumentCheck =
+        // Every atom mentioned anywhere in the argument, without duplicates,
+        // in order of first appearance.
+        let names =
+            premises @ [ conclusion ]
+            |> List.collect atoms
+            |> List.fold (fun acc a -> if List.contains a acc then acc else acc @ [ a ]) []
+
+        let counterexamples =
+            assignments names
+            |> List.filter (fun env ->
+                premises |> List.forall (eval env) && not (eval env conclusion))
+
+        { Atoms = names
+          Counterexamples = counterexamples
+          IsValid = List.isEmpty counterexamples }
+
+    // ---- Relations between claims ------------------------------------------
+
+    /// How two formulas stand to each other — the classical "square of
+    /// opposition", generalised to arbitrary formulas. We check the strong
+    /// relations first, because each one implies some of the weaker ones.
+    /// (RequireQualifiedAccess means you write `Relation.Entails`, which keeps
+    /// these short names from colliding with anything else.)
+    [<RequireQualifiedAccess>]
+    type Relation =
+        | Equivalent    // always the same truth value
+        | Contradictory // always opposite truth values
+        | Contrary      // never both true (but can both be false)
+        | Subcontrary   // never both false (but can both be true)
+        | Entails       // whenever the first is true, so is the second
+        | EntailedBy    // the other way around
+        | Independent   // none of the above — logically unrelated
+
+    let relate (a: Formula) (b: Formula) : Relation =
+        if tautology (Iff(a, b)) then Relation.Equivalent
+        elif tautology (Iff(a, Not b)) then Relation.Contradictory
+        elif tautology (Not(And(a, b))) then Relation.Contrary
+        elif tautology (Or(a, b)) then Relation.Subcontrary
+        elif tautology (Implies(a, b)) then Relation.Entails
+        elif tautology (Implies(b, a)) then Relation.EntailedBy
+        else Relation.Independent

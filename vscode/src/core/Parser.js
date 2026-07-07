@@ -1,12 +1,13 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
 import { CheckKind, TableTarget, Statement, Formula } from "./Ast.js";
-import { reverse, cons, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { choose, ofSeq, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
 import { replace, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
 import { forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
-import { iterateIndexed } from "./fable_modules/fable-library-js.5.6.0/Array.js";
+import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { item } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
 function parseIff(tokens) {
     return Result_Bind((tupledArg) => {
@@ -312,9 +313,139 @@ export function parseLine(raw) {
             return Result_Bind((lf) => Result_Map((rf) => (new Statement(5, [new CheckKind(1, [lf, rf])])), parseFormula(r)), parseFormula(matchValue_2[0]));
         }
     }
+    else if (line === "analyze") {
+        return new FSharpResult$2(0, [new Statement(7, [])]);
+    }
+    else if (line.startsWith("argument")) {
+        return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
+    }
     else {
         return new FSharpResult$2(0, [new Statement(1, [line])]);
     }
+}
+
+function parseArgumentBlock(name, headerLine, body) {
+    let premises = empty();
+    let conclusion = undefined;
+    let errors = empty();
+    const enumerator = getEnumerator(body);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const no = forLoopVar[0] | 0;
+            const line = stripComment(forLoopVar[1]).trim();
+            if (line === "") {
+            }
+            else if ((line.length >= 3) && forAll((c) => (c === "-"), line.split(""))) {
+            }
+            else if (line.startsWith("premise ")) {
+                const matchValue = parseFormula(substring(line, 8));
+                if (matchValue.tag === 1) {
+                    errors = append(errors, singleton([no, matchValue.fields[0]]));
+                }
+                else {
+                    premises = append(premises, singleton(matchValue.fields[0]));
+                }
+            }
+            else if (line.startsWith("conclude ")) {
+                const matchValue_1 = parseFormula(substring(line, 9));
+                const conclusion_1 = conclusion;
+                const copyOfStruct = matchValue_1;
+                if (copyOfStruct.tag === 1) {
+                    errors = append(errors, singleton([no, copyOfStruct.fields[0]]));
+                }
+                else if (conclusion_1 != null) {
+                    errors = append(errors, singleton([no, "an argument can only have one `conclude`"]));
+                }
+                else {
+                    conclusion = copyOfStruct.fields[0];
+                }
+            }
+            else {
+                errors = append(errors, singleton([no, "expected `premise`, `---`, or `conclude` inside an argument"]));
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    const errors_1 = errors;
+    const premises_1 = premises;
+    const conclusion_2 = conclusion;
+    if (isEmpty(errors_1)) {
+        if (isEmpty(premises_1)) {
+            return new FSharpResult$2(1, [singleton([headerLine, "an argument needs at least one `premise`"])]);
+        }
+        else if (conclusion_2 != null) {
+            const c_1 = conclusion_2;
+            return new FSharpResult$2(0, [new Statement(6, [name, premises, c_1])]);
+        }
+        else {
+            return new FSharpResult$2(1, [singleton([headerLine, "an argument needs a `conclude` line"])]);
+        }
+    }
+    else {
+        return new FSharpResult$2(1, [errors_1]);
+    }
+}
+
+/**
+ * Parse a whole source into (lineNumber, statement-or-error) entries,
+ * grouping multi-line `argument { }` blocks into single statements.
+ * This per-line shape lets callers be *resilient*: one bad line becomes
+ * one error entry while everything around it still parses.
+ */
+export function parseLines(source) {
+    const lines = split(replace(source, "\r\n", "\n"), ["\n"], undefined, 0);
+    const results = [];
+    let i = 0;
+    while (i < lines.length) {
+        const no = (i + 1) | 0;
+        const line = stripComment(item(i, lines)).trim();
+        if (line.startsWith("argument ") && line.endsWith("{")) {
+            const name = substring(line, 9, line.length - 10).trim();
+            const body = [];
+            let j = i + 1;
+            let closed = false;
+            while (!closed && (j < lines.length)) {
+                if (stripComment(item(j, lines)).trim() === "}") {
+                    closed = true;
+                }
+                else {
+                    void (body.push([j + 1, item(j, lines)]));
+                    j = ((j + 1) | 0);
+                }
+            }
+            if (!closed) {
+                void (results.push([no, new FSharpResult$2(1, ["this `argument {` is never closed with `}`"])]));
+                i = (lines.length | 0);
+            }
+            else {
+                const matchValue = parseArgumentBlock(name, no, ofSeq(body));
+                if (matchValue.tag === 1) {
+                    const enumerator = getEnumerator(matchValue.fields[0]);
+                    try {
+                        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                            void (results.push([forLoopVar[0], new FSharpResult$2(1, [forLoopVar[1]])]));
+                        }
+                    }
+                    finally {
+                        disposeSafe(enumerator);
+                    }
+                }
+                else {
+                    void (results.push([no, new FSharpResult$2(0, [matchValue.fields[0]])]));
+                }
+                i = ((j + 1) | 0);
+            }
+        }
+        else {
+            void (results.push([no, parseLine(item(i, lines))]));
+            i = ((i + 1) | 0);
+        }
+    }
+    return ofSeq(results);
 }
 
 /**
@@ -322,25 +453,29 @@ export function parseLine(raw) {
  * so the editor can show them all at once, rather than stopping at the first.
  */
 export function parseDocument(source) {
-    let statements = empty();
-    let errors = empty();
-    iterateIndexed((i, line) => {
-        const matchValue = parseLine(line);
-        if (matchValue.tag === 1) {
-            errors = cons([i + 1, matchValue.fields[0]], errors);
-        }
-        else if (matchValue.fields[0] == null) {
+    const parsed = parseLines(source);
+    const errors = choose((tupledArg) => {
+        const r = tupledArg[1];
+        if (r.tag === 1) {
+            return [tupledArg[0], r.fields[0]];
         }
         else {
-            const st = matchValue.fields[0];
-            statements = cons(st, statements);
+            return undefined;
         }
-    }, split(replace(source, "\r\n", "\n"), ["\n"], undefined, 0));
+    }, parsed);
     if (isEmpty(errors)) {
-        return new FSharpResult$2(0, [reverse(statements)]);
+        return new FSharpResult$2(0, [choose((tupledArg_1) => {
+            const r_1 = tupledArg_1[1];
+            if (r_1.tag === 1) {
+                return undefined;
+            }
+            else {
+                return r_1.fields[0];
+            }
+        }, parsed)]);
     }
     else {
-        return new FSharpResult$2(1, [reverse(errors)]);
+        return new FSharpResult$2(1, [errors]);
     }
 }
 

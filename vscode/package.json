@@ -2,12 +2,12 @@
   "name": "meticulous",
   "displayName": "meticulous",
   "description": "A philosophical DSL: propositions, truth tables, and structural relations, with live preview.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "meticulous-lang",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CHANGE-ME/meticulous.git"
+    "url": "https://github.com/binerdy/meticulous.git"
   },
   "engines": {
     "vscode": "^1.85.0"

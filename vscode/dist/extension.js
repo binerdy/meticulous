@@ -127,6 +127,10 @@ function dateOffset(date) {
   const date1 = date;
   return typeof date1.offset === "number" ? date1.offset : date.kind === DateTimeKind.Utc ? 0 : date.getTimezoneOffset() * -6e4;
 }
+function int32ToString(i, radix) {
+  i = i < 0 && radix != null && radix !== 10 ? 4294967295 + i + 1 : i;
+  return i.toString(radix);
+}
 var ObjectRef = class _ObjectRef {
   static id(o) {
     if (!_ObjectRef.idMap.has(o)) {
@@ -160,6 +164,30 @@ function combineHashCodes(hashes) {
     h1 = (h1 << 5) + h1 ^ h2;
   }
   return h1;
+}
+function physicalHash(x) {
+  if (x == null) {
+    return 0;
+  }
+  switch (typeof x) {
+    case "boolean":
+      return x ? 1 : 0;
+    case "number":
+      return numberHash(x);
+    case "bigint":
+      return bigintHash(x);
+    case "string":
+      return stringHash(x);
+    default:
+      return numberHash(ObjectRef.id(x));
+  }
+}
+function identityHash(x) {
+  if (isHashable(x)) {
+    return x.GetHashCode();
+  } else {
+    return physicalHash(x);
+  }
 }
 function dateHash(x) {
   return x.getTime();
@@ -200,6 +228,9 @@ function structuralHash(x) {
       }
     }
   }
+}
+function safeHash(x) {
+  return identityHash(x);
 }
 function equalArraysWith(x, y, eq) {
   if (x == null) {
@@ -330,6 +361,10 @@ function compare(x, y) {
   } else {
     return Object.getPrototypeOf(x)?.constructor === Object ? compareObjects(x, y) : -1;
   }
+}
+var curried = /* @__PURE__ */ new WeakMap();
+function curry2(f) {
+  return curried.get(f) ?? ((a1) => (a2) => f(a1, a2));
 }
 
 // src/core/fable_modules/fable-library-js.5.6.0/Types.js
@@ -484,6 +519,25 @@ var Record = class {
     return recordCompareTo(this, other);
   }
 };
+var FSharpRef = class {
+  get contents() {
+    return this.getter();
+  }
+  set contents(v) {
+    this.setter(v);
+  }
+  constructor(contentsOrGetter, setter) {
+    if (typeof setter === "function") {
+      this.getter = contentsOrGetter;
+      this.setter = setter;
+    } else {
+      this.getter = () => contentsOrGetter;
+      this.setter = (v) => {
+        contentsOrGetter = v;
+      };
+    }
+  }
+};
 
 // src/core/fable_modules/fable-library-js.5.6.0/Numeric.js
 var symbol = Symbol("numeric");
@@ -591,54 +645,12 @@ function some(x) {
 function defaultArg(opt, defaultValue) {
   return opt != null ? value(opt) : defaultValue;
 }
-
-// src/core/Ast.js
-var Formula = class extends Union {
-  constructor(tag, fields) {
-    super();
-    this.tag = tag;
-    this.fields = fields;
-  }
-  cases() {
-    return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff"];
-  }
-};
-var TableTarget = class extends Union {
-  constructor(tag, fields) {
-    super();
-    this.tag = tag;
-    this.fields = fields;
-  }
-  cases() {
-    return ["TargetRef", "TargetFormula"];
-  }
-};
-var CheckKind = class extends Union {
-  constructor(tag, fields) {
-    super();
-    this.tag = tag;
-    this.fields = fields;
-  }
-  cases() {
-    return ["Verdict", "Equivalent"];
-  }
-};
-var Statement = class extends Union {
-  constructor(tag, fields) {
-    super();
-    this.tag = tag;
-    this.fields = fields;
-  }
-  cases() {
-    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check"];
-  }
-};
-
-// src/core/fable_modules/fable-library-js.5.6.0/Global.js
-var SR_inputWasEmpty = "Collection was empty.";
-var SR_ArgumentNull_Generic = "Value cannot be null.";
-var SR_Arg_ParamName_Name = " (Parameter '";
-var SR_Arg_KeyNotFound = "The given key was not present in the dictionary.";
+function map(mapping, opt) {
+  return opt != null ? some(mapping(value(opt))) : void 0;
+}
+function bind(binder, opt) {
+  return opt != null ? binder(value(opt)) : void 0;
+}
 
 // src/core/fable_modules/fable-library-js.5.6.0/Date.js
 var shortDays = [
@@ -1574,6 +1586,13 @@ function substring(str, startIndex, length2) {
   return length2 != null ? str.substr(startIndex, length2) : str.substr(startIndex);
 }
 
+// src/core/fable_modules/fable-library-js.5.6.0/Global.js
+var SR_indexOutOfBounds = "The index was outside the range of elements in the collection.";
+var SR_inputWasEmpty = "Collection was empty.";
+var SR_ArgumentNull_Generic = "Value cannot be null.";
+var SR_Arg_ParamName_Name = " (Parameter '";
+var SR_Arg_KeyNotFound = "The given key was not present in the dictionary.";
+
 // src/core/fable_modules/fable-library-js.5.6.0/System.js
 var InvalidOperationException = class extends Exception {
   constructor(message) {
@@ -1628,13 +1647,10 @@ function fill(target, targetIndex, count, value2) {
   const start = targetIndex | 0;
   return target.fill(value2, start, start + count);
 }
-function mapIndexed(f, source, cons2) {
-  const len = source.length | 0;
-  const target = Helpers_allocateArrayFromCons(cons2, len);
-  for (let i = 0; i <= len - 1; i++) {
-    setItem(target, i, f(i, item(i, source)));
-  }
-  return target;
+function singleton(value2, cons2) {
+  const ar = Helpers_allocateArrayFromCons(cons2, 1);
+  setItem(ar, 0, value2);
+  return ar;
 }
 function item(index, array) {
   if (index < 0 ? true : index >= array.length) {
@@ -1658,6 +1674,423 @@ function Operators_NullArgCheck(argumentName, value2) {
   } else {
     return value2;
   }
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/Seq.js
+var SR_enumerationAlreadyFinished = "Enumeration already finished.";
+var SR_enumerationNotStarted = "Enumeration has not started. Call MoveNext.";
+var SR_keyNotFoundAlt = "An index satisfying the predicate was not found in the collection.";
+var SR_resetNotSupported = "Reset is not supported on this enumerator.";
+function Enumerator_noReset() {
+  throw NotSupportedException_$ctor_Z721C83C5(SR_resetNotSupported);
+}
+function Enumerator_notStarted() {
+  throw InvalidOperationException_$ctor_Z721C83C5(SR_enumerationNotStarted);
+}
+function Enumerator_alreadyFinished() {
+  throw InvalidOperationException_$ctor_Z721C83C5(SR_enumerationAlreadyFinished);
+}
+var Enumerator_Seq = class {
+  constructor(f) {
+    this.f = f;
+  }
+  toString() {
+    const xs = this;
+    let i = 0;
+    let str = "seq [";
+    const e = getEnumerator(xs);
+    try {
+      while (i < 4 && e["System.Collections.IEnumerator.MoveNext"]()) {
+        if (i > 0) {
+          str = str + "; ";
+        }
+        str = str + toString(e["System.Collections.Generic.IEnumerator`1.get_Current"]());
+        i = i + 1 | 0;
+      }
+      if (i === 4) {
+        str = str + "; ...";
+      }
+      return str + "]";
+    } finally {
+      disposeSafe(e);
+    }
+  }
+  GetEnumerator() {
+    const x = this;
+    return x.f();
+  }
+  [Symbol.iterator]() {
+    return toIterator(getEnumerator(this));
+  }
+  "System.Collections.IEnumerable.GetEnumerator"() {
+    const x = this;
+    return x.f();
+  }
+};
+function Enumerator_Seq_$ctor_673A07F2(f) {
+  return new Enumerator_Seq(f);
+}
+var Enumerator_FromFunctions$1 = class {
+  constructor(current, next, dispose) {
+    this.current = current;
+    this.next = next;
+    this.dispose = dispose;
+  }
+  "System.Collections.Generic.IEnumerator`1.get_Current"() {
+    const _ = this;
+    return _.current();
+  }
+  "System.Collections.IEnumerator.get_Current"() {
+    const _ = this;
+    return _.current();
+  }
+  "System.Collections.IEnumerator.MoveNext"() {
+    const _ = this;
+    return _.next();
+  }
+  "System.Collections.IEnumerator.Reset"() {
+    Enumerator_noReset();
+  }
+  Dispose() {
+    const _ = this;
+    _.dispose();
+  }
+};
+function Enumerator_FromFunctions$1_$ctor_58C54629(current, next, dispose) {
+  return new Enumerator_FromFunctions$1(current, next, dispose);
+}
+function Enumerator_concat(sources) {
+  let outerOpt = void 0;
+  let innerOpt = void 0;
+  let started = false;
+  let finished = false;
+  let curr = void 0;
+  const finish = () => {
+    finished = true;
+    if (innerOpt != null) {
+      const inner = value(innerOpt);
+      try {
+        disposeSafe(inner);
+      } finally {
+        innerOpt = void 0;
+      }
+    }
+    if (outerOpt != null) {
+      const outer = value(outerOpt);
+      try {
+        disposeSafe(outer);
+      } finally {
+        outerOpt = void 0;
+      }
+    }
+  };
+  return Enumerator_FromFunctions$1_$ctor_58C54629(() => {
+    if (!started) {
+      Enumerator_notStarted();
+    } else if (finished) {
+      Enumerator_alreadyFinished();
+    }
+    if (curr != null) {
+      return value(curr);
+    } else {
+      return Enumerator_alreadyFinished();
+    }
+  }, () => {
+    if (!started) {
+      started = true;
+    }
+    if (finished) {
+      return false;
+    } else {
+      let res = void 0;
+      while (res == null) {
+        let copyOfStruct = void 0;
+        const outerOpt_1 = outerOpt;
+        const innerOpt_1 = innerOpt;
+        if (outerOpt_1 != null) {
+          if (innerOpt_1 != null) {
+            const inner_1 = value(innerOpt_1);
+            if (inner_1["System.Collections.IEnumerator.MoveNext"]()) {
+              curr = some(inner_1["System.Collections.Generic.IEnumerator`1.get_Current"]());
+              res = true;
+            } else {
+              try {
+                disposeSafe(inner_1);
+              } finally {
+                innerOpt = void 0;
+              }
+            }
+          } else {
+            const outer_1 = value(outerOpt_1);
+            if (outer_1["System.Collections.IEnumerator.MoveNext"]()) {
+              const ie = outer_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+              innerOpt = (copyOfStruct = ie, getEnumerator(copyOfStruct));
+            } else {
+              finish();
+              res = false;
+            }
+          }
+        } else {
+          outerOpt = getEnumerator(sources);
+        }
+      }
+      return value(res);
+    }
+  }, () => {
+    if (!finished) {
+      finish();
+    }
+  });
+}
+function Enumerator_generateWhileSome(openf, compute, closef) {
+  let started = false;
+  let curr = void 0;
+  let state = some(openf());
+  const dispose = () => {
+    if (state != null) {
+      const x_1 = value(state);
+      try {
+        closef(x_1);
+      } finally {
+        state = void 0;
+      }
+    }
+  };
+  const finish = () => {
+    try {
+      dispose();
+    } finally {
+      curr = void 0;
+    }
+  };
+  return Enumerator_FromFunctions$1_$ctor_58C54629(() => {
+    if (!started) {
+      Enumerator_notStarted();
+    }
+    if (curr != null) {
+      return value(curr);
+    } else {
+      return Enumerator_alreadyFinished();
+    }
+  }, () => {
+    if (!started) {
+      started = true;
+    }
+    if (state != null) {
+      const s = value(state);
+      let matchValue_1;
+      try {
+        matchValue_1 = compute(s);
+      } catch (matchValue) {
+        finish();
+        throw matchValue;
+      }
+      if (matchValue_1 != null) {
+        curr = matchValue_1;
+        return true;
+      } else {
+        finish();
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }, dispose);
+}
+function Enumerator_unfold(f, state) {
+  let curr = void 0;
+  let acc = state;
+  return Enumerator_FromFunctions$1_$ctor_58C54629(() => {
+    if (curr != null) {
+      const x = value(curr)[0];
+      const st = value(curr)[1];
+      return x;
+    } else {
+      return Enumerator_notStarted();
+    }
+  }, () => {
+    curr = f(acc);
+    if (curr != null) {
+      const x_1 = value(curr)[0];
+      const st_1 = value(curr)[1];
+      acc = st_1;
+      return true;
+    } else {
+      return false;
+    }
+  }, () => {
+  });
+}
+function indexNotFound() {
+  throw KeyNotFoundException_$ctor_Z721C83C5(SR_keyNotFoundAlt);
+}
+function mkSeq(f) {
+  return Enumerator_Seq_$ctor_673A07F2(f);
+}
+function ofSeq2(xs) {
+  return getEnumerator(Operators_NullArgCheck("source", xs));
+}
+function delay(generator) {
+  return mkSeq(() => getEnumerator(generator()));
+}
+function concat(sources) {
+  return mkSeq(() => Enumerator_concat(sources));
+}
+function unfold(generator, state) {
+  return mkSeq(() => Enumerator_unfold(generator, state));
+}
+function empty() {
+  return delay(() => new Array(0));
+}
+function singleton2(x) {
+  return delay(() => singleton(x));
+}
+function toList(xs) {
+  if (isArrayLike(xs)) {
+    return ofArray(xs);
+  } else if (xs instanceof FSharpList) {
+    return xs;
+  } else {
+    return ofSeq(xs);
+  }
+}
+function generate(create, compute, dispose) {
+  return mkSeq(() => Enumerator_generateWhileSome(create, compute, dispose));
+}
+function choose(chooser, xs) {
+  return generate(() => ofSeq2(xs), (e) => {
+    let curr = void 0;
+    while (curr == null && e["System.Collections.IEnumerator.MoveNext"]()) {
+      curr = chooser(e["System.Collections.Generic.IEnumerator`1.get_Current"]());
+    }
+    return curr;
+  }, (e_1) => {
+    disposeSafe(e_1);
+  });
+}
+function compareWith(comparer, xs, ys) {
+  const e1 = ofSeq2(xs);
+  try {
+    const e2 = ofSeq2(ys);
+    try {
+      let c = 0;
+      let b1 = e1["System.Collections.IEnumerator.MoveNext"]();
+      let b2 = e2["System.Collections.IEnumerator.MoveNext"]();
+      while (c === 0 && b1 && b2) {
+        c = comparer(e1["System.Collections.Generic.IEnumerator`1.get_Current"](), e2["System.Collections.Generic.IEnumerator`1.get_Current"]()) | 0;
+        if (c === 0) {
+          b1 = e1["System.Collections.IEnumerator.MoveNext"]();
+          b2 = e2["System.Collections.IEnumerator.MoveNext"]();
+        }
+      }
+      return (c !== 0 ? c : b1 ? 1 : b2 ? -1 : 0) | 0;
+    } finally {
+      disposeSafe(e2);
+    }
+  } finally {
+    disposeSafe(e1);
+  }
+}
+function filter(f, xs) {
+  return choose((x) => {
+    if (f(x)) {
+      return some(x);
+    } else {
+      return void 0;
+    }
+  }, xs);
+}
+function exists(predicate, xs) {
+  const e = ofSeq2(xs);
+  try {
+    let found = false;
+    while (!found && e["System.Collections.IEnumerator.MoveNext"]()) {
+      found = predicate(e["System.Collections.Generic.IEnumerator`1.get_Current"]());
+    }
+    return found;
+  } finally {
+    disposeSafe(e);
+  }
+}
+function tryFindIndex(predicate, xs) {
+  const e = ofSeq2(xs);
+  try {
+    const loop = (i_mut) => {
+      loop: while (true) {
+        const i = i_mut;
+        if (e["System.Collections.IEnumerator.MoveNext"]()) {
+          if (predicate(e["System.Collections.Generic.IEnumerator`1.get_Current"]())) {
+            return i;
+          } else {
+            i_mut = i + 1;
+            continue loop;
+          }
+        } else {
+          return void 0;
+        }
+        break;
+      }
+    };
+    return loop(0);
+  } finally {
+    disposeSafe(e);
+  }
+}
+function findIndex(predicate, xs) {
+  const matchValue = tryFindIndex(predicate, xs);
+  if (matchValue == null) {
+    indexNotFound();
+    return -1;
+  } else {
+    return value(matchValue) | 0;
+  }
+}
+function fold(folder, state, xs) {
+  const e = ofSeq2(xs);
+  try {
+    let acc = state;
+    while (e["System.Collections.IEnumerator.MoveNext"]()) {
+      acc = folder(acc, e["System.Collections.Generic.IEnumerator`1.get_Current"]());
+    }
+    return acc;
+  } finally {
+    disposeSafe(e);
+  }
+}
+function forAll(predicate, xs) {
+  return !exists((x) => !predicate(x), xs);
+}
+function iterate(action, xs) {
+  fold((unitVar, x) => {
+    action(x);
+  }, void 0, xs);
+}
+function iterateIndexed(action, xs) {
+  fold((i, x) => {
+    action(i, x);
+    return i + 1 | 0;
+  }, 0, xs);
+}
+function map3(mapping, xs) {
+  return generate(() => ofSeq2(xs), (e) => e["System.Collections.IEnumerator.MoveNext"]() ? some(mapping(e["System.Collections.Generic.IEnumerator`1.get_Current"]())) : void 0, (e_1) => {
+    disposeSafe(e_1);
+  });
+}
+function collect(mapping, xs) {
+  return delay(() => concat(map3(mapping, xs)));
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/System.Collections.Generic.js
+var KeyNotFoundException = class extends Exception {
+  constructor(message) {
+    super(message);
+  }
+};
+function KeyNotFoundException_$ctor_Z721C83C5(message) {
+  return new KeyNotFoundException(message);
+}
+function KeyNotFoundException_$ctor() {
+  return KeyNotFoundException_$ctor_Z721C83C5(SR_Arg_KeyNotFound);
 }
 
 // src/core/fable_modules/fable-library-js.5.6.0/List.js
@@ -1865,13 +2298,34 @@ function FSharpList__get_Tail(xs) {
     throw new Exception(SR_inputWasEmpty + " (Parameter 'list')");
   }
 }
-function empty() {
+function FSharpList__get_Item_Z524259A4(xs, index) {
+  const loop = (i_mut, xs_1_mut) => {
+    loop: while (true) {
+      const i = i_mut, xs_1 = xs_1_mut;
+      const matchValue = xs_1.tail;
+      if (matchValue != null) {
+        if (i === index) {
+          return xs_1.head;
+        } else {
+          i_mut = i + 1;
+          xs_1_mut = value(matchValue);
+          continue loop;
+        }
+      } else {
+        throw new Exception(SR_indexOutOfBounds + " (Parameter 'index')");
+      }
+      break;
+    }
+  };
+  return loop(0, xs);
+}
+function empty2() {
   return FSharpList_get_Empty();
 }
 function cons(x, xs) {
   return FSharpList_Cons_305B8EAC(x, xs);
 }
-function singleton(x) {
+function singleton3(x) {
   return FSharpList_Cons_305B8EAC(x, FSharpList_get_Empty());
 }
 function isEmpty(xs) {
@@ -1904,7 +2358,7 @@ function toArray(xs) {
   loop(0, xs);
   return res;
 }
-function fold(folder, state, xs) {
+function fold2(folder, state, xs) {
   let acc = state;
   let xs_1 = xs;
   while (!FSharpList__get_IsEmpty(xs_1)) {
@@ -1913,8 +2367,8 @@ function fold(folder, state, xs) {
   }
   return acc;
 }
-function reverse(xs) {
-  return fold((acc, x) => FSharpList_Cons_305B8EAC(x, acc), FSharpList_get_Empty(), xs);
+function reverse2(xs) {
+  return fold2((acc, x) => FSharpList_Cons_305B8EAC(x, acc), FSharpList_get_Empty(), xs);
 }
 function foldIndexed(folder, state, xs) {
   const loop = (i_mut, acc_mut, xs_1_mut) => {
@@ -1932,6 +2386,17 @@ function foldIndexed(folder, state, xs) {
     }
   };
   return loop(0, state, xs);
+}
+function fold22(folder, state, xs, ys) {
+  let acc = state;
+  let xs_1 = xs;
+  let ys_1 = ys;
+  while (!FSharpList__get_IsEmpty(xs_1) && !FSharpList__get_IsEmpty(ys_1)) {
+    acc = folder(acc, FSharpList__get_Head(xs_1), FSharpList__get_Head(ys_1));
+    xs_1 = FSharpList__get_Tail(xs_1);
+    ys_1 = FSharpList__get_Tail(ys_1);
+  }
+  return acc;
 }
 function ofArrayWithTail(xs, tail_1) {
   let res = tail_1;
@@ -1968,9 +2433,27 @@ function ofSeq(xs) {
   }
 }
 function append(xs, ys) {
-  return fold((acc, x) => FSharpList_Cons_305B8EAC(x, acc), ys, reverse(xs));
+  return fold2((acc, x) => FSharpList_Cons_305B8EAC(x, acc), ys, reverse2(xs));
 }
-function mapIndexed2(mapping, xs) {
+function collect2(mapping, xs) {
+  const root = FSharpList_get_Empty();
+  let node = root;
+  let ys = xs;
+  while (!FSharpList__get_IsEmpty(ys)) {
+    let zs = mapping(FSharpList__get_Head(ys));
+    while (!FSharpList__get_IsEmpty(zs)) {
+      let xs_1 = void 0, t = void 0;
+      node = (xs_1 = node, t = new FSharpList(FSharpList__get_Head(zs), void 0), xs_1.tail = t, t);
+      zs = FSharpList__get_Tail(zs);
+    }
+    ys = FSharpList__get_Tail(ys);
+  }
+  const xs_3 = node;
+  const t_2 = FSharpList_get_Empty();
+  xs_3.tail = t_2;
+  return FSharpList__get_Tail(root);
+}
+function mapIndexed(mapping, xs) {
   const root = FSharpList_get_Empty();
   const node = foldIndexed((i, acc, x) => {
     const t = new FSharpList(mapping(i, x), void 0);
@@ -1981,9 +2464,9 @@ function mapIndexed2(mapping, xs) {
   node.tail = t_2;
   return FSharpList__get_Tail(root);
 }
-function map2(mapping, xs) {
+function map4(mapping, xs) {
   const root = FSharpList_get_Empty();
-  const node = fold((acc, x) => {
+  const node = fold2((acc, x) => {
     const t = new FSharpList(mapping(x), void 0);
     acc.tail = t;
     return t;
@@ -1992,7 +2475,41 @@ function map2(mapping, xs) {
   node.tail = t_2;
   return FSharpList__get_Tail(root);
 }
-function tryFindIndex(f, xs) {
+function map22(mapping, xs, ys) {
+  const root = FSharpList_get_Empty();
+  const node = fold22((acc, x, y) => {
+    const t = new FSharpList(mapping(x, y), void 0);
+    acc.tail = t;
+    return t;
+  }, root, xs, ys);
+  const t_2 = FSharpList_get_Empty();
+  node.tail = t_2;
+  return FSharpList__get_Tail(root);
+}
+function tryPick(f, xs) {
+  const loop = (xs_1_mut) => {
+    loop: while (true) {
+      const xs_1 = xs_1_mut;
+      if (FSharpList__get_IsEmpty(xs_1)) {
+        return void 0;
+      } else {
+        const matchValue = f(FSharpList__get_Head(xs_1));
+        if (matchValue == null) {
+          xs_1_mut = FSharpList__get_Tail(xs_1);
+          continue loop;
+        } else {
+          return matchValue;
+        }
+      }
+      break;
+    }
+  };
+  return loop(xs);
+}
+function tryFind(f, xs) {
+  return tryPick((x) => f(x) ? some(x) : void 0, xs);
+}
+function tryFindIndex2(f, xs) {
   const loop = (i_mut, xs_1_mut) => {
     loop: while (true) {
       const i = i_mut, xs_1 = xs_1_mut;
@@ -2010,9 +2527,27 @@ function tryFindIndex(f, xs) {
   };
   return loop(0, xs);
 }
-function choose(f, xs) {
+function item2(n, xs) {
+  return FSharpList__get_Item_Z524259A4(xs, n);
+}
+function filter2(f, xs) {
   const root = FSharpList_get_Empty();
-  const node = fold((acc, x) => {
+  const node = fold2((acc, x) => {
+    if (f(x)) {
+      const t = new FSharpList(x, void 0);
+      acc.tail = t;
+      return t;
+    } else {
+      return acc;
+    }
+  }, root, xs);
+  const t_2 = FSharpList_get_Empty();
+  node.tail = t_2;
+  return FSharpList__get_Tail(root);
+}
+function choose2(f, xs) {
+  const root = FSharpList_get_Empty();
+  const node = fold2((acc, x) => {
     const matchValue = f(x);
     if (matchValue == null) {
       return acc;
@@ -2027,269 +2562,1205 @@ function choose(f, xs) {
   return FSharpList__get_Tail(root);
 }
 function contains(value2, xs, eq) {
-  return tryFindIndex((v) => eq.Equals(value2, v), xs) != null;
+  return tryFindIndex2((v) => eq.Equals(value2, v), xs) != null;
 }
-function forAll(f, xs) {
-  return fold((acc, x) => acc && f(x), true, xs);
+function reduce(f, xs) {
+  if (FSharpList__get_IsEmpty(xs)) {
+    throw new Exception(SR_inputWasEmpty);
+  } else {
+    return fold2(f, head(xs), tail(xs));
+  }
+}
+function forAll2(f, xs) {
+  return fold2((acc, x) => acc && f(x), true, xs);
+}
+function exists2(f, xs) {
+  return tryFindIndex2(f, xs) != null;
+}
+function zip(xs, ys) {
+  return map22((x, y) => [x, y], xs, ys);
+}
+function sortWith(comparer, xs) {
+  const arr = toArray(xs);
+  arr.sort(comparer);
+  return ofArray(arr);
+}
+function sort(xs, comparer) {
+  return sortWith((x, y) => comparer.Compare(x, y) | 0, xs);
+}
+function sortBy(projection, xs, comparer) {
+  return sortWith((x, y) => comparer.Compare(projection(x), projection(y)) | 0, xs);
+}
+function max(xs, comparer) {
+  return reduce((x, y) => comparer.Compare(y, x) > 0 ? y : x, xs);
+}
+function truncate(count, xs) {
+  const loop = (i_mut, acc_mut, xs_1_mut) => {
+    loop: while (true) {
+      const i = i_mut, acc = acc_mut, xs_1 = xs_1_mut;
+      let t = void 0;
+      if (i <= 0) {
+        return acc;
+      } else if (FSharpList__get_IsEmpty(xs_1)) {
+        return acc;
+      } else {
+        i_mut = i - 1;
+        acc_mut = (t = new FSharpList(FSharpList__get_Head(xs_1), void 0), acc.tail = t, t);
+        xs_1_mut = FSharpList__get_Tail(xs_1);
+        continue loop;
+      }
+      break;
+    }
+  };
+  const root = FSharpList_get_Empty();
+  const node = loop(count, root, xs);
+  const t_2 = FSharpList_get_Empty();
+  node.tail = t_2;
+  return FSharpList__get_Tail(root);
 }
 
-// src/core/fable_modules/fable-library-js.5.6.0/Seq.js
-var SR_enumerationAlreadyFinished = "Enumeration already finished.";
-var SR_enumerationNotStarted = "Enumeration has not started. Call MoveNext.";
-var SR_resetNotSupported = "Reset is not supported on this enumerator.";
-function Enumerator_noReset() {
-  throw NotSupportedException_$ctor_Z721C83C5(SR_resetNotSupported);
-}
-function Enumerator_notStarted() {
-  throw InvalidOperationException_$ctor_Z721C83C5(SR_enumerationNotStarted);
-}
-function Enumerator_alreadyFinished() {
-  throw InvalidOperationException_$ctor_Z721C83C5(SR_enumerationAlreadyFinished);
-}
-var Enumerator_Seq = class {
-  constructor(f) {
-    this.f = f;
+// src/core/Ast.js
+var Formula = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
   }
-  toString() {
-    const xs = this;
-    let i = 0;
-    let str = "seq [";
-    const e = getEnumerator(xs);
+  cases() {
+    return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff"];
+  }
+};
+var TableTarget = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["TargetRef", "TargetFormula"];
+  }
+};
+var CheckKind = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Verdict", "Equivalent"];
+  }
+};
+var Statement = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Analyze"];
+  }
+};
+
+// src/core/fable_modules/fable-library-js.5.6.0/MapUtil.js
+function tryGetValue(map5, key, defaultValue) {
+  if (map5.has(key)) {
+    defaultValue.contents = map5.get(key);
+    return true;
+  }
+  return false;
+}
+function addToSet(v, set) {
+  if (set.has(v)) {
+    return false;
+  }
+  set.add(v);
+  return true;
+}
+function getItemFromDict(map5, key) {
+  if (map5.has(key)) {
+    return map5.get(key);
+  } else {
+    throw new Exception(`The given key '${key}' was not present in the dictionary.`);
+  }
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/MutableSet.js
+var HashSet = class {
+  constructor(items, comparer) {
+    const this$ = new FSharpRef(defaultOf());
+    this.comparer = comparer;
+    this$.contents = this;
+    this.hashMap = /* @__PURE__ */ new Map([]);
+    this["init@9"] = 1;
+    const enumerator = getEnumerator(items);
     try {
-      while (i < 4 && e["System.Collections.IEnumerator.MoveNext"]()) {
-        if (i > 0) {
-          str = str + "; ";
-        }
-        str = str + toString(e["System.Collections.Generic.IEnumerator`1.get_Current"]());
-        i = i + 1 | 0;
+      while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+        const item3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+        HashSet__Add_2B595(this$.contents, item3);
       }
-      if (i === 4) {
-        str = str + "; ...";
-      }
-      return str + "]";
     } finally {
-      disposeSafe(e);
+      disposeSafe(enumerator);
     }
   }
+  get [Symbol.toStringTag]() {
+    return "HashSet";
+  }
+  toJSON() {
+    const this$ = this;
+    return Array.from(this$);
+  }
+  "System.Collections.IEnumerable.GetEnumerator"() {
+    const this$ = this;
+    return getEnumerator(this$);
+  }
   GetEnumerator() {
-    const x = this;
-    return x.f();
+    const this$ = this;
+    return getEnumerator(concat(this$.hashMap.values()));
+  }
+  [Symbol.iterator]() {
+    return toIterator(getEnumerator(this));
+  }
+  "System.Collections.Generic.ICollection`1.Add2B595"(item3) {
+    const this$ = this;
+    HashSet__Add_2B595(this$, item3);
+  }
+  "System.Collections.Generic.ICollection`1.Clear"() {
+    const this$ = this;
+    HashSet__Clear(this$);
+  }
+  "System.Collections.Generic.ICollection`1.Contains2B595"(item3) {
+    const this$ = this;
+    return HashSet__Contains_2B595(this$, item3);
+  }
+  "System.Collections.Generic.ICollection`1.CopyToZ3B4C077E"(array, arrayIndex) {
+    const this$ = this;
+    iterateIndexed((i, e) => {
+      setItem(array, arrayIndex + i, e);
+    }, this$);
+  }
+  "System.Collections.Generic.ICollection`1.get_Count"() {
+    const this$ = this;
+    return HashSet__get_Count(this$) | 0;
+  }
+  "System.Collections.Generic.ICollection`1.get_IsReadOnly"() {
+    return false;
+  }
+  "System.Collections.Generic.ICollection`1.Remove2B595"(item3) {
+    const this$ = this;
+    return HashSet__Remove_2B595(this$, item3);
+  }
+  get size() {
+    const this$ = this;
+    return HashSet__get_Count(this$) | 0;
+  }
+  add(k) {
+    const this$ = this;
+    HashSet__Add_2B595(this$, k);
+    return this$;
+  }
+  clear() {
+    const this$ = this;
+    HashSet__Clear(this$);
+  }
+  delete(k) {
+    const this$ = this;
+    return HashSet__Remove_2B595(this$, k);
+  }
+  has(k) {
+    const this$ = this;
+    return HashSet__Contains_2B595(this$, k);
+  }
+  keys() {
+    const this$ = this;
+    return map3((x) => x, this$);
+  }
+  values() {
+    const this$ = this;
+    return map3((x) => x, this$);
+  }
+  entries() {
+    const this$ = this;
+    return map3((v) => [v, v], this$);
+  }
+  forEach(f, thisArg) {
+    const this$ = this;
+    iterate((x) => {
+      f(x, x, this$);
+    }, this$);
+  }
+};
+function HashSet__TryFindIndex_2B595(this$, k) {
+  const h = this$.comparer.GetHashCode(k) | 0;
+  let matchValue;
+  let outArg = defaultOf();
+  matchValue = [tryGetValue(this$.hashMap, h, new FSharpRef(() => outArg, (v) => {
+    outArg = v;
+  })), outArg];
+  if (matchValue[0]) {
+    return [true, h, matchValue[1].findIndex((v_1) => this$.comparer.Equals(k, v_1))];
+  } else {
+    return [false, h, -1];
+  }
+}
+function HashSet__Clear(this$) {
+  this$.hashMap.clear();
+}
+function HashSet__get_Count(this$) {
+  let count = 0;
+  let enumerator = getEnumerator(this$.hashMap.values());
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      const items = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      count = count + items.length | 0;
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  return count | 0;
+}
+function HashSet__Add_2B595(this$, k) {
+  const matchValue = HashSet__TryFindIndex_2B595(this$, k);
+  if (matchValue[0]) {
+    if (matchValue[2] > -1) {
+      return false;
+    } else {
+      const value2 = void getItemFromDict(this$.hashMap, matchValue[1]).push(k);
+      return true;
+    }
+  } else {
+    this$.hashMap.set(matchValue[1], [k]);
+    return true;
+  }
+}
+function HashSet__Contains_2B595(this$, k) {
+  const matchValue = HashSet__TryFindIndex_2B595(this$, k);
+  let matchResult = void 0;
+  if (matchValue[0]) {
+    if (matchValue[2] > -1) {
+      matchResult = 0;
+    } else {
+      matchResult = 1;
+    }
+  } else {
+    matchResult = 1;
+  }
+  switch (matchResult) {
+    case 0:
+      return true;
+    default:
+      return false;
+  }
+}
+function HashSet__Remove_2B595(this$, k) {
+  const matchValue = HashSet__TryFindIndex_2B595(this$, k);
+  let matchResult = void 0;
+  if (matchValue[0]) {
+    if (matchValue[2] > -1) {
+      matchResult = 0;
+    } else {
+      matchResult = 1;
+    }
+  } else {
+    matchResult = 1;
+  }
+  switch (matchResult) {
+    case 0: {
+      getItemFromDict(this$.hashMap, matchValue[1]).splice(matchValue[2], 1);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/Set.js
+var SetTreeLeaf$1 = class {
+  constructor(k) {
+    this.k = k;
+  }
+};
+function SetTreeLeaf$1_$ctor_2B595(k) {
+  return new SetTreeLeaf$1(k);
+}
+function SetTreeLeaf$1__get_Key(_) {
+  return _.k;
+}
+var SetTreeNode$1 = class extends SetTreeLeaf$1 {
+  constructor(v, left, right, h) {
+    super(v);
+    this.left = left;
+    this.right = right;
+    this.h = h | 0;
+  }
+};
+function SetTreeNode$1_$ctor_5F465FC9(v, left, right, h) {
+  return new SetTreeNode$1(v, left, right, h);
+}
+function SetTreeNode$1__get_Left(_) {
+  return _.left;
+}
+function SetTreeNode$1__get_Right(_) {
+  return _.right;
+}
+function SetTreeNode$1__get_Height(_) {
+  return _.h | 0;
+}
+function SetTreeModule_empty() {
+  return void 0;
+}
+function SetTreeModule_countAux(t_mut, acc_mut) {
+  SetTreeModule_countAux: while (true) {
+    const t = t_mut, acc = acc_mut;
+    if (t != null) {
+      const t2 = value(t);
+      if (t2 instanceof SetTreeNode$1) {
+        const tn = t2;
+        t_mut = SetTreeNode$1__get_Left(tn);
+        acc_mut = SetTreeModule_countAux(SetTreeNode$1__get_Right(tn), acc + 1);
+        continue SetTreeModule_countAux;
+      } else {
+        return acc + 1 | 0;
+      }
+    } else {
+      return acc | 0;
+    }
+    break;
+  }
+}
+function SetTreeModule_count(s) {
+  return SetTreeModule_countAux(s, 0) | 0;
+}
+function SetTreeModule_mk(l, k, r) {
+  let tn = void 0, tn_1 = void 0;
+  let hl;
+  const t = l;
+  if (t != null) {
+    const t2 = value(t);
+    hl = t2 instanceof SetTreeNode$1 ? (tn = t2, SetTreeNode$1__get_Height(tn)) : 1;
+  } else {
+    hl = 0;
+  }
+  let hr;
+  const t_1 = r;
+  if (t_1 != null) {
+    const t2_1 = value(t_1);
+    hr = t2_1 instanceof SetTreeNode$1 ? (tn_1 = t2_1, SetTreeNode$1__get_Height(tn_1)) : 1;
+  } else {
+    hr = 0;
+  }
+  const m = (hl < hr ? hr : hl) | 0;
+  if (m === 0) {
+    return SetTreeLeaf$1_$ctor_2B595(k);
+  } else {
+    return SetTreeNode$1_$ctor_5F465FC9(k, l, r, m + 1);
+  }
+}
+function SetTreeModule_rebalance(t1, v, t2) {
+  let tn = void 0, tn_1 = void 0, t_2 = void 0, t2_3 = void 0, tn_2 = void 0, t_3 = void 0, t2_4 = void 0, tn_3 = void 0;
+  let t1h;
+  const t = t1;
+  if (t != null) {
+    const t2_1 = value(t);
+    t1h = t2_1 instanceof SetTreeNode$1 ? (tn = t2_1, SetTreeNode$1__get_Height(tn)) : 1;
+  } else {
+    t1h = 0;
+  }
+  let t2h;
+  const t_1 = t2;
+  if (t_1 != null) {
+    const t2_2 = value(t_1);
+    t2h = t2_2 instanceof SetTreeNode$1 ? (tn_1 = t2_2, SetTreeNode$1__get_Height(tn_1)) : 1;
+  } else {
+    t2h = 0;
+  }
+  if (t2h > t1h + 2) {
+    const matchValue = value(t2);
+    if (matchValue instanceof SetTreeNode$1) {
+      const t2$0027 = matchValue;
+      if ((t_2 = SetTreeNode$1__get_Left(t2$0027), t_2 != null ? (t2_3 = value(t_2), t2_3 instanceof SetTreeNode$1 ? (tn_2 = t2_3, SetTreeNode$1__get_Height(tn_2)) : 1) : 0) > t1h + 1) {
+        const matchValue_1 = value(SetTreeNode$1__get_Left(t2$0027));
+        if (matchValue_1 instanceof SetTreeNode$1) {
+          const t2l = matchValue_1;
+          return SetTreeModule_mk(SetTreeModule_mk(t1, v, SetTreeNode$1__get_Left(t2l)), SetTreeLeaf$1__get_Key(t2l), SetTreeModule_mk(SetTreeNode$1__get_Right(t2l), SetTreeLeaf$1__get_Key(t2$0027), SetTreeNode$1__get_Right(t2$0027)));
+        } else {
+          throw new Exception("internal error: Set.rebalance");
+        }
+      } else {
+        return SetTreeModule_mk(SetTreeModule_mk(t1, v, SetTreeNode$1__get_Left(t2$0027)), SetTreeLeaf$1__get_Key(t2$0027), SetTreeNode$1__get_Right(t2$0027));
+      }
+    } else {
+      throw new Exception("internal error: Set.rebalance");
+    }
+  } else if (t1h > t2h + 2) {
+    const matchValue_2 = value(t1);
+    if (matchValue_2 instanceof SetTreeNode$1) {
+      const t1$0027 = matchValue_2;
+      if ((t_3 = SetTreeNode$1__get_Right(t1$0027), t_3 != null ? (t2_4 = value(t_3), t2_4 instanceof SetTreeNode$1 ? (tn_3 = t2_4, SetTreeNode$1__get_Height(tn_3)) : 1) : 0) > t2h + 1) {
+        const matchValue_3 = value(SetTreeNode$1__get_Right(t1$0027));
+        if (matchValue_3 instanceof SetTreeNode$1) {
+          const t1r = matchValue_3;
+          return SetTreeModule_mk(SetTreeModule_mk(SetTreeNode$1__get_Left(t1$0027), SetTreeLeaf$1__get_Key(t1$0027), SetTreeNode$1__get_Left(t1r)), SetTreeLeaf$1__get_Key(t1r), SetTreeModule_mk(SetTreeNode$1__get_Right(t1r), v, t2));
+        } else {
+          throw new Exception("internal error: Set.rebalance");
+        }
+      } else {
+        return SetTreeModule_mk(SetTreeNode$1__get_Left(t1$0027), SetTreeLeaf$1__get_Key(t1$0027), SetTreeModule_mk(SetTreeNode$1__get_Right(t1$0027), v, t2));
+      }
+    } else {
+      throw new Exception("internal error: Set.rebalance");
+    }
+  } else {
+    return SetTreeModule_mk(t1, v, t2);
+  }
+}
+function SetTreeModule_add(comparer, k, t) {
+  if (t != null) {
+    const t2 = value(t);
+    const c = comparer.Compare(k, SetTreeLeaf$1__get_Key(t2)) | 0;
+    if (t2 instanceof SetTreeNode$1) {
+      const tn = t2;
+      if (c < 0) {
+        return SetTreeModule_rebalance(SetTreeModule_add(comparer, k, SetTreeNode$1__get_Left(tn)), SetTreeLeaf$1__get_Key(tn), SetTreeNode$1__get_Right(tn));
+      } else if (c === 0) {
+        return t;
+      } else {
+        return SetTreeModule_rebalance(SetTreeNode$1__get_Left(tn), SetTreeLeaf$1__get_Key(tn), SetTreeModule_add(comparer, k, SetTreeNode$1__get_Right(tn)));
+      }
+    } else {
+      const c_1 = comparer.Compare(k, SetTreeLeaf$1__get_Key(t2)) | 0;
+      if (c_1 < 0) {
+        return SetTreeNode$1_$ctor_5F465FC9(k, SetTreeModule_empty(), t, 2);
+      } else if (c_1 === 0) {
+        return t;
+      } else {
+        return SetTreeNode$1_$ctor_5F465FC9(k, t, SetTreeModule_empty(), 2);
+      }
+    }
+  } else {
+    return SetTreeLeaf$1_$ctor_2B595(k);
+  }
+}
+function SetTreeModule_mem(comparer_mut, k_mut, t_mut) {
+  SetTreeModule_mem: while (true) {
+    const comparer = comparer_mut, k = k_mut, t = t_mut;
+    if (t != null) {
+      const t2 = value(t);
+      const c = comparer.Compare(k, SetTreeLeaf$1__get_Key(t2)) | 0;
+      if (t2 instanceof SetTreeNode$1) {
+        const tn = t2;
+        if (c < 0) {
+          comparer_mut = comparer;
+          k_mut = k;
+          t_mut = SetTreeNode$1__get_Left(tn);
+          continue SetTreeModule_mem;
+        } else if (c === 0) {
+          return true;
+        } else {
+          comparer_mut = comparer;
+          k_mut = k;
+          t_mut = SetTreeNode$1__get_Right(tn);
+          continue SetTreeModule_mem;
+        }
+      } else {
+        return c === 0;
+      }
+    } else {
+      return false;
+    }
+    break;
+  }
+}
+function SetTreeModule_iter(f_mut, t_mut) {
+  SetTreeModule_iter: while (true) {
+    const f = f_mut, t = t_mut;
+    if (t != null) {
+      const t2 = value(t);
+      if (t2 instanceof SetTreeNode$1) {
+        const tn = t2;
+        SetTreeModule_iter(f, SetTreeNode$1__get_Left(tn));
+        f(SetTreeLeaf$1__get_Key(tn));
+        f_mut = f;
+        t_mut = SetTreeNode$1__get_Right(tn);
+        continue SetTreeModule_iter;
+      } else {
+        f(SetTreeLeaf$1__get_Key(t2));
+      }
+    }
+    break;
+  }
+}
+var SetTreeModule_SetIterator$1 = class extends Record {
+  constructor(stack, started) {
+    super();
+    this.stack = stack;
+    this.started = started;
+  }
+};
+function SetTreeModule_collapseLHS(stack_mut) {
+  SetTreeModule_collapseLHS: while (true) {
+    const stack = stack_mut;
+    if (!isEmpty(stack)) {
+      const x = head(stack);
+      const rest = tail(stack);
+      if (x != null) {
+        const x2 = value(x);
+        if (x2 instanceof SetTreeNode$1) {
+          const xn = x2;
+          stack_mut = ofArrayWithTail([SetTreeNode$1__get_Left(xn), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(xn)), SetTreeNode$1__get_Right(xn)], rest);
+          continue SetTreeModule_collapseLHS;
+        } else {
+          return stack;
+        }
+      } else {
+        stack_mut = rest;
+        continue SetTreeModule_collapseLHS;
+      }
+    } else {
+      return empty2();
+    }
+    break;
+  }
+}
+function SetTreeModule_mkIterator(s) {
+  return new SetTreeModule_SetIterator$1(SetTreeModule_collapseLHS(singleton3(s)), false);
+}
+function SetTreeModule_notStarted() {
+  throw new Exception("Enumeration not started");
+}
+function SetTreeModule_alreadyFinished() {
+  throw new Exception("Enumeration already started");
+}
+function SetTreeModule_current(i) {
+  if (i.started) {
+    const matchValue = i.stack;
+    if (isEmpty(matchValue)) {
+      return SetTreeModule_alreadyFinished();
+    } else if (head(matchValue) != null) {
+      const t = value(head(matchValue));
+      return SetTreeLeaf$1__get_Key(t);
+    } else {
+      throw new Exception("Please report error: Set iterator, unexpected stack for current");
+    }
+  } else {
+    return SetTreeModule_notStarted();
+  }
+}
+function SetTreeModule_moveNext(i) {
+  if (i.started) {
+    const matchValue = i.stack;
+    if (!isEmpty(matchValue)) {
+      if (head(matchValue) != null) {
+        const t = value(head(matchValue));
+        if (t instanceof SetTreeNode$1) {
+          throw new Exception("Please report error: Set iterator, unexpected stack for moveNext");
+        } else {
+          i.stack = SetTreeModule_collapseLHS(tail(matchValue));
+          return !isEmpty(i.stack);
+        }
+      } else {
+        throw new Exception("Please report error: Set iterator, unexpected stack for moveNext");
+      }
+    } else {
+      return false;
+    }
+  } else {
+    i.started = true;
+    return !isEmpty(i.stack);
+  }
+}
+function SetTreeModule_mkIEnumerator(s) {
+  let i = SetTreeModule_mkIterator(s);
+  return {
+    "System.Collections.Generic.IEnumerator`1.get_Current"() {
+      return SetTreeModule_current(i);
+    },
+    "System.Collections.IEnumerator.get_Current"() {
+      return SetTreeModule_current(i);
+    },
+    "System.Collections.IEnumerator.MoveNext"() {
+      return SetTreeModule_moveNext(i);
+    },
+    "System.Collections.IEnumerator.Reset"() {
+      i = SetTreeModule_mkIterator(s);
+    },
+    Dispose() {
+    }
+  };
+}
+function SetTreeModule_compareStacks(comparer_mut, l1_mut, l2_mut) {
+  SetTreeModule_compareStacks: while (true) {
+    const comparer = comparer_mut, l1 = l1_mut, l2 = l2_mut;
+    if (!isEmpty(l1)) {
+      if (!isEmpty(l2)) {
+        if (head(l2) != null) {
+          if (head(l1) != null) {
+            const x1_3 = value(head(l1));
+            const x2_3 = value(head(l2));
+            if (x1_3 instanceof SetTreeNode$1) {
+              const x1n_2 = x1_3;
+              if (SetTreeNode$1__get_Left(x1n_2) == null) {
+                if (x2_3 instanceof SetTreeNode$1) {
+                  const x2n_2 = x2_3;
+                  if (SetTreeNode$1__get_Left(x2n_2) == null) {
+                    const c = comparer.Compare(SetTreeLeaf$1__get_Key(x1n_2), SetTreeLeaf$1__get_Key(x2n_2)) | 0;
+                    if (c !== 0) {
+                      return c | 0;
+                    } else {
+                      comparer_mut = comparer;
+                      l1_mut = cons(SetTreeNode$1__get_Right(x1n_2), tail(l1));
+                      l2_mut = cons(SetTreeNode$1__get_Right(x2n_2), tail(l2));
+                      continue SetTreeModule_compareStacks;
+                    }
+                  } else {
+                    let matchResult = void 0, t1_6 = void 0, x1_4 = void 0, t2_6 = void 0, x2_4 = void 0;
+                    if (!isEmpty(l1)) {
+                      if (head(l1) != null) {
+                        matchResult = 0;
+                        t1_6 = tail(l1);
+                        x1_4 = value(head(l1));
+                      } else if (!isEmpty(l2)) {
+                        if (head(l2) != null) {
+                          matchResult = 1;
+                          t2_6 = tail(l2);
+                          x2_4 = value(head(l2));
+                        } else {
+                          matchResult = 2;
+                        }
+                      } else {
+                        matchResult = 2;
+                      }
+                    } else if (!isEmpty(l2)) {
+                      if (head(l2) != null) {
+                        matchResult = 1;
+                        t2_6 = tail(l2);
+                        x2_4 = value(head(l2));
+                      } else {
+                        matchResult = 2;
+                      }
+                    } else {
+                      matchResult = 2;
+                    }
+                    switch (matchResult) {
+                      case 0:
+                        if (x1_4 instanceof SetTreeNode$1) {
+                          const x1n_3 = x1_4;
+                          comparer_mut = comparer;
+                          l1_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x1n_3), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x1n_3), SetTreeModule_empty(), SetTreeNode$1__get_Right(x1n_3), 0)], t1_6);
+                          l2_mut = l2;
+                          continue SetTreeModule_compareStacks;
+                        } else {
+                          comparer_mut = comparer;
+                          l1_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x1_4))], t1_6);
+                          l2_mut = l2;
+                          continue SetTreeModule_compareStacks;
+                        }
+                      case 1:
+                        if (x2_4 instanceof SetTreeNode$1) {
+                          const x2n_3 = x2_4;
+                          comparer_mut = comparer;
+                          l1_mut = l1;
+                          l2_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x2n_3), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x2n_3), SetTreeModule_empty(), SetTreeNode$1__get_Right(x2n_3), 0)], t2_6);
+                          continue SetTreeModule_compareStacks;
+                        } else {
+                          comparer_mut = comparer;
+                          l1_mut = l1;
+                          l2_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x2_4))], t2_6);
+                          continue SetTreeModule_compareStacks;
+                        }
+                      default:
+                        throw new Exception("unexpected state in SetTree.compareStacks");
+                    }
+                  }
+                } else {
+                  const c_1 = comparer.Compare(SetTreeLeaf$1__get_Key(x1n_2), SetTreeLeaf$1__get_Key(x2_3)) | 0;
+                  if (c_1 !== 0) {
+                    return c_1 | 0;
+                  } else {
+                    comparer_mut = comparer;
+                    l1_mut = cons(SetTreeNode$1__get_Right(x1n_2), tail(l1));
+                    l2_mut = cons(SetTreeModule_empty(), tail(l2));
+                    continue SetTreeModule_compareStacks;
+                  }
+                }
+              } else {
+                let matchResult_1 = void 0, t1_7 = void 0, x1_5 = void 0, t2_7 = void 0, x2_5 = void 0;
+                if (!isEmpty(l1)) {
+                  if (head(l1) != null) {
+                    matchResult_1 = 0;
+                    t1_7 = tail(l1);
+                    x1_5 = value(head(l1));
+                  } else if (!isEmpty(l2)) {
+                    if (head(l2) != null) {
+                      matchResult_1 = 1;
+                      t2_7 = tail(l2);
+                      x2_5 = value(head(l2));
+                    } else {
+                      matchResult_1 = 2;
+                    }
+                  } else {
+                    matchResult_1 = 2;
+                  }
+                } else if (!isEmpty(l2)) {
+                  if (head(l2) != null) {
+                    matchResult_1 = 1;
+                    t2_7 = tail(l2);
+                    x2_5 = value(head(l2));
+                  } else {
+                    matchResult_1 = 2;
+                  }
+                } else {
+                  matchResult_1 = 2;
+                }
+                switch (matchResult_1) {
+                  case 0:
+                    if (x1_5 instanceof SetTreeNode$1) {
+                      const x1n_4 = x1_5;
+                      comparer_mut = comparer;
+                      l1_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x1n_4), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x1n_4), SetTreeModule_empty(), SetTreeNode$1__get_Right(x1n_4), 0)], t1_7);
+                      l2_mut = l2;
+                      continue SetTreeModule_compareStacks;
+                    } else {
+                      comparer_mut = comparer;
+                      l1_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x1_5))], t1_7);
+                      l2_mut = l2;
+                      continue SetTreeModule_compareStacks;
+                    }
+                  case 1:
+                    if (x2_5 instanceof SetTreeNode$1) {
+                      const x2n_4 = x2_5;
+                      comparer_mut = comparer;
+                      l1_mut = l1;
+                      l2_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x2n_4), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x2n_4), SetTreeModule_empty(), SetTreeNode$1__get_Right(x2n_4), 0)], t2_7);
+                      continue SetTreeModule_compareStacks;
+                    } else {
+                      comparer_mut = comparer;
+                      l1_mut = l1;
+                      l2_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x2_5))], t2_7);
+                      continue SetTreeModule_compareStacks;
+                    }
+                  default:
+                    throw new Exception("unexpected state in SetTree.compareStacks");
+                }
+              }
+            } else if (x2_3 instanceof SetTreeNode$1) {
+              const x2n_5 = x2_3;
+              if (SetTreeNode$1__get_Left(x2n_5) == null) {
+                const c_2 = comparer.Compare(SetTreeLeaf$1__get_Key(x1_3), SetTreeLeaf$1__get_Key(x2n_5)) | 0;
+                if (c_2 !== 0) {
+                  return c_2 | 0;
+                } else {
+                  comparer_mut = comparer;
+                  l1_mut = cons(SetTreeModule_empty(), tail(l1));
+                  l2_mut = cons(SetTreeNode$1__get_Right(x2n_5), tail(l2));
+                  continue SetTreeModule_compareStacks;
+                }
+              } else {
+                let matchResult_2 = void 0, t1_8 = void 0, x1_6 = void 0, t2_8 = void 0, x2_6 = void 0;
+                if (!isEmpty(l1)) {
+                  if (head(l1) != null) {
+                    matchResult_2 = 0;
+                    t1_8 = tail(l1);
+                    x1_6 = value(head(l1));
+                  } else if (!isEmpty(l2)) {
+                    if (head(l2) != null) {
+                      matchResult_2 = 1;
+                      t2_8 = tail(l2);
+                      x2_6 = value(head(l2));
+                    } else {
+                      matchResult_2 = 2;
+                    }
+                  } else {
+                    matchResult_2 = 2;
+                  }
+                } else if (!isEmpty(l2)) {
+                  if (head(l2) != null) {
+                    matchResult_2 = 1;
+                    t2_8 = tail(l2);
+                    x2_6 = value(head(l2));
+                  } else {
+                    matchResult_2 = 2;
+                  }
+                } else {
+                  matchResult_2 = 2;
+                }
+                switch (matchResult_2) {
+                  case 0:
+                    if (x1_6 instanceof SetTreeNode$1) {
+                      const x1n_5 = x1_6;
+                      comparer_mut = comparer;
+                      l1_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x1n_5), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x1n_5), SetTreeModule_empty(), SetTreeNode$1__get_Right(x1n_5), 0)], t1_8);
+                      l2_mut = l2;
+                      continue SetTreeModule_compareStacks;
+                    } else {
+                      comparer_mut = comparer;
+                      l1_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x1_6))], t1_8);
+                      l2_mut = l2;
+                      continue SetTreeModule_compareStacks;
+                    }
+                  case 1:
+                    if (x2_6 instanceof SetTreeNode$1) {
+                      const x2n_6 = x2_6;
+                      comparer_mut = comparer;
+                      l1_mut = l1;
+                      l2_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x2n_6), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x2n_6), SetTreeModule_empty(), SetTreeNode$1__get_Right(x2n_6), 0)], t2_8);
+                      continue SetTreeModule_compareStacks;
+                    } else {
+                      comparer_mut = comparer;
+                      l1_mut = l1;
+                      l2_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x2_6))], t2_8);
+                      continue SetTreeModule_compareStacks;
+                    }
+                  default:
+                    throw new Exception("unexpected state in SetTree.compareStacks");
+                }
+              }
+            } else {
+              const c_3 = comparer.Compare(SetTreeLeaf$1__get_Key(x1_3), SetTreeLeaf$1__get_Key(x2_3)) | 0;
+              if (c_3 !== 0) {
+                return c_3 | 0;
+              } else {
+                comparer_mut = comparer;
+                l1_mut = tail(l1);
+                l2_mut = tail(l2);
+                continue SetTreeModule_compareStacks;
+              }
+            }
+          } else {
+            const x2 = value(head(l2));
+            let matchResult_3 = void 0, t1_2 = void 0, x1 = void 0, t2_2 = void 0, x2_1 = void 0;
+            if (!isEmpty(l1)) {
+              if (head(l1) != null) {
+                matchResult_3 = 0;
+                t1_2 = tail(l1);
+                x1 = value(head(l1));
+              } else if (!isEmpty(l2)) {
+                if (head(l2) != null) {
+                  matchResult_3 = 1;
+                  t2_2 = tail(l2);
+                  x2_1 = value(head(l2));
+                } else {
+                  matchResult_3 = 2;
+                }
+              } else {
+                matchResult_3 = 2;
+              }
+            } else if (!isEmpty(l2)) {
+              if (head(l2) != null) {
+                matchResult_3 = 1;
+                t2_2 = tail(l2);
+                x2_1 = value(head(l2));
+              } else {
+                matchResult_3 = 2;
+              }
+            } else {
+              matchResult_3 = 2;
+            }
+            switch (matchResult_3) {
+              case 0:
+                if (x1 instanceof SetTreeNode$1) {
+                  const x1n = x1;
+                  comparer_mut = comparer;
+                  l1_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x1n), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x1n), SetTreeModule_empty(), SetTreeNode$1__get_Right(x1n), 0)], t1_2);
+                  l2_mut = l2;
+                  continue SetTreeModule_compareStacks;
+                } else {
+                  comparer_mut = comparer;
+                  l1_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x1))], t1_2);
+                  l2_mut = l2;
+                  continue SetTreeModule_compareStacks;
+                }
+              case 1:
+                if (x2_1 instanceof SetTreeNode$1) {
+                  const x2n = x2_1;
+                  comparer_mut = comparer;
+                  l1_mut = l1;
+                  l2_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x2n), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x2n), SetTreeModule_empty(), SetTreeNode$1__get_Right(x2n), 0)], t2_2);
+                  continue SetTreeModule_compareStacks;
+                } else {
+                  comparer_mut = comparer;
+                  l1_mut = l1;
+                  l2_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x2_1))], t2_2);
+                  continue SetTreeModule_compareStacks;
+                }
+              default:
+                throw new Exception("unexpected state in SetTree.compareStacks");
+            }
+          }
+        } else if (head(l1) != null) {
+          const x1_1 = value(head(l1));
+          let matchResult_4 = void 0, t1_4 = void 0, x1_2 = void 0, t2_4 = void 0, x2_2 = void 0;
+          if (!isEmpty(l1)) {
+            if (head(l1) != null) {
+              matchResult_4 = 0;
+              t1_4 = tail(l1);
+              x1_2 = value(head(l1));
+            } else if (!isEmpty(l2)) {
+              if (head(l2) != null) {
+                matchResult_4 = 1;
+                t2_4 = tail(l2);
+                x2_2 = value(head(l2));
+              } else {
+                matchResult_4 = 2;
+              }
+            } else {
+              matchResult_4 = 2;
+            }
+          } else if (!isEmpty(l2)) {
+            if (head(l2) != null) {
+              matchResult_4 = 1;
+              t2_4 = tail(l2);
+              x2_2 = value(head(l2));
+            } else {
+              matchResult_4 = 2;
+            }
+          } else {
+            matchResult_4 = 2;
+          }
+          switch (matchResult_4) {
+            case 0:
+              if (x1_2 instanceof SetTreeNode$1) {
+                const x1n_1 = x1_2;
+                comparer_mut = comparer;
+                l1_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x1n_1), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x1n_1), SetTreeModule_empty(), SetTreeNode$1__get_Right(x1n_1), 0)], t1_4);
+                l2_mut = l2;
+                continue SetTreeModule_compareStacks;
+              } else {
+                comparer_mut = comparer;
+                l1_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x1_2))], t1_4);
+                l2_mut = l2;
+                continue SetTreeModule_compareStacks;
+              }
+            case 1:
+              if (x2_2 instanceof SetTreeNode$1) {
+                const x2n_1 = x2_2;
+                comparer_mut = comparer;
+                l1_mut = l1;
+                l2_mut = ofArrayWithTail([SetTreeNode$1__get_Left(x2n_1), SetTreeNode$1_$ctor_5F465FC9(SetTreeLeaf$1__get_Key(x2n_1), SetTreeModule_empty(), SetTreeNode$1__get_Right(x2n_1), 0)], t2_4);
+                continue SetTreeModule_compareStacks;
+              } else {
+                comparer_mut = comparer;
+                l1_mut = l1;
+                l2_mut = ofArrayWithTail([SetTreeModule_empty(), SetTreeLeaf$1_$ctor_2B595(SetTreeLeaf$1__get_Key(x2_2))], t2_4);
+                continue SetTreeModule_compareStacks;
+              }
+            default:
+              throw new Exception("unexpected state in SetTree.compareStacks");
+          }
+        } else {
+          comparer_mut = comparer;
+          l1_mut = tail(l1);
+          l2_mut = tail(l2);
+          continue SetTreeModule_compareStacks;
+        }
+      } else {
+        return 1;
+      }
+    } else if (isEmpty(l2)) {
+      return 0;
+    } else {
+      return -1;
+    }
+    break;
+  }
+}
+function SetTreeModule_compare(comparer, t1, t2) {
+  if (t1 == null) {
+    if (t2 == null) {
+      return 0;
+    } else {
+      return -1;
+    }
+  } else if (t2 == null) {
+    return 1;
+  } else {
+    return SetTreeModule_compareStacks(comparer, singleton3(t1), singleton3(t2)) | 0;
+  }
+}
+function SetTreeModule_toList(t) {
+  const loop = (t$0027_mut, acc_mut) => {
+    loop: while (true) {
+      const t$0027 = t$0027_mut, acc = acc_mut;
+      if (t$0027 != null) {
+        const t2 = value(t$0027);
+        if (t2 instanceof SetTreeNode$1) {
+          const tn = t2;
+          t$0027_mut = SetTreeNode$1__get_Left(tn);
+          acc_mut = cons(SetTreeLeaf$1__get_Key(tn), loop(SetTreeNode$1__get_Right(tn), acc));
+          continue loop;
+        } else {
+          return cons(SetTreeLeaf$1__get_Key(t2), acc);
+        }
+      } else {
+        return acc;
+      }
+      break;
+    }
+  };
+  return loop(t, empty2());
+}
+function SetTreeModule_copyToArray(s, arr, i) {
+  let j = i;
+  SetTreeModule_iter((x) => {
+    setItem(arr, j, x);
+    j = j + 1 | 0;
+  }, s);
+}
+var FSharpSet = class _FSharpSet {
+  constructor(comparer, tree) {
+    this.comparer = comparer;
+    this.tree = tree;
+  }
+  GetHashCode() {
+    const this$ = this;
+    return FSharpSet__ComputeHashCode(this$) | 0;
+  }
+  Equals(other) {
+    let that = void 0;
+    const this$ = this;
+    return other instanceof _FSharpSet && (that = other, SetTreeModule_compare(FSharpSet__get_Comparer(this$), FSharpSet__get_Tree(this$), FSharpSet__get_Tree(that)) === 0);
+  }
+  toString() {
+    const this$ = this;
+    return "set [" + join("; ", this$) + "]";
+  }
+  get [Symbol.toStringTag]() {
+    return "FSharpSet";
+  }
+  toJSON() {
+    const this$ = this;
+    return Array.from(this$);
+  }
+  CompareTo(other) {
+    let that = void 0;
+    const this$ = this;
+    return (other instanceof _FSharpSet ? (that = other, SetTreeModule_compare(FSharpSet__get_Comparer(this$), FSharpSet__get_Tree(this$), FSharpSet__get_Tree(that))) : 1) | 0;
+  }
+  "System.Collections.Generic.ICollection`1.Add2B595"(x) {
+    throw NotSupportedException_$ctor_Z721C83C5("ReadOnlyCollection");
+  }
+  "System.Collections.Generic.ICollection`1.Clear"() {
+    throw NotSupportedException_$ctor_Z721C83C5("ReadOnlyCollection");
+  }
+  "System.Collections.Generic.ICollection`1.Remove2B595"(x) {
+    throw NotSupportedException_$ctor_Z721C83C5("ReadOnlyCollection");
+  }
+  "System.Collections.Generic.ICollection`1.Contains2B595"(x) {
+    const s = this;
+    return SetTreeModule_mem(FSharpSet__get_Comparer(s), x, FSharpSet__get_Tree(s));
+  }
+  "System.Collections.Generic.ICollection`1.CopyToZ3B4C077E"(arr, i) {
+    const s = this;
+    SetTreeModule_copyToArray(FSharpSet__get_Tree(s), arr, i);
+  }
+  "System.Collections.Generic.ICollection`1.get_IsReadOnly"() {
+    return true;
+  }
+  "System.Collections.Generic.ICollection`1.get_Count"() {
+    const s = this;
+    return FSharpSet__get_Count(s) | 0;
+  }
+  "System.Collections.Generic.IReadOnlyCollection`1.get_Count"() {
+    const s = this;
+    return FSharpSet__get_Count(s) | 0;
+  }
+  GetEnumerator() {
+    const s = this;
+    return SetTreeModule_mkIEnumerator(FSharpSet__get_Tree(s));
   }
   [Symbol.iterator]() {
     return toIterator(getEnumerator(this));
   }
   "System.Collections.IEnumerable.GetEnumerator"() {
-    const x = this;
-    return x.f();
+    const s = this;
+    return SetTreeModule_mkIEnumerator(FSharpSet__get_Tree(s));
+  }
+  get size() {
+    const s = this;
+    return FSharpSet__get_Count(s) | 0;
+  }
+  add(k) {
+    const s = this;
+    throw new Exception("Set cannot be mutated");
+    return s;
+  }
+  clear() {
+    throw new Exception("Set cannot be mutated");
+  }
+  delete(k) {
+    throw new Exception("Set cannot be mutated");
+    return false;
+  }
+  has(k) {
+    const s = this;
+    return FSharpSet__Contains(s, k);
+  }
+  keys() {
+    const s = this;
+    return map3((x) => x, s);
+  }
+  values() {
+    const s = this;
+    return map3((x) => x, s);
+  }
+  entries() {
+    const s = this;
+    return map3((v) => [v, v], s);
+  }
+  forEach(f, thisArg) {
+    const s = this;
+    iterate((x) => {
+      f(x, x, s);
+    }, s);
   }
 };
-function Enumerator_Seq_$ctor_673A07F2(f) {
-  return new Enumerator_Seq(f);
+function FSharpSet_$ctor(comparer, tree) {
+  return new FSharpSet(comparer, tree);
 }
-var Enumerator_FromFunctions$1 = class {
-  constructor(current, next, dispose) {
-    this.current = current;
-    this.next = next;
-    this.dispose = dispose;
-  }
-  "System.Collections.Generic.IEnumerator`1.get_Current"() {
-    const _ = this;
-    return _.current();
-  }
-  "System.Collections.IEnumerator.get_Current"() {
-    const _ = this;
-    return _.current();
-  }
-  "System.Collections.IEnumerator.MoveNext"() {
-    const _ = this;
-    return _.next();
-  }
-  "System.Collections.IEnumerator.Reset"() {
-    Enumerator_noReset();
-  }
-  Dispose() {
-    const _ = this;
-    _.dispose();
-  }
-};
-function Enumerator_FromFunctions$1_$ctor_58C54629(current, next, dispose) {
-  return new Enumerator_FromFunctions$1(current, next, dispose);
+function FSharpSet__get_Comparer(set$) {
+  return set$.comparer;
 }
-function Enumerator_generateWhileSome(openf, compute, closef) {
-  let started = false;
-  let curr = void 0;
-  let state = some(openf());
-  const dispose = () => {
-    if (state != null) {
-      const x_1 = value(state);
-      try {
-        closef(x_1);
-      } finally {
-        state = void 0;
-      }
-    }
-  };
-  const finish = () => {
-    try {
-      dispose();
-    } finally {
-      curr = void 0;
-    }
-  };
-  return Enumerator_FromFunctions$1_$ctor_58C54629(() => {
-    if (!started) {
-      Enumerator_notStarted();
-    }
-    if (curr != null) {
-      return value(curr);
-    } else {
-      return Enumerator_alreadyFinished();
-    }
-  }, () => {
-    if (!started) {
-      started = true;
-    }
-    if (state != null) {
-      const s = value(state);
-      let matchValue_1;
-      try {
-        matchValue_1 = compute(s);
-      } catch (matchValue) {
-        finish();
-        throw matchValue;
-      }
-      if (matchValue_1 != null) {
-        curr = matchValue_1;
-        return true;
-      } else {
-        finish();
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }, dispose);
+function FSharpSet__get_Tree(set$) {
+  return set$.tree;
 }
-function Enumerator_unfold(f, state) {
-  let curr = void 0;
-  let acc = state;
-  return Enumerator_FromFunctions$1_$ctor_58C54629(() => {
-    if (curr != null) {
-      const x = value(curr)[0];
-      const st = value(curr)[1];
-      return x;
-    } else {
-      return Enumerator_notStarted();
-    }
-  }, () => {
-    curr = f(acc);
-    if (curr != null) {
-      const x_1 = value(curr)[0];
-      const st_1 = value(curr)[1];
-      acc = st_1;
-      return true;
-    } else {
-      return false;
-    }
-  }, () => {
-  });
+function FSharpSet_Empty(comparer) {
+  return FSharpSet_$ctor(comparer, SetTreeModule_empty());
 }
-function mkSeq(f) {
-  return Enumerator_Seq_$ctor_673A07F2(f);
+function FSharpSet__Add(s, value2) {
+  return FSharpSet_$ctor(FSharpSet__get_Comparer(s), SetTreeModule_add(FSharpSet__get_Comparer(s), value2, FSharpSet__get_Tree(s)));
 }
-function ofSeq2(xs) {
-  return getEnumerator(Operators_NullArgCheck("source", xs));
+function FSharpSet__get_Count(s) {
+  return SetTreeModule_count(FSharpSet__get_Tree(s)) | 0;
 }
-function delay(generator) {
-  return mkSeq(() => getEnumerator(generator()));
+function FSharpSet__Contains(s, value2) {
+  return SetTreeModule_mem(FSharpSet__get_Comparer(s), value2, FSharpSet__get_Tree(s));
 }
-function unfold(generator, state) {
-  return mkSeq(() => Enumerator_unfold(generator, state));
+function FSharpSet__ToList(x) {
+  return SetTreeModule_toList(FSharpSet__get_Tree(x));
 }
-function toList(xs) {
-  if (isArrayLike(xs)) {
-    return ofArray(xs);
-  } else if (xs instanceof FSharpList) {
-    return xs;
-  } else {
-    return ofSeq(xs);
-  }
-}
-function generate(create, compute, dispose) {
-  return mkSeq(() => Enumerator_generateWhileSome(create, compute, dispose));
-}
-function compareWith(comparer, xs, ys) {
-  const e1 = ofSeq2(xs);
+function FSharpSet__ComputeHashCode(this$) {
+  let res = 0;
+  const enumerator = getEnumerator(this$);
   try {
-    const e2 = ofSeq2(ys);
-    try {
-      let c = 0;
-      let b1 = e1["System.Collections.IEnumerator.MoveNext"]();
-      let b2 = e2["System.Collections.IEnumerator.MoveNext"]();
-      while (c === 0 && b1 && b2) {
-        c = comparer(e1["System.Collections.Generic.IEnumerator`1.get_Current"](), e2["System.Collections.Generic.IEnumerator`1.get_Current"]()) | 0;
-        if (c === 0) {
-          b1 = e1["System.Collections.IEnumerator.MoveNext"]();
-          b2 = e2["System.Collections.IEnumerator.MoveNext"]();
-        }
-      }
-      return (c !== 0 ? c : b1 ? 1 : b2 ? -1 : 0) | 0;
-    } finally {
-      disposeSafe(e2);
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      const x_1 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      res = (res << 1) + structuralHash(x_1) + 631 | 0;
     }
   } finally {
-    disposeSafe(e1);
+    disposeSafe(enumerator);
   }
+  return Math.abs(res) | 0;
 }
-function exists(predicate, xs) {
-  const e = ofSeq2(xs);
-  try {
-    let found = false;
-    while (!found && e["System.Collections.IEnumerator.MoveNext"]()) {
-      found = predicate(e["System.Collections.Generic.IEnumerator`1.get_Current"]());
-    }
-    return found;
-  } finally {
-    disposeSafe(e);
-  }
+function contains2(element, set$) {
+  return FSharpSet__Contains(set$, element);
 }
-function fold2(folder, state, xs) {
-  const e = ofSeq2(xs);
-  try {
-    let acc = state;
-    while (e["System.Collections.IEnumerator.MoveNext"]()) {
-      acc = folder(acc, e["System.Collections.Generic.IEnumerator`1.get_Current"]());
-    }
-    return acc;
-  } finally {
-    disposeSafe(e);
-  }
+function add(value2, set$) {
+  return FSharpSet__Add(set$, value2);
 }
-function forAll2(predicate, xs) {
-  return !exists((x) => !predicate(x), xs);
+function empty3(comparer) {
+  return FSharpSet_Empty(comparer);
 }
-function iterate(action, xs) {
-  fold2((unitVar, x) => {
-    action(x);
-  }, void 0, xs);
-}
-function map3(mapping, xs) {
-  return generate(() => ofSeq2(xs), (e) => e["System.Collections.IEnumerator.MoveNext"]() ? some(mapping(e["System.Collections.Generic.IEnumerator`1.get_Current"]())) : void 0, (e_1) => {
-    disposeSafe(e_1);
-  });
-}
-
-// src/core/fable_modules/fable-library-js.5.6.0/System.Collections.Generic.js
-var KeyNotFoundException = class extends Exception {
-  constructor(message) {
-    super(message);
-  }
-};
-function KeyNotFoundException_$ctor_Z721C83C5(message) {
-  return new KeyNotFoundException(message);
-}
-function KeyNotFoundException_$ctor() {
-  return KeyNotFoundException_$ctor_Z721C83C5(SR_Arg_KeyNotFound);
+function toList2(set$) {
+  return FSharpSet__ToList(set$);
 }
 
 // src/core/fable_modules/fable-library-js.5.6.0/Map.js
@@ -2543,6 +4014,28 @@ function MapTreeModule_iterOpt(f_mut, m_mut) {
 function MapTreeModule_iter(f, m) {
   MapTreeModule_iterOpt(f, m);
 }
+function MapTreeModule_toList(m) {
+  const loop = (m_1_mut, acc_mut) => {
+    loop: while (true) {
+      const m_1 = m_1_mut, acc = acc_mut;
+      if (m_1 != null) {
+        const m2 = value(m_1);
+        if (m2 instanceof MapTreeNode$2) {
+          const mn = m2;
+          m_1_mut = MapTreeNode$2__get_Left(mn);
+          acc_mut = cons([MapTreeLeaf$2__get_Key(mn), MapTreeLeaf$2__get_Value(mn)], loop(MapTreeNode$2__get_Right(mn), acc));
+          continue loop;
+        } else {
+          return cons([MapTreeLeaf$2__get_Key(m2), MapTreeLeaf$2__get_Value(m2)], acc);
+        }
+      } else {
+        return acc;
+      }
+      break;
+    }
+  };
+  return loop(m, empty2());
+}
 function MapTreeModule_copyToArray(m, arr, i) {
   let j = i;
   MapTreeModule_iter((x, y) => {
@@ -2551,7 +4044,7 @@ function MapTreeModule_copyToArray(m, arr, i) {
   }, m);
 }
 function MapTreeModule_ofList(comparer, l) {
-  return fold((acc, tupledArg) => MapTreeModule_add(comparer, tupledArg[0], tupledArg[1], acc), MapTreeModule_empty(), l);
+  return fold2((acc, tupledArg) => MapTreeModule_add(comparer, tupledArg[0], tupledArg[1], acc), MapTreeModule_empty(), l);
 }
 function MapTreeModule_mkFromEnumerator(comparer_mut, acc_mut, e_mut) {
   MapTreeModule_mkFromEnumerator: while (true) {
@@ -2617,13 +4110,13 @@ function MapTreeModule_collapseLHS(stack_mut) {
         continue MapTreeModule_collapseLHS;
       }
     } else {
-      return empty();
+      return empty2();
     }
     break;
   }
 }
 function MapTreeModule_mkIterator(m) {
-  return new MapTreeModule_MapIterator$2(MapTreeModule_collapseLHS(singleton(m)), false);
+  return new MapTreeModule_MapIterator$2(MapTreeModule_collapseLHS(singleton3(m)), false);
 }
 function MapTreeModule_notStarted() {
   throw new Exception("enumeration not started");
@@ -2844,6 +4337,12 @@ var FSharpMap = class _FSharpMap {
 function FSharpMap_$ctor(comparer, tree) {
   return new FSharpMap(comparer, tree);
 }
+function FSharpMap_Empty(comparer) {
+  return FSharpMap_$ctor(comparer, MapTreeModule_empty());
+}
+function FSharpMap__Add(m, key, value2) {
+  return FSharpMap_$ctor(m.comparer, MapTreeModule_add(m.comparer, key, value2, m.tree));
+}
 function FSharpMap__get_Item(m, key) {
   return MapTreeModule_find(m.comparer, key, m.tree);
 }
@@ -2855,6 +4354,9 @@ function FSharpMap__ContainsKey(m, key) {
 }
 function FSharpMap__TryFind(m, key) {
   return MapTreeModule_tryFind(m.comparer, key, m.tree);
+}
+function FSharpMap__ToList(m) {
+  return MapTreeModule_toList(m.tree);
 }
 function FSharpMap__ComputeHashCode(this$) {
   const combineHash = (x, y) => (x << 1) + y + 631 | 0;
@@ -2871,15 +4373,27 @@ function FSharpMap__ComputeHashCode(this$) {
   }
   return res | 0;
 }
-function tryFind(key, table) {
+function add2(key, value2, table) {
+  return FSharpMap__Add(table, key, value2);
+}
+function tryFind2(key, table) {
   return FSharpMap__TryFind(table, key);
+}
+function containsKey(key, table) {
+  return FSharpMap__ContainsKey(table, key);
 }
 function ofList(elements, comparer) {
   return FSharpMap_$ctor(comparer, MapTreeModule_ofSeq(comparer, elements));
 }
+function toList3(table) {
+  return FSharpMap__ToList(table);
+}
+function empty4(comparer) {
+  return FSharpMap_Empty(comparer);
+}
 
 // src/core/fable_modules/fable-library-js.5.6.0/Range.js
-function makeRangeStepFunction(step, stop, zero, add) {
+function makeRangeStepFunction(step, stop, zero, add3) {
   const stepComparedWithZero = compare(step, zero) | 0;
   if (stepComparedWithZero === 0) {
     throw new Exception("The step of a range cannot be zero");
@@ -2887,11 +4401,11 @@ function makeRangeStepFunction(step, stop, zero, add) {
   const stepGreaterThanZero = stepComparedWithZero > 0;
   return (x) => {
     const comparedWithLast = compare(x, stop) | 0;
-    return (stepGreaterThanZero && comparedWithLast <= 0 ? true : !stepGreaterThanZero && comparedWithLast >= 0) ? [x, add(x, step)] : void 0;
+    return (stepGreaterThanZero && comparedWithLast <= 0 ? true : !stepGreaterThanZero && comparedWithLast >= 0) ? [x, add3(x, step)] : void 0;
   };
 }
-function integralRangeStep(start, step, stop, zero, add) {
-  const stepFn = makeRangeStepFunction(step, stop, zero, add);
+function integralRangeStep(start, step, stop, zero, add3) {
+  const stepFn = makeRangeStepFunction(step, stop, zero, add3);
   return delay(() => unfold(stepFn, start));
 }
 function rangeDouble(start, step, stop) {
@@ -2899,39 +4413,47 @@ function rangeDouble(start, step, stop) {
 }
 
 // src/core/Engine.js
-function resolve(defs_mut, f_mut) {
-  resolve:
-    while (true) {
-      const defs = defs_mut, f = f_mut;
-      switch (f.tag) {
-        case 1:
-          return f;
-        case 2:
-          return new Formula(2, [resolve(defs, f.fields[0])]);
-        case 3:
-          return new Formula(3, [resolve(defs, f.fields[0]), resolve(defs, f.fields[1])]);
-        case 4:
-          return new Formula(4, [resolve(defs, f.fields[0]), resolve(defs, f.fields[1])]);
-        case 5:
-          return new Formula(5, [resolve(defs, f.fields[0]), resolve(defs, f.fields[1])]);
-        case 6:
-          return new Formula(6, [resolve(defs, f.fields[0]), resolve(defs, f.fields[1])]);
-        case 7:
-          return new Formula(7, [resolve(defs, f.fields[0]), resolve(defs, f.fields[1])]);
-        default: {
-          const n = f.fields[0];
-          const matchValue = tryFind(n, defs);
-          if (matchValue == null) {
-            return new Formula(0, [n]);
-          } else {
-            defs_mut = defs;
-            f_mut = matchValue;
-            continue resolve;
-          }
+function resolve(defs, formula) {
+  const go = (seen_mut, f_mut) => {
+    go:
+      while (true) {
+        const seen = seen_mut, f = f_mut;
+        switch (f.tag) {
+          case 1:
+            return f;
+          case 2:
+            return new Formula(2, [go(seen, f.fields[0])]);
+          case 3:
+            return new Formula(3, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          case 4:
+            return new Formula(4, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          case 5:
+            return new Formula(5, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          case 6:
+            return new Formula(6, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          case 7:
+            return new Formula(7, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          default:
+            if (!contains2(f.fields[0], seen)) {
+              const matchValue = tryFind2(f.fields[0], defs);
+              if (matchValue == null) {
+                return new Formula(0, [f.fields[0]]);
+              } else {
+                const body = matchValue;
+                seen_mut = add(f.fields[0], seen);
+                f_mut = body;
+                continue go;
+              }
+            } else {
+              return new Formula(0, [f.fields[0]]);
+            }
         }
+        break;
       }
-      break;
-    }
+  };
+  return go(empty3({
+    Compare: (x, y) => comparePrimitives(x, y) | 0
+  }), formula);
 }
 function atoms(f) {
   const go = (f_1_mut, acc_mut) => {
@@ -2990,7 +4512,7 @@ function atoms(f) {
             })) {
               return acc;
             } else {
-              return append(acc, singleton(name));
+              return append(acc, singleton3(name));
             }
           }
           case 1:
@@ -3009,7 +4531,7 @@ function atoms(f) {
         break;
       }
   };
-  return go(f, empty());
+  return go(f, empty2());
 }
 function eval$(env_mut, f_mut) {
   eval$:
@@ -3049,14 +4571,14 @@ function eval$(env_mut, f_mut) {
         case 7:
           return eval$(env, f.fields[0]) === eval$(env, f.fields[1]);
         default:
-          return defaultArg(tryFind(f.fields[0], env), false);
+          return defaultArg(tryFind2(f.fields[0], env), false);
       }
       break;
     }
 }
 function assignments(names) {
   const n = length(names) | 0;
-  return toList(delay(() => map3((i) => ofList(mapIndexed2((bit, name) => [name, (i >> n - 1 - bit & 1) === 1], names), {
+  return toList(delay(() => map3((i) => ofList(mapIndexed((bit, name) => [name, (i >> n - 1 - bit & 1) === 1], names), {
     Compare: (x, y) => comparePrimitives(x, y) | 0
   }), rangeDouble(0, 1, (1 << n) - 1))));
 }
@@ -3080,101 +4602,72 @@ var TruthTable = class extends Record {
 };
 function truthTable(f) {
   const names = atoms(f);
-  const rows = map2((env) => [env, eval$(env, f)], assignments(names));
-  const results = map2((tuple) => tuple[1], rows);
-  return new TruthTable(names, rows, forAll((x) => x, results) ? new Verdict(0, []) : forAll((value2) => !value2, results) ? new Verdict(1, []) : new Verdict(2, []));
+  const rows = map4((env) => [env, eval$(env, f)], assignments(names));
+  const results = map4((tuple) => tuple[1], rows);
+  return new TruthTable(names, rows, forAll2((x) => x, results) ? new Verdict(0, []) : forAll2((value2) => !value2, results) ? new Verdict(1, []) : new Verdict(2, []));
 }
 function equivalent(a, b) {
   return equals(truthTable(new Formula(7, [a, b])).Verdict, new Verdict(0, []));
 }
-
-// src/core/Render.js
-function precedence(f) {
-  switch (f.tag) {
-    case 2:
-      return 90;
-    case 3:
-      return 80;
-    case 4:
-      return 70;
-    case 5:
-      return 60;
-    case 6:
-      return 50;
-    case 7:
-      return 40;
-    default:
-      return 100;
+function distinguishing(a, b) {
+  return tryFind((env) => eval$(env, a) !== eval$(env, b), assignments(atoms(new Formula(7, [a, b]))));
+}
+function tautology(f) {
+  return equals(truthTable(f).Verdict, new Verdict(0, []));
+}
+var ArgumentCheck = class extends Record {
+  constructor(Atoms, Counterexamples, IsValid) {
+    super();
+    this.Atoms = Atoms;
+    this.Counterexamples = Counterexamples;
+    this.IsValid = IsValid;
   }
-}
-function toUnicode(formula) {
-  const go = (f) => {
-    const parentPrec = precedence(f) | 0;
-    const wrap = (onLeft, child) => {
-      const childPrec = precedence(child) | 0;
-      if (childPrec < parentPrec ? true : childPrec === parentPrec && (f.tag === 6 ? onLeft : !onLeft)) {
-        return "(" + go(child) + ")";
-      } else {
-        return go(child);
-      }
-    };
-    switch (f.tag) {
-      case 1:
-        if (f.fields[0]) {
-          return "\u22A4";
-        } else {
-          return "\u22A5";
-        }
-      case 2:
-        return "\xAC" + wrap(true, f.fields[0]);
-      case 3:
-        return wrap(true, f.fields[0]) + " \u2227 " + wrap(false, f.fields[1]);
-      case 4:
-        return wrap(true, f.fields[0]) + " \u2228 " + wrap(false, f.fields[1]);
-      case 5:
-        return wrap(true, f.fields[0]) + " \u2295 " + wrap(false, f.fields[1]);
-      case 6:
-        return wrap(true, f.fields[0]) + " \u2192 " + wrap(false, f.fields[1]);
-      case 7:
-        return wrap(true, f.fields[0]) + " \u2194 " + wrap(false, f.fields[1]);
-      default:
-        return f.fields[0];
+};
+function checkArgument(premises, conclusion) {
+  const names = fold2((acc, a) => {
+    if (contains(a, acc, {
+      Equals: (x, y) => x === y,
+      GetHashCode: (x) => stringHash(x) | 0
+    })) {
+      return acc;
+    } else {
+      return append(acc, singleton3(a));
     }
-  };
-  return go(formula);
+  }, empty2(), collect2(atoms, append(premises, singleton3(conclusion))));
+  const counterexamples = filter2((env) => {
+    if (forAll2((f_1) => eval$(env, f_1), premises)) {
+      return !eval$(env, conclusion);
+    } else {
+      return false;
+    }
+  }, assignments(names));
+  return new ArgumentCheck(names, counterexamples, isEmpty(counterexamples));
 }
-
-// src/core/fable_modules/fable-library-js.5.6.0/Result.js
-function FSharpResult$2_Ok(ResultValue) {
-  return new FSharpResult$2(0, [ResultValue]);
-}
-function FSharpResult$2_Error$(ErrorValue) {
-  return new FSharpResult$2(1, [ErrorValue]);
-}
-var FSharpResult$2 = class extends Union {
+var Relation = class extends Union {
   constructor(tag, fields) {
     super();
     this.tag = tag;
     this.fields = fields;
   }
   cases() {
-    return ["Ok", "Error"];
+    return ["Equivalent", "Contradictory", "Contrary", "Subcontrary", "Entails", "EntailedBy", "Independent"];
   }
 };
-function Result_Map(mapping, result) {
-  if (result.tag === /* Ok */
-  0) {
-    return FSharpResult$2_Ok(mapping(result.fields[0]));
+function relate(a, b) {
+  if (tautology(new Formula(7, [a, b]))) {
+    return new Relation(0, []);
+  } else if (tautology(new Formula(7, [a, new Formula(2, [b])]))) {
+    return new Relation(1, []);
+  } else if (tautology(new Formula(2, [new Formula(3, [a, b])]))) {
+    return new Relation(2, []);
+  } else if (tautology(new Formula(4, [a, b]))) {
+    return new Relation(3, []);
+  } else if (tautology(new Formula(6, [a, b]))) {
+    return new Relation(4, []);
+  } else if (tautology(new Formula(6, [b, a]))) {
+    return new Relation(5, []);
   } else {
-    return FSharpResult$2_Error$(result.fields[0]);
-  }
-}
-function Result_Bind(binder, result) {
-  if (result.tag === /* Ok */
-  0) {
-    return binder(result.fields[0]);
-  } else {
-    return FSharpResult$2_Error$(result.fields[0]);
+    return new Relation(6, []);
   }
 }
 
@@ -3263,6 +4756,8 @@ function charCodeAt(s, index) {
 }
 var isLetter = (s) => isLetter2(s, 0);
 var isLetterOrDigit = (s) => isLetterOrDigit2(s, 0);
+var isUpper = (s) => isUpper2(s, 0);
+var isLower = (s) => isLower2(s, 0);
 function getUnicodeCategory2(s, index) {
   const cp = charCodeAt(s, index);
   return unicodeCategoryFunc(cp);
@@ -3274,6 +4769,557 @@ function isLetter2(s, index) {
 function isLetterOrDigit2(s, index) {
   const test = 1 << getUnicodeCategory2(s, index);
   return (test & isLetterOrDigitMask) !== 0;
+}
+function isUpper2(s, index) {
+  const test = 1 << getUnicodeCategory2(s, index);
+  return (test & isUpperMask) !== 0;
+}
+function isLower2(s, index) {
+  const test = 1 << getUnicodeCategory2(s, index);
+  return (test & isLowerMask) !== 0;
+}
+
+// src/core/Render.js
+function precedence(f) {
+  switch (f.tag) {
+    case 2:
+      return 90;
+    case 3:
+      return 80;
+    case 4:
+      return 70;
+    case 5:
+      return 60;
+    case 6:
+      return 50;
+    case 7:
+      return 40;
+    default:
+      return 100;
+  }
+}
+function toUnicode(formula) {
+  const go = (f) => {
+    const parentPrec = precedence(f) | 0;
+    const wrap = (onLeft, child) => {
+      const childPrec = precedence(child) | 0;
+      if (childPrec < parentPrec ? true : childPrec === parentPrec && (f.tag === 6 ? onLeft : !onLeft)) {
+        return "(" + go(child) + ")";
+      } else {
+        return go(child);
+      }
+    };
+    switch (f.tag) {
+      case 1:
+        if (f.fields[0]) {
+          return "\u22A4";
+        } else {
+          return "\u22A5";
+        }
+      case 2:
+        return "\xAC" + wrap(true, f.fields[0]);
+      case 3:
+        return wrap(true, f.fields[0]) + " \u2227 " + wrap(false, f.fields[1]);
+      case 4:
+        return wrap(true, f.fields[0]) + " \u2228 " + wrap(false, f.fields[1]);
+      case 5:
+        return wrap(true, f.fields[0]) + " \u2295 " + wrap(false, f.fields[1]);
+      case 6:
+        return wrap(true, f.fields[0]) + " \u2192 " + wrap(false, f.fields[1]);
+      case 7:
+        return wrap(true, f.fields[0]) + " \u2194 " + wrap(false, f.fields[1]);
+      default:
+        return f.fields[0];
+    }
+  };
+  return go(formula);
+}
+function toEnglish(glossOf, formula) {
+  const go = (f) => {
+    switch (f.tag) {
+      case 1:
+        if (f.fields[0]) {
+          return "true";
+        } else {
+          return "false";
+        }
+      case 2:
+        return "it is not the case that " + go(f.fields[0]);
+      case 3:
+        return "both " + go(f.fields[0]) + ", and " + go(f.fields[1]);
+      case 4:
+        return "either " + go(f.fields[0]) + ", or " + go(f.fields[1]);
+      case 5:
+        return "either " + go(f.fields[0]) + " or " + go(f.fields[1]) + ", but not both";
+      case 6:
+        return "if " + go(f.fields[0]) + ", then " + go(f.fields[1]);
+      case 7:
+        return go(f.fields[0]) + " exactly when " + go(f.fields[1]);
+      default:
+        return defaultArg(map((s) => {
+          if (s.length >= 2 && isUpper(s[0]) && isLower(s[1])) {
+            return s[0].toLocaleLowerCase() + substring(s, 1);
+          } else {
+            return s;
+          }
+        }, glossOf(f.fields[0])), f.fields[0]);
+    }
+  };
+  const sentence = go(formula);
+  if (sentence === "") {
+    return "";
+  } else {
+    return sentence[0].toLocaleUpperCase() + substring(sentence, 1) + ".";
+  }
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/Seq2.js
+function distinct(xs, comparer) {
+  return delay(() => {
+    const hashSet = new HashSet([], comparer);
+    return filter((x) => addToSet(x, hashSet), xs);
+  });
+}
+function List_distinct(xs, comparer) {
+  return toList(distinct(xs, comparer));
+}
+
+// src/core/InferenceRules.js
+var FormKind = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["ValidForm", "FallacyForm"];
+  }
+};
+var ArgumentForm = class extends Record {
+  constructor(Name, Title, Premises, Conclusion, Kind, Note) {
+    super();
+    this.Name = Name;
+    this.Title = Title;
+    this.Premises = Premises;
+    this.Conclusion = Conclusion;
+    this.Kind = Kind;
+    this.Note = Note;
+  }
+};
+var \u03C6 = new Formula(0, ["\u03C6"]);
+var \u03C8 = new Formula(0, ["\u03C8"]);
+var \u03C7 = new Formula(0, ["\u03C7"]);
+var \u03C9 = new Formula(0, ["\u03C9"]);
+var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second."), new ArgumentForm("constructive-dilemma", "constructive dilemma", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("simplification", "simplification", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
+var validForms = filter2((f) => equals(f.Kind, new FormKind(0, [])), forms);
+var fallacies = filter2((f) => equals(f.Kind, new FormKind(1, [])), forms);
+
+// src/core/Recognition.js
+function matchPattern(pattern_mut, target_mut, subst_mut) {
+  matchPattern:
+    while (true) {
+      const pattern = pattern_mut, target = target_mut, subst = subst_mut;
+      let matchResult, t, v, a_1, b_1, p, t_1, p1, p2, t1, t2;
+      switch (pattern.tag) {
+        case 1: {
+          if (target.tag === 1) {
+            if (pattern.fields[0] === target.fields[0]) {
+              matchResult = 1;
+              a_1 = pattern.fields[0];
+              b_1 = target.fields[0];
+            } else {
+              matchResult = 4;
+            }
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 2: {
+          if (target.tag === 2) {
+            matchResult = 2;
+            p = pattern.fields[0];
+            t_1 = target.fields[0];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 3: {
+          if (target.tag === 3) {
+            matchResult = 3;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 4: {
+          if (target.tag === 4) {
+            matchResult = 3;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 5: {
+          if (target.tag === 5) {
+            matchResult = 3;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 6: {
+          if (target.tag === 6) {
+            matchResult = 3;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 7: {
+          if (target.tag === 7) {
+            matchResult = 3;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        default: {
+          matchResult = 0;
+          t = target;
+          v = pattern.fields[0];
+        }
+      }
+      switch (matchResult) {
+        case 0: {
+          const matchValue_1 = tryFind2(v, subst);
+          if (matchValue_1 == null) {
+            return add2(v, t, subst);
+          } else if (equals(matchValue_1, t)) {
+            return subst;
+          } else {
+            return void 0;
+          }
+        }
+        case 1:
+          return subst;
+        case 2: {
+          pattern_mut = p;
+          target_mut = t_1;
+          subst_mut = subst;
+          continue matchPattern;
+        }
+        case 3:
+          return bind((subst_1) => matchPattern(p2, t2, subst_1), matchPattern(p1, t1, subst));
+        default:
+          return void 0;
+      }
+      break;
+    }
+}
+function matchAll(patterns, targets) {
+  const list = zip(patterns, targets);
+  return fold2((acc, tupledArg) => bind((subst) => matchPattern(tupledArg[0], tupledArg[1], subst), acc), empty4({
+    Compare: (x, y) => comparePrimitives(x, y) | 0
+  }), list);
+}
+function instantiate(subst, pattern) {
+  switch (pattern.tag) {
+    case 1:
+      return pattern;
+    case 2:
+      return new Formula(2, [instantiate(subst, pattern.fields[0])]);
+    case 3:
+      return new Formula(3, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 4:
+      return new Formula(4, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 5:
+      return new Formula(5, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 6:
+      return new Formula(6, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 7:
+      return new Formula(7, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    default:
+      return defaultArg(tryFind2(pattern.fields[0], subst), pattern);
+  }
+}
+function permutations(lst) {
+  const insertEverywhere = (x, rest) => {
+    if (!isEmpty(rest)) {
+      return cons(cons(x, rest), map4((p) => cons(head(rest), p), insertEverywhere(x, tail(rest))));
+    } else {
+      return singleton3(singleton3(x));
+    }
+  };
+  if (!isEmpty(lst)) {
+    const list_1 = permutations(tail(lst));
+    return collect2(curry2(insertEverywhere)(head(lst)), list_1);
+  } else {
+    return singleton3(empty2());
+  }
+}
+function recognize(forms2, premises, conclusion) {
+  return tryFind((form) => {
+    if (length(form.Premises) === length(premises)) {
+      return exists2((arrangement) => bind((subst) => matchPattern(form.Conclusion, conclusion, subst), matchAll(form.Premises, arrangement)) != null, permutations(premises));
+    } else {
+      return false;
+    }
+  }, forms2);
+}
+var ProofStep = class extends Record {
+  constructor(Formula2, Rule, Refs) {
+    super();
+    this.Formula = Formula2;
+    this.Rule = Rule;
+    this.Refs = Refs;
+  }
+};
+function size(f) {
+  let matchResult, a_1, b;
+  switch (f.tag) {
+    case 2: {
+      matchResult = 1;
+      break;
+    }
+    case 3: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
+    case 4: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
+    case 5: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
+    case 6: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
+    case 7: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
+    default:
+      matchResult = 0;
+  }
+  switch (matchResult) {
+    case 0:
+      return 1;
+    case 1:
+      return 1 + size(f.fields[0]) | 0;
+    default:
+      return 1 + size(a_1) + size(b) | 0;
+  }
+}
+function subformulas(f) {
+  return cons(f, f.tag === 1 ? empty2() : f.tag === 2 ? subformulas(f.fields[0]) : f.tag === 3 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 4 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 5 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 6 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 7 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : empty2());
+}
+function prove(premises, goal) {
+  const steps = [];
+  const known = (f) => exists((tupledArg) => equals(tupledArg[0], f), steps);
+  const enumerator = getEnumerator(premises);
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      const p = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      if (!known(p)) {
+        void steps.push([p, "premise", empty2()]);
+      }
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  const universe = List_distinct(collect2(subformulas, append(premises, singleton3(goal))), {
+    Equals: equals,
+    GetHashCode: (x) => safeHash(x) | 0
+  });
+  const sizeLimit = max(map4((f_2) => size(f_2) | 0, append(premises, singleton3(goal))), {
+    Compare: (x_1, y_1) => comparePrimitives(x_1, y_1) | 0
+  }) * 2 + 2 | 0;
+  let found = known(goal);
+  let round = 0;
+  while (!found && round < 6 && steps.length < 40) {
+    round = round + 1 | 0;
+    const snapshot = steps.length | 0;
+    const enumerator_1 = getEnumerator(validForms);
+    try {
+      while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
+        let matchValue;
+        const rule = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+        const enumerator_2 = getEnumerator((matchValue = length(rule.Premises) | 0, matchValue === 1 ? toList(delay(() => map3(singleton3, rangeDouble(0, 1, snapshot - 1)))) : matchValue === 2 ? toList(delay(() => collect((i_1) => map3((j) => ofArray([i_1, j]), rangeDouble(0, 1, snapshot - 1)), rangeDouble(0, 1, snapshot - 1)))) : matchValue === 3 ? snapshot <= 20 ? toList(delay(() => collect((i_2) => collect((j_1) => map3((k) => ofArray([i_2, j_1, k]), rangeDouble(0, 1, snapshot - 1)), rangeDouble(0, 1, snapshot - 1)), rangeDouble(0, 1, snapshot - 1)))) : empty2() : empty2()));
+        try {
+          while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
+            const indices = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            if (!found && steps.length < 40) {
+              const matchValue_1 = matchAll(rule.Premises, map4((i_3) => item(i_3, steps)[0], indices));
+              if (matchValue_1 != null) {
+                const subst = matchValue_1;
+                const unbound = filter2((v) => !containsKey(v, subst), atoms(rule.Conclusion));
+                const enumerator_3 = getEnumerator(!isEmpty(unbound) ? isEmpty(tail(unbound)) ? map4((u) => add2(head(unbound), u, subst), universe) : empty2() : singleton3(subst));
+                try {
+                  while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
+                    const s = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    if (!found && steps.length < 40) {
+                      const derived = instantiate(s, rule.Conclusion);
+                      if (size(derived) <= sizeLimit && !known(derived)) {
+                        void steps.push([derived, rule.Title, map4((i_4) => i_4 + 1 | 0, indices)]);
+                        if (equals(derived, goal)) {
+                          found = true;
+                        }
+                      }
+                    }
+                  }
+                } finally {
+                  disposeSafe(enumerator_3);
+                }
+              }
+            }
+          }
+        } finally {
+          disposeSafe(enumerator_2);
+        }
+      }
+    } finally {
+      disposeSafe(enumerator_1);
+    }
+  }
+  if (!found) {
+    return void 0;
+  } else {
+    const neededFrom = (idx, acc) => {
+      const patternInput_1 = item(idx, steps);
+      return fold2((a, r) => neededFrom(r - 1, a), add(idx, acc), patternInput_1[2]);
+    };
+    const needed = sort(toList2(neededFrom(findIndex((tupledArg_1) => equals(tupledArg_1[0], goal), steps), empty3({
+      Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
+    }))), {
+      Compare: (x_3, y_3) => comparePrimitives(x_3, y_3) | 0
+    });
+    const renumber = ofList(mapIndexed((newIdx, oldIdx) => [oldIdx, newIdx + 1], needed), {
+      Compare: (x_4, y_4) => comparePrimitives(x_4, y_4) | 0
+    });
+    return map4((oldIdx_1) => {
+      const patternInput_2 = item(oldIdx_1, steps);
+      return new ProofStep(patternInput_2[0], patternInput_2[1], map4((r_1) => FSharpMap__get_Item(renumber, r_1 - 1) | 0, patternInput_2[2]));
+    }, needed);
+  }
+}
+function suggestRepairs(premises, conclusion) {
+  const literals = collect2((a) => ofArray([new Formula(0, [a]), new Formula(2, [new Formula(0, [a])])]), List_distinct(collect2(atoms, append(premises, singleton3(conclusion))), {
+    Equals: (x, y) => x === y,
+    GetHashCode: (x) => stringHash(x) | 0
+  }));
+  const atomOf = (lit) => {
+    let matchResult, a_1, a_2;
+    switch (lit.tag) {
+      case 0: {
+        matchResult = 0;
+        a_1 = lit.fields[0];
+        break;
+      }
+      case 2: {
+        if (lit.fields[0].tag === 0) {
+          matchResult = 1;
+          a_2 = lit.fields[0].fields[0];
+        } else {
+          matchResult = 2;
+        }
+        break;
+      }
+      default:
+        matchResult = 2;
+    }
+    switch (matchResult) {
+      case 0:
+        return a_1;
+      case 1:
+        return a_2;
+      default:
+        return "";
+    }
+  };
+  return truncate(2, fold2((kept, c_3) => {
+    if (exists2((k) => equivalent(k, c_3), kept)) {
+      return kept;
+    } else {
+      return append(kept, singleton3(c_3));
+    }
+  }, empty2(), sortBy((f_1) => size(f_1) | 0, filter2((c_2) => {
+    if (checkArgument(cons(c_2, premises), conclusion).IsValid && !equals(truthTable(fold2((acc, p) => new Formula(3, [acc, p]), c_2, premises)).Verdict, new Verdict(1, []))) {
+      return !equals(truthTable(new Formula(6, [c_2, conclusion])).Verdict, new Verdict(0, []));
+    } else {
+      return false;
+    }
+  }, append(literals, toList(delay(() => collect((x_1) => collect((y_1) => atomOf(x_1) !== atomOf(y_1) ? singleton2(new Formula(6, [x_1, y_1])) : empty(), literals), literals))))), {
+    Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
+  })));
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/Result.js
+function FSharpResult$2_Ok(ResultValue) {
+  return new FSharpResult$2(0, [ResultValue]);
+}
+function FSharpResult$2_Error$(ErrorValue) {
+  return new FSharpResult$2(1, [ErrorValue]);
+}
+var FSharpResult$2 = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Ok", "Error"];
+  }
+};
+function Result_Map(mapping, result) {
+  if (result.tag === /* Ok */
+  0) {
+    return FSharpResult$2_Ok(mapping(result.fields[0]));
+  } else {
+    return FSharpResult$2_Error$(result.fields[0]);
+  }
+}
+function Result_Bind(binder, result) {
+  if (result.tag === /* Ok */
+  0) {
+    return binder(result.fields[0]);
+  } else {
+    return FSharpResult$2_Error$(result.fields[0]);
+  }
 }
 
 // src/core/Tokenizer.js
@@ -3322,7 +5368,7 @@ function tokenize(input) {
       while (true) {
         const i = i_mut, acc = acc_mut;
         if (i >= input.length) {
-          return new FSharpResult$2(0, [reverse(acc)]);
+          return new FSharpResult$2(0, [reverse2(acc)]);
         } else {
           const c = input[i];
           let matchResult, other;
@@ -3490,7 +5536,7 @@ function tokenize(input) {
         break;
       }
   };
-  return loop(0, empty());
+  return loop(0, empty2());
 }
 
 // src/core/Parser.js
@@ -3688,7 +5734,7 @@ function stripComment(line) {
 }
 function isSingleIdentifier(s) {
   if (s.length > 0 && isLetter(s[0])) {
-    return forAll2((c) => {
+    return forAll((c) => {
       if (isLetterOrDigit(c)) {
         return true;
       } else {
@@ -3750,14 +5796,118 @@ function parseLine(raw) {
       const r = matchValue_2[1];
       return Result_Bind((lf) => Result_Map((rf) => new Statement(5, [new CheckKind(1, [lf, rf])]), parseFormula(r)), parseFormula(matchValue_2[0]));
     }
+  } else if (line === "analyze") {
+    return new FSharpResult$2(0, [new Statement(7, [])]);
+  } else if (line.startsWith("argument")) {
+    return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line \u2014 e.g.  argument my-point {"]);
   } else {
     return new FSharpResult$2(0, [new Statement(1, [line])]);
   }
 }
+function parseArgumentBlock(name, headerLine, body) {
+  let premises = empty2();
+  let conclusion = void 0;
+  let errors = empty2();
+  const enumerator = getEnumerator(body);
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      const no = forLoopVar[0] | 0;
+      const line = stripComment(forLoopVar[1]).trim();
+      if (line === "") {
+      } else if (line.length >= 3 && forAll((c) => c === "-", line.split(""))) {
+      } else if (line.startsWith("premise ")) {
+        const matchValue = parseFormula(substring(line, 8));
+        if (matchValue.tag === 1) {
+          errors = append(errors, singleton3([no, matchValue.fields[0]]));
+        } else {
+          premises = append(premises, singleton3(matchValue.fields[0]));
+        }
+      } else if (line.startsWith("conclude ")) {
+        const matchValue_1 = parseFormula(substring(line, 9));
+        const conclusion_1 = conclusion;
+        const copyOfStruct = matchValue_1;
+        if (copyOfStruct.tag === 1) {
+          errors = append(errors, singleton3([no, copyOfStruct.fields[0]]));
+        } else if (conclusion_1 != null) {
+          errors = append(errors, singleton3([no, "an argument can only have one `conclude`"]));
+        } else {
+          conclusion = copyOfStruct.fields[0];
+        }
+      } else {
+        errors = append(errors, singleton3([no, "expected `premise`, `---`, or `conclude` inside an argument"]));
+      }
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  const errors_1 = errors;
+  const premises_1 = premises;
+  const conclusion_2 = conclusion;
+  if (isEmpty(errors_1)) {
+    if (isEmpty(premises_1)) {
+      return new FSharpResult$2(1, [singleton3([headerLine, "an argument needs at least one `premise`"])]);
+    } else if (conclusion_2 != null) {
+      const c_1 = conclusion_2;
+      return new FSharpResult$2(0, [new Statement(6, [name, premises, c_1])]);
+    } else {
+      return new FSharpResult$2(1, [singleton3([headerLine, "an argument needs a `conclude` line"])]);
+    }
+  } else {
+    return new FSharpResult$2(1, [errors_1]);
+  }
+}
+function parseLines(source) {
+  const lines = split(replace(source, "\r\n", "\n"), ["\n"], void 0, 0);
+  const results = [];
+  let i = 0;
+  while (i < lines.length) {
+    const no = i + 1 | 0;
+    const line = stripComment(item(i, lines)).trim();
+    if (line.startsWith("argument ") && line.endsWith("{")) {
+      const name = substring(line, 9, line.length - 10).trim();
+      const body = [];
+      let j = i + 1;
+      let closed = false;
+      while (!closed && j < lines.length) {
+        if (stripComment(item(j, lines)).trim() === "}") {
+          closed = true;
+        } else {
+          void body.push([j + 1, item(j, lines)]);
+          j = j + 1 | 0;
+        }
+      }
+      if (!closed) {
+        void results.push([no, new FSharpResult$2(1, ["this `argument {` is never closed with `}`"])]);
+        i = lines.length | 0;
+      } else {
+        const matchValue = parseArgumentBlock(name, no, ofSeq(body));
+        if (matchValue.tag === 1) {
+          const enumerator = getEnumerator(matchValue.fields[0]);
+          try {
+            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+              const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+              void results.push([forLoopVar[0], new FSharpResult$2(1, [forLoopVar[1]])]);
+            }
+          } finally {
+            disposeSafe(enumerator);
+          }
+        } else {
+          void results.push([no, new FSharpResult$2(0, [matchValue.fields[0]])]);
+        }
+        i = j + 1 | 0;
+      }
+    } else {
+      void results.push([no, parseLine(item(i, lines))]);
+      i = i + 1 | 0;
+    }
+  }
+  return ofSeq(results);
+}
 
 // src/core/Api.js
 var BlockView = class extends Record {
-  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, line) {
+  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations) {
     super();
     this.kind = kind;
     this.level = level | 0;
@@ -3770,9 +5920,17 @@ var BlockView = class extends Record {
     this.rows = rows;
     this.results = results;
     this.line = line | 0;
+    this.premises = premises;
+    this.conclusion = conclusion;
+    this.form = form;
+    this.fallacy = fallacy;
+    this.note = note;
+    this.suggestion = suggestion;
+    this.proof = proof;
+    this.relations = relations;
   }
 };
-var empty2 = new BlockView("", 0, "", "", "", "", "", [], [], [], 0);
+var empty5 = new BlockView("", 0, "", "", "", "", "", [], [], [], 0, [], "", "", "", "", [], [], []);
 function verdictName(_arg) {
   switch (_arg.tag) {
     case 1:
@@ -3783,22 +5941,123 @@ function verdictName(_arg) {
       return "tautology";
   }
 }
+function relationName(_arg) {
+  switch (_arg.tag) {
+    case 1:
+      return "contradictory";
+    case 2:
+      return "contrary";
+    case 3:
+      return "subcontrary";
+    case 4:
+      return "entails";
+    case 5:
+      return "entailed-by";
+    case 6:
+      return "independent";
+    default:
+      return "equivalent";
+  }
+}
+function verdictNote(t) {
+  const total = length(t.Rows) | 0;
+  const trues = length(filter2((tuple) => tuple[1], t.Rows)) | 0;
+  const matchValue = t.Verdict;
+  switch (matchValue.tag) {
+    case 1:
+      return toText(printf("False in every one of the %d possible situations \u2014 it cannot hold, whatever the facts."))(total);
+    case 2:
+      return toText(printf("True in %d of %d possible situations \u2014 whether it holds depends on the facts."))(trues)(total);
+    default:
+      return toText(printf("True in every one of the %d possible situations \u2014 it cannot fail, whatever the facts."))(total);
+  }
+}
 function tableBlock(f) {
   const t = truthTable(f);
   const formula = toUnicode(f);
   const atoms2 = toArray(t.Atoms);
-  const rows = toArray(map2((tupledArg) => toArray(map2((a) => FSharpMap__get_Item(tupledArg[0], a), t.Atoms)), t.Rows));
-  const results = toArray(map2((tuple) => tuple[1], t.Rows));
-  return new BlockView("table", empty2.level, empty2.title, empty2.name, empty2.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty2.line);
+  const rows = toArray(map4((tupledArg) => toArray(map4((a) => FSharpMap__get_Item(tupledArg[0], a), t.Atoms)), t.Rows));
+  const results = toArray(map4((tuple) => tuple[1], t.Rows));
+  return new BlockView("table", empty5.level, empty5.title, empty5.name, empty5.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, verdictNote(t), empty5.suggestion, empty5.proof, empty5.relations);
 }
-function toBlock(defs, st) {
+function describeSituation(env) {
+  return join(" and ", map4((tupledArg) => {
+    const arg_1 = tupledArg[1] ? "true" : "false";
+    return toText(printf("%s is %s"))(tupledArg[0])(arg_1);
+  }, toList3(env)));
+}
+function proofRow(index, step) {
+  const justification = isEmpty(step.Refs) ? step.Rule : step.Rule + " (" + join(", ", map4(int32ToString, step.Refs)) + ")";
+  return [int32ToString(index + 1), toUnicode(step.Formula), justification];
+}
+function argumentBlock(defs, name, premises, conclusion) {
+  const rp = map4((formula) => resolve(defs, formula), premises);
+  const rc = resolve(defs, conclusion);
+  const check = checkArgument(rp, rc);
+  const recognized = recognize(check.IsValid ? validForms : fallacies, rp, rc);
+  const proofSteps = check.IsValid ? defaultArg(prove(rp, rc), empty2()) : empty2();
+  const repairs = check.IsValid ? empty2() : suggestRepairs(rp, rc);
+  let explanation;
+  if (recognized == null) {
+    if (check.IsValid) {
+      explanation = "Valid: no possible situation makes every premise true and the conclusion false.";
+    } else {
+      const arg = length(check.Counterexamples) | 0;
+      explanation = toText(printf("Invalid: %d situation(s) make every premise true while the conclusion fails."))(arg);
+    }
+  } else {
+    explanation = recognized.Note;
+  }
+  const premises_1 = toArray(map4(toUnicode, rp));
+  const conclusion_1 = toUnicode(rc);
+  const verdict = check.IsValid ? "valid" : "invalid";
+  const form_1 = defaultArg(check.IsValid ? map((f) => f.Title, recognized) : void 0, "");
+  const fallacy = defaultArg(check.IsValid ? void 0 : map((f_1) => f_1.Title, recognized), "");
+  const suggestion = toArray(map4(toUnicode, repairs));
+  const proof = toArray(mapIndexed(proofRow, proofSteps));
+  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(check.Atoms), toArray(map4((env) => toArray(map4((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map4((_arg) => false, check.Counterexamples)), empty5.line, premises_1, conclusion_1, form_1, fallacy, explanation, suggestion, proof, empty5.relations);
+}
+function relationWhy(_arg) {
+  switch (_arg.tag) {
+    case 1:
+      return "always opposite \u2014 exactly one of the two holds";
+    case 2:
+      return "never both true, though both can fail";
+    case 3:
+      return "never both false, though both can hold";
+    case 4:
+      return "whenever the first holds, so does the second";
+    case 5:
+      return "whenever the first holds, so does the second";
+    case 6:
+      return "neither settles the other \u2014 all four combinations are possible";
+    default:
+      return "always the same truth value \u2014 two phrasings of one claim";
+  }
+}
+function relationsBlock(claims) {
+  return new BlockView("relations", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, Array.from(delay(() => collect((i) => map3((j) => {
+    const patternInput = item2(i, claims);
+    const nameA = patternInput[0];
+    const patternInput_1 = item2(j, claims);
+    const nameB = patternInput_1[0];
+    const matchValue = relate(patternInput[1], patternInput_1[1]);
+    if (matchValue.tag === 5) {
+      return [nameB, "entails", nameA, relationWhy(new Relation(4, []))];
+    } else {
+      const r = matchValue;
+      return [nameA, relationName(r), nameB, relationWhy(r)];
+    }
+  }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))));
+}
+function toBlock(defs, glosses, claims, st) {
   switch (st.tag) {
     case 1:
-      return new BlockView("prose", empty2.level, st.fields[0], empty2.name, empty2.gloss, empty2.formula, empty2.verdict, empty2.atoms, empty2.rows, empty2.results, empty2.line);
+      return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     case 2:
-      return new BlockView("prop", empty2.level, empty2.title, st.fields[0], st.fields[1], empty2.formula, empty2.verdict, empty2.atoms, empty2.rows, empty2.results, empty2.line);
+      return new BlockView("prop", empty5.level, empty5.title, st.fields[0], st.fields[1], empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     case 3:
-      return new BlockView("claim", empty2.level, empty2.title, st.fields[0], empty2.gloss, toUnicode(st.fields[1]), empty2.verdict, empty2.atoms, empty2.rows, empty2.results, empty2.line);
+      return new BlockView("claim", empty5.level, empty5.title, st.fields[0], empty5.gloss, toUnicode(st.fields[1]), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, toEnglish((name) => tryFind2(name, glosses), resolve(defs, st.fields[1])), empty5.suggestion, empty5.proof, empty5.relations);
     case 4:
       return tableBlock(st.fields[0].tag === 0 ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]));
     case 5:
@@ -3806,50 +6065,73 @@ function toBlock(defs, st) {
         const matchValue = resolve(defs, st.fields[0].fields[0]);
         const rb = resolve(defs, st.fields[0].fields[1]);
         const ra = matchValue;
-        return new BlockView("check", empty2.level, empty2.title, empty2.name, empty2.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), equivalent(ra, rb) ? "equivalent" : "not-equivalent", empty2.atoms, empty2.rows, empty2.results, empty2.line);
+        const same = equivalent(ra, rb);
+        let note_1;
+        if (same) {
+          note_1 = "In every possible situation the two sides carry the same truth value \u2014 two phrasings of one claim.";
+        } else {
+          const matchValue_2 = distinguishing(ra, rb);
+          if (matchValue_2 == null) {
+            note_1 = "";
+          } else {
+            const arg = describeSituation(matchValue_2);
+            note_1 = toText(printf("They come apart when %s: then one holds and the other doesn't."))(arg);
+          }
+        }
+        return new BlockView("check", empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), same ? "equivalent" : "not-equivalent", empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, note_1, empty5.suggestion, empty5.proof, empty5.relations);
       } else {
         const bind$0040 = tableBlock(resolve(defs, st.fields[0].fields[0]));
-        return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.line);
+        return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations);
       }
+    case 6:
+      return argumentBlock(defs, st.fields[0], st.fields[1], st.fields[2]);
+    case 7:
+      return relationsBlock(claims);
     default:
-      return new BlockView("heading", st.fields[0], st.fields[1], empty2.name, empty2.gloss, empty2.formula, empty2.verdict, empty2.atoms, empty2.rows, empty2.results, empty2.line);
+      return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
   }
 }
 function analyze(source) {
-  const parsed = ofArray(mapIndexed((i, line) => [i + 1, parseLine(line)], split(replace(source, "\r\n", "\n"), ["\n"], void 0, 0)));
-  const defs = ofList(choose((tupledArg) => {
+  const parsed = parseLines(source);
+  const statements = choose2((tupledArg) => {
     const r = tupledArg[1];
-    let matchResult, f, n;
-    if (r.tag === 0) {
-      if (r.fields[0] != null) {
-        if (r.fields[0].tag === 3) {
-          matchResult = 0;
-          f = r.fields[0].fields[1];
-          n = r.fields[0].fields[0];
-        } else {
-          matchResult = 1;
-        }
-      } else {
-        matchResult = 1;
-      }
+    if (r.tag === 1) {
+      return void 0;
     } else {
-      matchResult = 1;
+      return r.fields[0];
     }
-    switch (matchResult) {
-      case 0:
-        return [n, f];
-      default:
-        return void 0;
+  }, parsed);
+  const defs = ofList(choose2((_arg_1) => {
+    if (_arg_1.tag === 3) {
+      return [_arg_1.fields[0], _arg_1.fields[1]];
+    } else {
+      return void 0;
     }
-  }, parsed), {
+  }, statements), {
     Compare: (x, y) => comparePrimitives(x, y) | 0
   });
-  return toArray(choose((tupledArg_1) => {
+  const glosses = ofList(choose2((_arg_2) => {
+    if (_arg_2.tag === 2) {
+      return [_arg_2.fields[0], _arg_2.fields[1]];
+    } else {
+      return void 0;
+    }
+  }, statements), {
+    Compare: (x_1, y_1) => comparePrimitives(x_1, y_1) | 0
+  });
+  const claims = choose2((_arg_3) => {
+    if (_arg_3.tag === 3) {
+      return [_arg_3.fields[0], resolve(defs, _arg_3.fields[1])];
+    } else {
+      return void 0;
+    }
+  }, statements);
+  return toArray(choose2((tupledArg_1) => {
     const r_1 = tupledArg_1[1];
     if (r_1.tag === 1) {
-      return new BlockView("error", empty2.level, r_1.fields[0], empty2.name, empty2.gloss, empty2.formula, empty2.verdict, empty2.atoms, empty2.rows, empty2.results, tupledArg_1[0]);
+      return new BlockView("error", empty5.level, r_1.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     } else if (r_1.fields[0] != null) {
-      return toBlock(defs, r_1.fields[0]);
+      return toBlock(defs, glosses, claims, r_1.fields[0]);
     } else {
       return void 0;
     }
@@ -3869,7 +6151,9 @@ function verdictBadge(verdict) {
     contradiction: "contradiction",
     contingent: "contingent",
     equivalent: "equivalent",
-    "not-equivalent": "not equivalent"
+    "not-equivalent": "not equivalent",
+    valid: "valid",
+    invalid: "invalid"
   };
   const text = label[verdict] ?? verdict;
   return `<span class="badge badge-${verdict}">${escapeHtml(text)}</span>`;
@@ -3877,13 +6161,61 @@ function verdictBadge(verdict) {
 function tf(value2) {
   return `<td class="${value2 ? "t" : "f"}">${value2 ? "T" : "F"}</td>`;
 }
-function renderTable(block) {
-  const head2 = block.atoms.map((a) => `<th>${escapeHtml(a)}</th>`).join("") + `<th class="result">${escapeHtml(block.formula)}</th>`;
-  const body = block.rows.map((row, i) => {
-    const cells = row.map((v) => tf(v)).join("") + tf(block.results[i]);
+function renderTruthTable(atoms2, rows, results, resultHeader) {
+  const head2 = atoms2.map((a) => `<th>${escapeHtml(a)}</th>`).join("") + `<th class="result">${escapeHtml(resultHeader)}</th>`;
+  const body = rows.map((row, i) => {
+    const cells = row.map((v) => tf(v)).join("") + tf(results[i]);
     return `<tr>${cells}</tr>`;
   }).join("");
   return `<table class="truth"><thead><tr>${head2}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function renderTable(block) {
+  return renderTruthTable(block.atoms, block.rows, block.results, block.formula);
+}
+function renderArgument(block) {
+  const chips = [verdictBadge(block.verdict)];
+  if (block.form) chips.push(`<span class="chip chip-form">${escapeHtml(block.form)}</span>`);
+  if (block.fallacy) chips.push(`<span class="chip chip-fallacy">${escapeHtml(block.fallacy)}</span>`);
+  const parts = [];
+  parts.push(
+    `<figcaption><span class="arg-name">${escapeHtml(block.name)}</span>${chips.join(" ")}</figcaption>`
+  );
+  const premises = block.premises.map((p) => `<div class="premise">${escapeHtml(p)}</div>`).join("");
+  parts.push(
+    `<div class="derivation">${premises}<div class="conclusion">\u2234 ${escapeHtml(block.conclusion)}</div></div>`
+  );
+  if (block.note) {
+    parts.push(`<p class="note">${escapeHtml(block.note)}</p>`);
+  }
+  if (block.verdict === "invalid" && block.rows.length > 0) {
+    parts.push(
+      `<div class="counterexample"><span class="cx-label">counterexample \u2014 premises true, conclusion false:</span>` + renderTruthTable(block.atoms, block.rows, block.results, block.conclusion) + `</div>`
+    );
+  }
+  if (block.suggestion.length > 0) {
+    const options = block.suggestion.map((s) => `<span class="formula">${escapeHtml(s)}</span>`).join(`<span class="or"> or </span>`);
+    parts.push(
+      `<div class="repair">Becomes valid if you add the premise ${options} \u2014 is that what's silently being assumed?</div>`
+    );
+  }
+  if (block.proof.length > 0) {
+    const steps = block.proof.map(
+      ([n, formula, why]) => `<tr><td class="step-no">${escapeHtml(n)}.</td><td class="step-formula">${escapeHtml(formula)}</td><td class="step-why">${escapeHtml(why)}</td></tr>`
+    ).join("");
+    parts.push(`<table class="proof"><tbody>${steps}</tbody></table>`);
+  }
+  return `<figure class="argument">${parts.join("")}</figure>`;
+}
+function renderRelations(block) {
+  if (block.relations.length === 0) {
+    return `<div class="relations"><p class="empty">analyze needs at least two <code>claim</code>s to compare.</p></div>`;
+  }
+  const rows = block.relations.map(([left, rel, right, why]) => {
+    const detail = why ? ` <span class="rel-detail">\u2014 ${escapeHtml(why)}</span>` : "";
+    const cls = rel === "independent" ? "rel-row rel-independent" : "rel-row";
+    return `<tr class="${cls}"><td class="rel-claim">${escapeHtml(left)}</td><td class="rel-kind">${escapeHtml(rel)}${detail}</td><td class="rel-claim">${escapeHtml(right)}</td></tr>`;
+  }).join("");
+  return `<figure class="relations"><figcaption>claim relations</figcaption><table><tbody>${rows}</tbody></table></figure>`;
 }
 function renderBlock(block) {
   switch (block.kind) {
@@ -3895,15 +6227,25 @@ function renderBlock(block) {
       return `<p class="prose">${escapeHtml(block.title)}</p>`;
     case "prop":
       return `<div class="prop"><span class="atom">${escapeHtml(block.name)}</span><span class="colon">:</span><span class="gloss">${escapeHtml(block.gloss)}</span></div>`;
-    case "claim":
-      return `<div class="claim"><span class="name">${escapeHtml(block.name)}</span><span class="formula">${escapeHtml(block.formula)}</span></div>`;
-    case "table":
-      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}</figcaption>${renderTable(block)}</figure>`;
-    case "check":
+    case "claim": {
+      const reading = block.note ? `<div class="reading">${escapeHtml(block.note)}</div>` : "";
+      return `<div class="claim"><span class="name">${escapeHtml(block.name)}</span><span class="formula">${escapeHtml(block.formula)}</span>${reading}</div>`;
+    }
+    case "table": {
+      const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
+      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
+    }
+    case "check": {
+      const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
       if (block.atoms.length === 0) {
-        return `<div class="check"><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>`;
+        return `<div class="check"><div><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>${note}</div>`;
       }
-      return `<figure class="statement"><figcaption><span class="check-label">check</span> ${verdictBadge(block.verdict)}</figcaption>${renderTable(block)}</figure>`;
+      return `<figure class="statement"><figcaption><span class="check-label">check</span> ${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
+    }
+    case "argument":
+      return renderArgument(block);
+    case "relations":
+      return renderRelations(block);
     case "error":
       return `<div class="error"><span class="error-line">line ${block.line}</span> ${escapeHtml(block.title)}</div>`;
     default:
@@ -3933,7 +6275,10 @@ var STYLE = `
   .prop .colon { opacity: .5; margin: 0 .5em; }
   .prop .gloss { font-family: var(--vscode-font-family); opacity: .85; }
   .claim .formula { margin-left: .75em; }
-  .check { font-family: var(--vscode-editor-font-family); margin: .5rem 0; display: flex; align-items: center; gap: .75em; }
+  .check { font-family: var(--vscode-editor-font-family); margin: .5rem 0; }
+  .check > div { display: flex; align-items: center; gap: .75em; }
+  .reading { font-family: var(--vscode-font-family); font-style: italic; opacity: .7; margin: .1rem 0 .1rem 1.5rem; }
+  .note-inline { font-style: italic; opacity: .65; font-size: .85em; margin-left: .6em; }
   figure.statement { margin: .8rem 0; }
   figure.statement figcaption { margin-bottom: .35rem; display: flex; align-items: center; gap: .5em; }
   .check-label { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; }
@@ -3947,10 +6292,43 @@ var STYLE = `
   .badge-tautology, .badge-equivalent { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
   .badge-contradiction, .badge-not-equivalent { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
   .badge-contingent { background: var(--vscode-editorWarning-foreground, #cca700); color: #100c02; }
+  .badge-valid { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
+  .badge-invalid { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }
   code { background: var(--vscode-textCodeBlock-background, #8882); padding: 0 .3em; border-radius: 3px; }
+
+  /* arguments */
+  figure.argument { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.argument figcaption { display: flex; align-items: center; gap: .5em; margin-bottom: .5rem; }
+  .arg-name { font-weight: 600; font-family: var(--vscode-editor-font-family); }
+  .chip { font-size: .72rem; padding: .1em .6em; border-radius: 999px; border: 1px solid var(--vscode-widget-border, #8884); }
+  .chip-form { border-color: var(--vscode-testing-iconPassed, #3fb950); }
+  .chip-fallacy { border-color: var(--vscode-testing-iconFailed, #f85149); color: var(--vscode-testing-iconFailed, #f85149); }
+  .derivation { font-family: var(--vscode-editor-font-family); margin: .3rem 0 .3rem .5rem; }
+  .derivation .premise { padding: .1rem 0; }
+  .derivation .conclusion { border-top: 1px solid var(--vscode-foreground); margin-top: .25rem; padding-top: .25rem; width: fit-content; min-width: 12em; }
+  .note { opacity: .75; font-style: italic; margin: .35rem 0; }
+  .counterexample { margin: .5rem 0; }
+  .cx-label { display: block; font-size: .78rem; opacity: .7; margin-bottom: .3rem; }
+  .repair { margin: .5rem 0; padding: .45rem .7rem; border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700); background: var(--vscode-textCodeBlock-background, #8881); }
+  .repair .formula { font-family: var(--vscode-editor-font-family); font-weight: 600; }
+  .repair .or { opacity: .6; }
+  table.proof { font-family: var(--vscode-editor-font-family); border-collapse: collapse; margin: .5rem 0 .2rem; }
+  table.proof td { padding: .12em .6em .12em 0; }
+  .step-no { opacity: .55; }
+  .step-why { opacity: .7; font-size: .85em; }
+
+  /* relations (analyze) */
+  figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.relations figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }
+  figure.relations table { border-collapse: collapse; }
+  figure.relations td { padding: .15em .8em .15em 0; }
+  .rel-claim { font-family: var(--vscode-editor-font-family); font-weight: 600; }
+  .rel-kind { opacity: .9; }
+  .rel-detail { opacity: .6; font-size: .85em; }
+  .rel-independent { opacity: .45; }
 `;
 function wrapHtml(body) {
   return `<!DOCTYPE html>

@@ -40,6 +40,9 @@ module Ast =
         | Claim of name: string * body: Formula    // claim C1 : p -> q
         | Table of TableTarget                      // table C1
         | Check of CheckKind                        // check ...
+        | Argument of name: string * premises: Formula list * conclusion: Formula
+                                                    // argument x { premise … / --- / conclude … }
+        | Analyze                                   // analyze — map how all claims relate
 
     /// A whole document is simply an ordered list of statements.
     type Document = Statement list

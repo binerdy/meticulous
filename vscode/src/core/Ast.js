@@ -1,6 +1,6 @@
 
 import { Union } from "./fable_modules/fable-library-js.5.6.0/Types.js";
-import { int32_type, union_type, bool_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
+import { list_type, int32_type, union_type, bool_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
 
 /**
  * A logical formula built from atomic propositions and connectives.
@@ -69,11 +69,11 @@ export class Statement extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check"];
+        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Analyze"];
     }
 }
 
 export function Statement_$reflection() {
-    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]]]);
+    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", Formula_$reflection()]], []]);
 }
 

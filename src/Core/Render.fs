@@ -52,3 +52,35 @@ module Render =
             | Iff(a, b) -> wrap true a + " ↔ " + wrap false b
 
         go formula
+
+    /// Render a formula as an English sentence, using each proposition's gloss
+    /// where the document declared one. This is what lets a claim read back as
+    /// the thought it formalises: `policy -> growth` becomes
+    /// "If the tax cut was enacted, then the economy grew."
+    let toEnglish (glossOf: string -> string option) (formula: Formula) : string =
+        // A gloss like "It is raining" should read "...if it is raining..."
+        // mid-sentence, so we lower its first letter — but leave things that
+        // look like acronyms ("AI rules the world") alone.
+        let soften (s: string) =
+            if s.Length >= 2 && System.Char.IsUpper s.[0] && System.Char.IsLower s.[1] then
+                string (System.Char.ToLower s.[0]) + s.Substring 1
+            else
+                s
+
+        // "both … and …" / "either …, or …" keep the grouping audible: without
+        // them, "not A or B" could be heard as ¬(A ∨ B) or as (¬A) ∨ B.
+        let rec go f =
+            match f with
+            | Atom name -> glossOf name |> Option.map soften |> Option.defaultValue name
+            | Const true -> "true"
+            | Const false -> "false"
+            | Not a -> "it is not the case that " + go a
+            | And(a, b) -> "both " + go a + ", and " + go b
+            | Or(a, b) -> "either " + go a + ", or " + go b
+            | Xor(a, b) -> "either " + go a + " or " + go b + ", but not both"
+            | Implies(a, b) -> "if " + go a + ", then " + go b
+            | Iff(a, b) -> go a + " exactly when " + go b
+
+        let sentence = go formula
+        if sentence = "" then ""
+        else string (System.Char.ToUpper sentence.[0]) + sentence.Substring 1 + "."
