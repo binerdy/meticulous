@@ -1,0 +1,13 @@
+# Exportation
+
+prop rain : It is raining
+prop cold : It is cold
+prop snow : It snows
+
+claim C1 : (rain and cold) -> snow
+
+argument exportation {
+  premise C1
+  ---
+  conclude rain -> (cold -> snow)
+}

@@ -1,0 +1,12 @@
+# Material Implication
+
+prop study : You study
+prop pass : You pass the exam
+
+claim C1 : study -> pass
+
+argument material-implication {
+  premise C1
+  ---
+  conclude not study or pass
+}

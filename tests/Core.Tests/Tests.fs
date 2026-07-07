@@ -301,6 +301,46 @@ let ``every relation pair carries its explanation`` () =
     Assert.Contains("two phrasings of one claim", pair.[3])
 
 [<Fact>]
+let ``a premise-less argument is a theorem exactly when its conclusion is a tautology`` () =
+    // Excluded middle is recognized as a named law...
+    let doc = "argument theorem {\n  ---\n  conclude p or not p\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+    Assert.Equal("law of excluded middle (tertium non datur)", arg.form)
+    // ...an unnamed theorem still gets the generic tautology chip...
+    let generic = analyze "argument refl {\n  ---\n  conclude p -> p\n}\n" |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", generic.verdict)
+    Assert.Equal("tautology", generic.form)
+    Assert.Contains("theorem", generic.note)
+    // ...and a contingent conclusion is no theorem.
+    let bad = analyze "argument nope {\n  ---\n  conclude p\n}\n" |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("invalid", bad.verdict)
+    Assert.Contains("no tautology", bad.note)
+
+[<Fact>]
+let ``the catalog recognizes the replacement rules and dilemmas`` () =
+    let expect name premises conclusion =
+        Assert.Equal(Some name, recognizedName validForms premises conclusion)
+    expect "proof-by-cases" [ "p or q"; "p -> r"; "q -> r" ] "r"
+    expect "constructive-dilemma" [ "p -> q"; "r -> s"; "p or r" ] "q or s"
+    expect "destructive-dilemma" [ "p -> q"; "r -> s"; "not q or not s" ] "not p or not r"
+    expect "de-morgan-nand" [ "not (p and q)" ] "not p or not q"
+    expect "de-morgan-nor" [ "not (p or q)" ] "not p and not q"
+    expect "contraposition" [ "p -> q" ] "not q -> not p"
+    expect "material-implication" [ "p -> q" ] "not p or q"
+    expect "absorption" [ "p -> q" ] "p -> (p and q)"
+    expect "exportation" [ "(p and q) -> r" ] "p -> (q -> r)"
+    expect "exportation-rev" [ "p -> (q -> r)" ] "(p and q) -> r"
+
+[<Fact>]
+let ``contradictory premises are called out as vacuous validity`` () =
+    let doc =
+        "argument ex-falso {\n  premise p\n  premise not p\n  ---\n  conclude q\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+    Assert.Contains("ex falso quodlibet", arg.note)
+
+[<Fact>]
 let ``a valid but unrecognized argument still explains its verdict`` () =
     // Valid, but matching no single catalog rule.
     let doc =

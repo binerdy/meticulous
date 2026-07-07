@@ -370,13 +370,9 @@ function parseArgumentBlock(name, headerLine, body) {
         disposeSafe(enumerator);
     }
     const errors_1 = errors;
-    const premises_1 = premises;
     const conclusion_2 = conclusion;
     if (isEmpty(errors_1)) {
-        if (isEmpty(premises_1)) {
-            return new FSharpResult$2(1, [singleton([headerLine, "an argument needs at least one `premise`"])]);
-        }
-        else if (conclusion_2 != null) {
+        if (conclusion_2 != null) {
             const c_1 = conclusion_2;
             return new FSharpResult$2(0, [new Statement(6, [name, premises, c_1])]);
         }

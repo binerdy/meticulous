@@ -1,0 +1,12 @@
+# De Morgan's Second Law
+
+prop weekend : It is the weekend
+prop holiday : It is a holiday
+
+claim C1 : not (weekend or holiday)
+
+argument de-morgan-2 {
+  premise C1
+  ---
+  conclude not weekend and not holiday
+}

@@ -1,0 +1,35 @@
+# Constructive Dilemma
+
+Two dilemma shapes that are easy to mix up: when both roads lead to the
+same place, textbooks call it proof by cases; a constructive dilemma
+proper ends in an either-or, because the roads lead to different places.
+
+prop rain : It is raining
+prop snow : It is snowing
+prop cloudy : The sky is cloudy
+
+claim C1 : rain or snow
+claim C2 : rain -> cloudy
+claim C3 : snow -> cloudy
+
+argument same-destination {
+  premise C1
+  premise C2
+  premise C3
+  ---
+  conclude cloudy
+}
+
+## The dilemma proper
+
+prop cold : It is cold
+
+claim C4 : snow -> cold
+
+argument different-destinations {
+  premise C1
+  premise C2
+  premise C4
+  ---
+  conclude cloudy or cold
+}

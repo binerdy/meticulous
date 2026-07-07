@@ -1,0 +1,12 @@
+# De Morgan's Laws
+
+prop weekend : It is the weekend
+prop workday : It is a workday
+
+claim C1 : not (weekend and workday)
+
+argument de-morgan {
+  premise C1
+  ---
+  conclude not weekend or not workday
+}

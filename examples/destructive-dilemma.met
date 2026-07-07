@@ -1,0 +1,18 @@
+# Destructive Dilemma
+
+prop rain : It is raining
+prop snow : It is snowing
+prop cloudy : The sky is cloudy
+prop cold : It is cold
+
+claim C1 : not cloudy or not cold
+claim C2 : rain -> cloudy
+claim C3 : snow -> cold
+
+argument destructive-dilemma {
+  premise C1
+  premise C2
+  premise C3
+  ---
+  conclude not rain or not snow
+}

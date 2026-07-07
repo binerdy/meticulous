@@ -1,0 +1,12 @@
+# Addition (Disjunction Introduction)
+
+prop apple : I have an apple
+prop pear : I have a pear
+
+claim C1 : apple
+
+argument addition {
+  premise C1
+  ---
+  conclude apple or pear
+}

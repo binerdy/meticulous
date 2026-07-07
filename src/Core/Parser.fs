@@ -208,11 +208,12 @@ module Parser =
             else
                 errors <- errors @ [ no, "expected `premise`, `---`, or `conclude` inside an argument" ]
 
-        match errors, premises, conclusion with
-        | [], [], _ -> Error [ headerLine, "an argument needs at least one `premise`" ]
-        | [], _, None -> Error [ headerLine, "an argument needs a `conclude` line" ]
-        | [], _, Some c -> Ok(Argument(name, premises, c))
-        | errs, _, _ -> Error errs
+        // Zero premises is allowed: `argument x { conclude ... }` claims the
+        // conclusion is a *theorem* — provable from nothing, i.e. a tautology.
+        match errors, conclusion with
+        | [], None -> Error [ headerLine, "an argument needs a `conclude` line" ]
+        | [], Some c -> Ok(Argument(name, premises, c))
+        | errs, _ -> Error errs
 
     /// Parse a whole source into (lineNumber, statement-or-error) entries,
     /// grouping multi-line `argument { }` blocks into single statements.

@@ -1,0 +1,14 @@
+# Conjunction (Conjunction Introduction)
+
+prop cold : It is cold
+prop rain : It is raining
+
+claim C1 : cold
+claim C2 : rain
+
+argument conjunction {
+  premise C1
+  premise C2
+  ---
+  conclude cold and rain
+}

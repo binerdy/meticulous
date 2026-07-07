@@ -1,18 +1,18 @@
 
 import { Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { record_type, bool_type, array_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
-import { choose, item, mapIndexed, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { choose, item, mapIndexed, reduce, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
-import { distinguishing, equivalent, Relation, relate, checkArgument, resolve, truthTable } from "./Engine.js";
+import { distinguishing, equivalent, Relation, relate, Verdict, checkArgument, resolve, truthTable } from "./Engine.js";
 import { toEnglish, toUnicode } from "./Render.js";
 import { ofList, tryFind, toList, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
-import { comparePrimitives, int32ToString } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { comparePrimitives, equals, int32ToString } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { suggestRepairs, prove, recognize } from "./Recognition.js";
 import { fallacies, validForms } from "./InferenceRules.js";
 import { map as map_1, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
+import { Formula } from "./Ast.js";
 import { map as map_2, collect, delay } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
-import { Formula } from "./Ast.js";
 import { parseLines } from "./Parser.js";
 
 /**
@@ -142,27 +142,40 @@ function argumentBlock(defs, name, premises, conclusion) {
     };
     const proofSteps = check.IsValid ? defaultArg(prove(rp, rc), empty_1()) : empty_1();
     const repairs = check.IsValid ? empty_1() : suggestRepairs(rp, rc);
+    const premisesConsistent = isEmpty(rp) ? true : !equals(truthTable(reduce((a, b) => (new Formula(3, [a, b])), rp)).Verdict, new Verdict(1, []));
     let explanation;
-    if (recognized == null) {
+    if (isEmpty(rp)) {
+        if (check.IsValid) {
+            explanation = ((recognized == null) ? "A theorem: the conclusion holds in every possible situation — a tautology, provable from no premises at all." : recognized.Note);
+        }
+        else {
+            const arg = length(check.Counterexamples) | 0;
+            explanation = toText(printf("Not a theorem: the conclusion fails in %d situation(s), so it is no tautology."))(arg);
+        }
+    }
+    else if (check.IsValid && !premisesConsistent) {
+        explanation = "Valid, but vacuously so: the premises contradict one another and can never all hold — and from a contradiction, anything follows (ex falso quodlibet).";
+    }
+    else if (recognized == null) {
         if (check.IsValid) {
             explanation = "Valid: no possible situation makes every premise true and the conclusion false.";
         }
         else {
-            const arg = length(check.Counterexamples) | 0;
-            explanation = toText(printf("Invalid: %d situation(s) make every premise true while the conclusion fails."))(arg);
+            const arg_1 = length(check.Counterexamples) | 0;
+            explanation = toText(printf("Invalid: %d situation(s) make every premise true while the conclusion fails."))(arg_1);
         }
     }
     else {
         explanation = recognized.Note;
     }
+    const formLabel = !check.IsValid ? "" : ((recognized == null) ? (isEmpty(rp) ? "tautology" : "") : displayTitle(recognized));
     const premises_1 = toArray(map(toUnicode, rp));
     const conclusion_1 = toUnicode(rc);
     const verdict = check.IsValid ? "valid" : "invalid";
-    const form_2 = defaultArg(check.IsValid ? map_1(displayTitle, recognized) : undefined, "");
     const fallacy = defaultArg(check.IsValid ? undefined : map_1(displayTitle, recognized), "");
     const suggestion = toArray(map(toUnicode, repairs));
     const proof = toArray(mapIndexed(proofRow, proofSteps));
-    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(check.Atoms), toArray(map((env) => toArray(map((a) => FSharpMap__get_Item(env, a), check.Atoms)), check.Counterexamples)), toArray(map((_arg) => false, check.Counterexamples)), empty.line, premises_1, conclusion_1, form_2, fallacy, explanation, suggestion, proof, empty.relations);
+    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(check.Atoms), toArray(map((env) => toArray(map((a_1) => FSharpMap__get_Item(env, a_1), check.Atoms)), check.Counterexamples)), toArray(map((_arg) => false, check.Counterexamples)), empty.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty.relations);
 }
 
 function relationWhy(_arg) {

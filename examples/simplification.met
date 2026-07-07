@@ -1,0 +1,12 @@
+# Simplification (Conjunction Elimination)
+
+prop cold : It is cold
+prop rain : It is raining
+
+claim C1 : cold and rain
+
+argument simplification {
+  premise C1
+  ---
+  conclude cold
+}

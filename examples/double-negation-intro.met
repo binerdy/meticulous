@@ -1,0 +1,11 @@
+# Double Negation Introduction
+
+prop hungry : I am hungry
+
+claim C1 : hungry
+
+argument double-negation-intro {
+  premise C1
+  ---
+  conclude not not hungry
+}

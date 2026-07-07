@@ -39,6 +39,7 @@ let private printBlock (b: BlockView) =
         printfn "    conclude %s   [%s]" b.conclusion (b.verdict.ToUpper())
         if b.form <> "" then printfn "    form: %s — %s" b.form b.note
         if b.fallacy <> "" then printfn "    fallacy: %s — %s" b.fallacy b.note
+        if b.form = "" && b.fallacy = "" && b.note <> "" then printfn "    %s" b.note
         if b.rows.Length > 0 then
             printfn "    counterexample(s): premises true, conclusion false:"
             printTable "      " b.atoms b.rows b.results b.conclusion

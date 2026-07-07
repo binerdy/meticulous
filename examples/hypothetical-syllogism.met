@@ -1,0 +1,17 @@
+# Hypothetical Syllogism
+
+Also known as the chain rule.
+
+prop late : I wake up late
+prop miss : I miss the bus
+prop tardy : I am tardy for work
+
+claim C1 : late -> miss
+claim C2 : miss -> tardy
+
+argument hypothetical-syllogism {
+  premise C1
+  premise C2
+  ---
+  conclude late -> tardy
+}

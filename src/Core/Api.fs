@@ -147,17 +147,45 @@ module Api =
         let repairs =
             if check.IsValid then [] else suggestRepairs rp rc
 
+        // Can the premises all hold at once? If not, the argument is valid only
+        // *vacuously* — a situation worth naming, not hiding behind a green badge.
+        let premisesConsistent =
+            match rp with
+            | [] -> true
+            | _ -> (truthTable (List.reduce (fun a b -> And(a, b)) rp)).Verdict <> Contradiction
+
         // Every argument gets an explanation: the catalog's note when the shape
         // is recognized, otherwise a plain statement of what the verdict means.
         let explanation =
-            match recognized with
-            | Some form -> form.Note
-            | None ->
+            if List.isEmpty rp then
                 if check.IsValid then
-                    "Valid: no possible situation makes every premise true and the conclusion false."
+                    match recognized with
+                    | Some form -> form.Note
+                    | None ->
+                        "A theorem: the conclusion holds in every possible situation — a tautology, provable from no premises at all."
                 else
-                    sprintf "Invalid: %d situation(s) make every premise true while the conclusion fails."
+                    sprintf "Not a theorem: the conclusion fails in %d situation(s), so it is no tautology."
                         (List.length check.Counterexamples)
+            elif check.IsValid && not premisesConsistent then
+                "Valid, but vacuously so: the premises contradict one another and can never all hold — and from a contradiction, anything follows (ex falso quodlibet)."
+            else
+                match recognized with
+                | Some form -> form.Note
+                | None ->
+                    if check.IsValid then
+                        "Valid: no possible situation makes every premise true and the conclusion false."
+                    else
+                        sprintf "Invalid: %d situation(s) make every premise true while the conclusion fails."
+                            (List.length check.Counterexamples)
+
+        // The chip next to the verdict: a recognized form's name, or — for a
+        // premise-less theorem no law accounts for — the plain label "tautology".
+        let formLabel =
+            if not check.IsValid then ""
+            else
+                match recognized with
+                | Some f -> displayTitle f
+                | None -> if List.isEmpty rp then "tautology" else ""
 
         { empty with
             kind = "argument"
@@ -165,7 +193,7 @@ module Api =
             premises = rp |> List.map toUnicode |> List.toArray
             conclusion = toUnicode rc
             verdict = if check.IsValid then "valid" else "invalid"
-            form = (if check.IsValid then recognized |> Option.map displayTitle else None) |> Option.defaultValue ""
+            form = formLabel
             fallacy = (if check.IsValid then None else recognized |> Option.map displayTitle) |> Option.defaultValue ""
             note = explanation
             suggestion = repairs |> List.map toUnicode |> List.toArray

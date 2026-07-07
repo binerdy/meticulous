@@ -1,0 +1,39 @@
+# Tautology
+
+prop shining : The sun is shining
+
+claim C1 : shining or not shining
+
+// The direct way to ask "is this a tautology?" — the badge answers:
+table C1
+
+// A tautology can also be stated as a *theorem*: an argument with no
+// premises at all. It follows from nothing, because it's true in every
+// possible situation.
+argument excluded-middle {
+  ---
+  conclude C1
+}
+
+// What a tautology can NOT do is deliver a specific conclusion. C1 is
+// always true, so it carries no information — `shining` does not follow:
+argument no-information {
+  premise C1
+  ---
+  conclude shining
+}
+
+## Ex falso quodlibet
+
+// The opposite trap: premises that contradict each other prove anything
+// at all — even the moon being cheese. Watch the engine call this out,
+// and derive the classic proof.
+
+prop cheese : The moon is made of cheese
+
+argument ex-falso {
+  premise shining
+  premise not shining
+  ---
+  conclude cheese
+}
