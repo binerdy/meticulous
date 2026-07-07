@@ -1,6 +1,6 @@
 {
   "name": "meticulous",
-  "displayName": "meticulous",
+  "displayName": "Meticulous",
   "description": "A philosophical DSL: propositions, truth tables, and structural relations, with live preview.",
   "version": "0.1.0",
   "publisher": "meticulous-lang",
@@ -60,6 +60,7 @@
     "compile:bundle": "node esbuild.mjs",
     "compile": "npm run compile:fable && npm run compile:bundle",
     "typecheck": "tsc --noEmit",
+    "build:site": "esbuild ../site/generate.ts --bundle --platform=node --outfile=../site/generate.cjs --log-level=warning && node ../site/generate.cjs",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package",
     "publish": "vsce publish"

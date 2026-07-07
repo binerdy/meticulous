@@ -486,3 +486,5 @@ build/js/
 vscode/src/core/
 vscode/dist/
 *.vsix
+_site/
+site/generate.cjs

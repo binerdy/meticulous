@@ -1,0 +1,62 @@
+name: Docs
+
+# Builds the documentation site — every example rendered by the real engine —
+# and deploys it to GitHub Pages on every push to main.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+
+      - name: Restore .NET tools (Fable)
+        run: dotnet tool restore
+
+      - name: Build site (Fable + renderer over examples/)
+        working-directory: vscode
+        run: |
+          npm ci
+          npm run compile:fable
+          npm run build:site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true # enable GitHub Pages on first run
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
