@@ -149,52 +149,445 @@ function renderRelation(block: BlockView): string {
   );
 }
 
-/** The `map` block: every asserted relation drawn as a node-link diagram.
- *  Nodes sit on an ellipse (deterministic — no physics), edges are colored by
- *  relation kind, and a refuted formal assertion renders dashed with a ✗. */
+const nodeWidthOf = (label: string) => Math.min(label.length, 26) * 7.2 + 20;
+
+/** Sugiyama-style layered layout (the algorithm behind Graphviz dot):
+ *  1. break cycles (DFS back-edges are ignored for placement only),
+ *  2. assign each node a layer by longest path from the roots,
+ *  2b. give edges that span several layers invisible *virtual nodes* on each
+ *      layer they cross, so they can be routed around real nodes,
+ *  3. reduce edge crossings with barycenter sweeps (virtual nodes included),
+ *  4. spread each layer horizontally, centered.
+ *  Deterministic — the same document always draws the same map.
+ *  Returns node positions plus, per link, the waypoints its edge bends through. */
+function layeredLayout(labels: string[], links: { from: string; to: string }[]) {
+  const index = new Map(labels.map((label, i) => [label, i]));
+  const out: Set<number>[] = labels.map(() => new Set());
+  for (const { from, to } of links) {
+    const a = index.get(from)!, b = index.get(to)!;
+    if (a !== b) out[a].add(b);
+  }
+
+  // 1. cycle breaking: edges that close a DFS cycle are skipped when layering
+  const state = labels.map(() => 0); // 0 new, 1 on stack, 2 done
+  const backEdges = new Set<string>();
+  const dfs = (v: number) => {
+    state[v] = 1;
+    for (const w of out[v]) {
+      if (state[w] === 1) backEdges.add(`${v}>${w}`);
+      else if (state[w] === 0) dfs(w);
+    }
+    state[v] = 2;
+  };
+  labels.forEach((_, v) => state[v] === 0 && dfs(v));
+
+  // 2. layers: longest path (repeated relaxation; graphs here are tiny)
+  //    vLayer/vWidth cover every vertex — real nodes first, dummies appended.
+  const vLayer = labels.map(() => 0);
+  for (let pass = 0; pass < labels.length; pass++)
+    labels.forEach((_, v) => {
+      for (const w of out[v])
+        if (!backEdges.has(`${v}>${w}`)) vLayer[w] = Math.max(vLayer[w], vLayer[v] + 1);
+    });
+  const vWidth = labels.map(nodeWidthOf);
+
+  // 2b. long edges become chains through virtual vertices
+  const chains = links.map(({ from, to }) => {
+    const a = index.get(from)!, b = index.get(to)!;
+    const span = vLayer[b] - vLayer[a];
+    if (a === b || Math.abs(span) <= 1) return [a, b];
+    const step = Math.sign(span);
+    const chain = [a];
+    for (let k = 1; k < Math.abs(span); k++) {
+      chain.push(vLayer.length);
+      vLayer.push(vLayer[a] + step * k);
+      vWidth.push(10);
+    }
+    chain.push(b);
+    return chain;
+  });
+  const segments: [number, number][] = [];
+  for (const chain of chains)
+    for (let i = 0; i + 1 < chain.length; i++) segments.push([chain[i], chain[i + 1]]);
+
+  const depth = Math.max(0, ...vLayer);
+  const rows: number[][] = Array.from({ length: depth + 1 }, () => []);
+  vLayer.forEach((l, v) => rows[l].push(v));
+
+  // 3. crossing reduction: order each row by the average position of its
+  //    neighbors in the adjacent row (alternating sweeps settle it)
+  const orderOf: number[] = new Array(vLayer.length).fill(0);
+  rows.forEach((row) => row.forEach((v, i) => (orderOf[v] = i)));
+  const neighborsIn = (v: number, targetLayer: number) => {
+    const result: number[] = [];
+    for (const [a, b] of segments) {
+      if (a === v && vLayer[b] === targetLayer) result.push(b);
+      if (b === v && vLayer[a] === targetLayer) result.push(a);
+    }
+    return result;
+  };
+  for (let sweep = 0; sweep < 6; sweep++) {
+    const dir = sweep % 2 === 0 ? -1 : 1;
+    for (const row of rows) {
+      const barycenter = (v: number) => {
+        const ns = neighborsIn(v, vLayer[v] + dir);
+        return ns.length ? ns.reduce((s, w) => s + orderOf[w], 0) / ns.length : orderOf[v];
+      };
+      row.sort((u, v) => barycenter(u) - barycenter(v));
+      row.forEach((v, i) => (orderOf[v] = i));
+    }
+  }
+
+  // 4. coordinates: rows stacked vertically; initial x follows the
+  //    crossing-reduced order
+  const GAP = 42, ROW_H = 118, MARGIN = 56;
+  const coord: { x: number; y: number }[] = new Array(vLayer.length);
+  rows.forEach((row, li) => {
+    let x = 0;
+    for (const v of row) {
+      coord[v] = { x: x + vWidth[v] / 2, y: MARGIN + li * ROW_H };
+      x += vWidth[v] + GAP;
+    }
+  });
+
+  // 4b. straightening: pull every vertex toward the (weighted) average x of
+  //     its neighbors, then push overlaps apart. Chains through virtual
+  //     vertices pull four times harder — a long edge wants to be straight —
+  //     and rows re-sort by where nodes *want* to be, so a leaf node can
+  //     drift across the row toward its only connection.
+  const realCount = labels.length;
+  const segWeight = (a: number, b: number) => (a >= realCount || b >= realCount ? 4 : 1);
+  const weightedNeighbors = (v: number) =>
+    segments
+      .filter(([a, b]) => a === v || b === v)
+      .map(([a, b]) => {
+        const w = a === v ? b : a;
+        return { w, weight: segWeight(a, b) };
+      });
+
+  // push overlapping row members apart without reordering them
+  const settleRow = (row: number[]) => {
+    const sorted = [...row].sort((u, v) => coord[u].x - coord[v].x);
+    for (let k = 1; k < sorted.length; k++) {
+      const gap = coord[sorted[k - 1]].x + vWidth[sorted[k - 1]] / 2 + GAP + vWidth[sorted[k]] / 2;
+      if (coord[sorted[k]].x < gap) coord[sorted[k]].x = gap;
+    }
+    for (let k = sorted.length - 2; k >= 0; k--) {
+      const cap = coord[sorted[k + 1]].x - vWidth[sorted[k + 1]] / 2 - GAP - vWidth[sorted[k]] / 2;
+      if (coord[sorted[k]].x > cap) coord[sorted[k]].x = cap;
+    }
+    for (let k = 1; k < sorted.length; k++) {
+      const gap = coord[sorted[k - 1]].x + vWidth[sorted[k - 1]] / 2 + GAP + vWidth[sorted[k]] / 2;
+      if (coord[sorted[k]].x < gap) coord[sorted[k]].x = gap;
+    }
+  };
+
+  const relaxPasses = (count: number) => {
+    for (let pass = 0; pass < count; pass++) {
+      // Alternate top-down / bottom-up: a fixed direction lets a uniform
+      // "traveling wave" ride down the rows (each row copying its already-
+      // shifted neighbor), which freezes relative positions short of optimum.
+      const rowSequence = pass % 2 === 0 ? rows : [...rows].reverse();
+      for (const row of rowSequence) {
+        for (const v of row) {
+          const ns = weightedNeighbors(v);
+          const total = ns.reduce((s, n) => s + n.weight, 0);
+          if (total) coord[v].x = ns.reduce((s, n) => s + coord[n.w].x * n.weight, 0) / total;
+        }
+        settleRow(row);
+      }
+    }
+  };
+  relaxPasses(16);
+
+  // 4c. escape local minima: try swapping horizontally-adjacent vertices —
+  //     if trading places shortens the total (weighted) wire length, keep the
+  //     swap and let the relaxation re-settle. Two rounds catch the classic
+  //     case of a chain trapped on the wrong side of a wide neighbor.
+  const wireCostOf = (v: number) =>
+    segments.reduce(
+      (s, [a, b]) =>
+        a === v || b === v ? s + segWeight(a, b) * Math.abs(coord[a].x - coord[b].x) : s,
+      0
+    );
+  for (let round = 0; round < 2; round++) {
+    for (const row of rows) {
+      const sorted = [...row].sort((u, v) => coord[u].x - coord[v].x);
+      for (let k = 0; k + 1 < sorted.length; k++) {
+        const u = sorted[k], v = sorted[k + 1];
+        const before = wireCostOf(u) + wireCostOf(v);
+        const ux = coord[u].x, vx = coord[v].x;
+        coord[u].x = vx;
+        coord[v].x = ux;
+        if (wireCostOf(u) + wireCostOf(v) >= before) {
+          coord[u].x = ux;
+          coord[v].x = vx;
+        } else {
+          sorted[k] = v;
+          sorted[k + 1] = u;
+        }
+      }
+    }
+    relaxPasses(8);
+  }
+  // let chains fully settle after the last swaps — a chain displaced past a
+  // wide neighbor converges one row per pass, so give it room to finish
+  relaxPasses(20);
+
+  // leaf snap: a vertex with a single neighbor can always sit exactly on that
+  // neighbor's settled column (its edge becomes a straight vertical), clamped
+  // only by its row's spacing. Leaves influence nobody, so order is irrelevant.
+  for (const row of rows) {
+    for (const v of row) {
+      const ns = weightedNeighbors(v);
+      if (ns.length === 1) coord[v].x = coord[ns[0].w].x;
+    }
+    settleRow(row);
+  }
+
+  // normalize into the margins
+  const allV = coord.map((_, v) => v);
+  const shift = MARGIN - Math.min(...allV.map((v) => coord[v].x - vWidth[v] / 2));
+  allV.forEach((v) => (coord[v].x += shift));
+  const W = Math.max(480, ...allV.map((v) => coord[v].x + vWidth[v] / 2 + MARGIN));
+  const H = MARGIN * 2 + depth * ROW_H + 28;
+
+  const pos = new Map(labels.map((label, i) => [label, coord[i]]));
+  const layerOf = new Map(labels.map((label, i) => [label, vLayer[i]]));
+  // per link: the x/layer of each virtual vertex its edge passes through
+  const routes = chains.map((chain) =>
+    chain.slice(1, -1).map((d) => ({ x: coord[d].x, layer: vLayer[d] }))
+  );
+  // vertical midpoint of the channel between row `c` and row `c+1`
+  const channelMid = (c: number) => MARGIN + c * ROW_H + ROW_H / 2;
+  return { pos, layerOf, routes, channelMid, W, H };
+}
+
+/** The `map` block: every asserted relation drawn as a layered argument map
+ *  with *orthogonal* edges — each route runs vertical → horizontal → vertical,
+ *  arrows always enter nodes squarely from above (or below, for cycles), and
+ *  every label sits horizontally on its edge's crossbar. Horizontal runs in
+ *  the same channel get separate tracks so they never overlap. */
 function renderMap(block: BlockView): string {
   if (block.relations.length === 0) {
     return `<figure class="relmap-figure"><p class="empty">map needs at least one relation — e.g. <code>C1 supports C2</code>.</p></figure>`;
   }
 
   const labels = [...new Set(block.relations.flatMap(([l, , r]) => [l, r]))];
-  const W = 760, H = Math.max(320, 150 + labels.length * 42);
-  const cx = W / 2, cy = H / 2, rx = W / 2 - 130, ry = H / 2 - 45;
-
-  const pos = new Map(
-    labels.map((label, i) => {
-      const angle = (2 * Math.PI * i) / labels.length - Math.PI / 2;
-      return [label, { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) }] as const;
-    })
+  const { pos, layerOf, routes, channelMid, W, H } = layeredLayout(
+    labels,
+    block.relations.map(([from, , to]) => ({ from, to }))
   );
-  const widthOf = (label: string) => Math.min(label.length, 26) * 7.2 + 20;
+  const widthOf = nodeWidthOf;
   const shown = (label: string) => (label.length > 26 ? label.slice(0, 25) + "…" : label);
+  const HALF_NODE = 14;
 
-  const edges = block.relations
-    .map(([l, verb, r, status]) => {
+  // ---- ports: edges sharing a node's top or bottom get spread out ----------
+  // so several arrows never pile onto the same point.
+  type PortSide = { edge: number; towardX: number }[];
+  const ports = new Map<string, PortSide>(); // key: `${label}|top` / `|bottom`
+  const portKey = (label: string, side: string) => `${label}|${side}`;
+
+  block.relations.forEach(([l, , r], i) => {
+    const la = layerOf.get(l)!, lb = layerOf.get(r)!;
+    if (la === lb) return; // same-row bows keep their own geometry
+    const down = lb > la;
+    const wps = routes[i];
+    const firstX = wps.length ? wps[0].x : pos.get(r)!.x;
+    const lastX = wps.length ? wps[wps.length - 1].x : pos.get(l)!.x;
+    const srcSide = portKey(l, down ? "bottom" : "top");
+    const dstSide = portKey(r, down ? "top" : "bottom");
+    (ports.get(srcSide) ?? ports.set(srcSide, []).get(srcSide)!).push({ edge: i, towardX: firstX });
+    (ports.get(dstSide) ?? ports.set(dstSide, []).get(dstSide)!).push({ edge: i, towardX: lastX });
+  });
+
+  const portX = new Map<string, number>(); // `${edge}|src` / `${edge}|dst`
+  for (const [key, list] of ports) {
+    const label = key.slice(0, key.lastIndexOf("|"));
+    const { x } = pos.get(label)!;
+    const usable = Math.max(widthOf(label) - 28, 0);
+    const spread = list.length > 1 ? Math.min(24, usable / (list.length - 1)) : 0;
+    list.sort((p, q) => p.towardX - q.towardX);
+    list.forEach((p, j) => {
+      const isSrc = block.relations[p.edge][0] === label;
+      portX.set(`${p.edge}|${isSrc ? "src" : "dst"}`, x + (j - (list.length - 1) / 2) * spread);
+    });
+  }
+
+  // ---- channel tracks: horizontal runs between the same two rows ------------
+  // are stacked on separate y-lines (greedy interval coloring).
+  type Run = { edge: number; hop: number; x1: number; x2: number };
+  const channelRuns = new Map<number, Run[]>();
+  const runTrackY = new Map<string, number>(); // `${edge}|${hop}` -> y
+
+  const edgeColumns = (i: number): number[] | null => {
+    const [l, , r] = block.relations[i];
+    const la = layerOf.get(l)!, lb = layerOf.get(r)!;
+    if (la === lb) return null;
+    return [
+      portX.get(`${i}|src`) ?? pos.get(l)!.x,
+      ...routes[i].map((w) => w.x),
+      portX.get(`${i}|dst`) ?? pos.get(r)!.x,
+    ];
+  };
+
+  block.relations.forEach(([l, , r], i) => {
+    const cols = edgeColumns(i);
+    if (!cols) return;
+    const la = layerOf.get(l)!, lb = layerOf.get(r)!;
+    const step = Math.sign(lb - la);
+    for (let hop = 0; hop + 1 < cols.length; hop++) {
+      const channel = Math.min(la + hop * step, la + (hop + 1) * step);
+      (channelRuns.get(channel) ?? channelRuns.set(channel, []).get(channel)!)
+        .push({ edge: i, hop, x1: cols[hop], x2: cols[hop + 1] });
+    }
+  });
+
+  const lastHopOf = (edge: number) => routes[edge].length;
+
+  for (const [channel, runs] of channelRuns) {
+    // Runs that leave the same node (fan-out) or arrive at the same node
+    // (fan-in) form one group and share a single turn height — the fan reads
+    // as one clean bus. A run that is both first and last hop joins whichever
+    // fan is bigger. Everything else is a group of one.
+    const srcCount = new Map<string, number>();
+    const dstCount = new Map<string, number>();
+    for (const run of runs) {
+      if (run.hop === 0) {
+        const s = block.relations[run.edge][0];
+        srcCount.set(s, (srcCount.get(s) ?? 0) + 1);
+      }
+      if (run.hop === lastHopOf(run.edge)) {
+        const d = block.relations[run.edge][2];
+        dstCount.set(d, (dstCount.get(d) ?? 0) + 1);
+      }
+    }
+    const keyOf = (run: Run) => {
+      const src = block.relations[run.edge][0], dst = block.relations[run.edge][2];
+      const s = run.hop === 0 ? srcCount.get(src) ?? 0 : 0;
+      const d = run.hop === lastHopOf(run.edge) ? dstCount.get(dst) ?? 0 : 0;
+      if (s === 0 && d === 0) return `edge:${run.edge}:${run.hop}`;
+      return d > s ? `dst:${dst}` : `src:${src}`;
+    };
+
+    const groups = new Map<string, { runs: Run[]; lo: number; hi: number }>();
+    for (const run of runs) {
+      const key = keyOf(run);
+      const lo = Math.min(run.x1, run.x2), hi = Math.max(run.x1, run.x2);
+      const g = groups.get(key);
+      if (g) { g.runs.push(run); g.lo = Math.min(g.lo, lo); g.hi = Math.max(g.hi, hi); }
+      else groups.set(key, { runs: [run], lo, hi });
+    }
+
+    // Greedy interval coloring over groups: overlapping groups get
+    // different tracks, disjoint ones reuse the same height.
+    const ordered = [...groups.values()].sort((a, b) => a.lo - b.lo);
+    const trackEnds: number[] = [];
+    for (const group of ordered) {
+      let t = trackEnds.findIndex((end) => group.lo > end + 18);
+      if (t === -1) { t = trackEnds.length; trackEnds.push(group.hi); }
+      else trackEnds[t] = Math.max(trackEnds[t], group.hi);
+      for (const run of group.runs) {
+        runTrackY.set(`${run.edge}|${run.hop}`, t); // track index for now
+      }
+    }
+    for (const run of runs) {
+      const t = runTrackY.get(`${run.edge}|${run.hop}`)!;
+      runTrackY.set(`${run.edge}|${run.hop}`, channelMid(channel) + (t - (trackEnds.length - 1) / 2) * 13);
+    }
+  }
+
+  // ---- build the orthogonal paths -------------------------------------------
+  // Labels are gathered as specs (with fallback positions) and placed at the
+  // end by a collision pass, so no two labels — and no label and node — overlap.
+  type LabelSpec = { text: string; cls: string; x: number; anchor: "middle" | "start"; candidates: number[] };
+  const labelSpecs: LabelSpec[] = [];
+
+  const edgePaths = block.relations
+    .map(([l, verb, r, status], i) => {
       const a = pos.get(l)!, b = pos.get(r)!;
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const ux = dx / dist, uy = dy / dist;
-      // pull each endpoint out of its node box
-      const trim = (label: string) => (widthOf(label) / 2) * Math.abs(ux) + 15 * Math.abs(uy) + 6;
-      const x1 = a.x + ux * trim(l), y1 = a.y + uy * trim(l);
-      const x2 = b.x - ux * trim(r), y2 = b.y - uy * trim(r);
       const failed = status === "fails" ? " failed" : "";
       const both = verb === "equivalent-to" ? ` marker-start="url(#dot-${verb})"` : "";
       const labelText = status === "fails" ? `${verb} ✗` : verb;
-      // The label rides its arrow: rotated to the edge's angle, flipped when
-      // the arrow points leftward so the text never renders upside down, and
-      // nudged perpendicularly off the line (dy applies in the rotated frame).
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-      const upright = angle > 90 ? angle - 180 : angle < -90 ? angle + 180 : angle;
-      return (
-        `<line class="edge ${verb}${failed}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" marker-end="url(#arrow-${verb})"${both}/>` +
-        `<text class="edge-label${failed}" x="${mx.toFixed(1)}" y="${my.toFixed(1)}" dy="-6" text-anchor="middle" transform="rotate(${upright.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})">${escapeHtml(labelText)}</text>`
-      );
+      const cls = `${verb}${failed}`;
+
+      // Same-row neighbors connect with a bow above the row.
+      if (layerOf.get(l)! === layerOf.get(r)!) {
+        const x1 = a.x + Math.sign(b.x - a.x) * (widthOf(l) / 2 + 8);
+        const x2 = b.x - Math.sign(b.x - a.x) * (widthOf(r) / 2 + 8);
+        const y = a.y - 12;
+        const mx = (x1 + x2) / 2;
+        const bow = 34 + Math.abs(x2 - x1) / 12;
+        const top = y - bow / 2 - 8;
+        labelSpecs.push({ text: labelText, cls, x: mx, anchor: "middle", candidates: [top, top - 14, top - 28] });
+        return `<path class="edge ${cls}" d="M ${x1.toFixed(1)} ${y} Q ${mx.toFixed(1)} ${(y - bow).toFixed(1)} ${x2.toFixed(1)} ${y}" marker-end="url(#arrow-${verb})"${both}/>`;
+      }
+
+      const cols = edgeColumns(i)!;
+      const down = layerOf.get(r)! > layerOf.get(l)!;
+      const yStart = a.y + (down ? 1 : -1) * (HALF_NODE + 2);
+      const yEnd = b.y - (down ? 1 : -1) * (HALF_NODE + 8);
+
+      const points: { x: number; y: number }[] = [{ x: cols[0], y: yStart }];
+      for (let hop = 0; hop + 1 < cols.length; hop++) {
+        if (Math.abs(cols[hop + 1] - cols[hop]) >= 1) {
+          const ty = runTrackY.get(`${i}|${hop}`)!;
+          points.push({ x: cols[hop], y: ty }, { x: cols[hop + 1], y: ty });
+        }
+      }
+      points.push({ x: cols[cols.length - 1], y: yEnd });
+      const path = "M " + points.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ");
+
+      // Label: horizontal, preferring the widest crossbar (above it, then
+      // below, then further out); a pure vertical drop hangs its label beside
+      // the line, sliding along it if the spot is taken.
+      let best = -1, bx = 0, by = 0;
+      for (let k = 0; k + 1 < points.length; k++) {
+        const w = Math.abs(points[k + 1].x - points[k].x);
+        if (points[k].y === points[k + 1].y && w > best) {
+          best = w;
+          bx = (points[k].x + points[k + 1].x) / 2;
+          by = points[k].y;
+        }
+      }
+      if (best >= 24) {
+        labelSpecs.push({ text: labelText, cls, x: bx, anchor: "middle", candidates: [by - 6, by + 13, by - 21, by + 28] });
+      } else {
+        const midY = (yStart + yEnd) / 2;
+        labelSpecs.push({ text: labelText, cls, x: cols[0] + 8, anchor: "start", candidates: [midY, midY + 16, midY - 16, midY + 32, midY - 32] });
+      }
+
+      return `<path class="edge ${cls}" d="${path}" marker-end="url(#arrow-${verb})"${both}/>`;
     })
     .join("");
+
+  // ---- place labels without overlaps -----------------------------------------
+  // Node boxes are obstacles too, so a label never sits on a node.
+  type Box = { x1: number; x2: number; y1: number; y2: number };
+  const occupied: Box[] = labels.map((label) => {
+    const { x, y } = pos.get(label)!;
+    const w = widthOf(label);
+    return { x1: x - w / 2, x2: x + w / 2, y1: y - HALF_NODE, y2: y + HALF_NODE };
+  });
+  const collides = (box: Box) =>
+    occupied.some((b) => b.x1 < box.x2 && box.x1 < b.x2 && b.y1 < box.y2 && box.y1 < b.y2);
+
+  const edgeLabels = labelSpecs
+    .map((spec) => {
+      const w = spec.text.length * 6.3;
+      const x1 = spec.anchor === "middle" ? spec.x - w / 2 : spec.x;
+      const boxAt = (y: number): Box => ({ x1, x2: x1 + w, y1: y - 10, y2: y + 3 });
+      let y = spec.candidates[spec.candidates.length - 1];
+      for (const candidate of spec.candidates) {
+        if (!collides(boxAt(candidate))) { y = candidate; break; }
+      }
+      occupied.push(boxAt(y));
+      const anchor = spec.anchor === "middle" ? ` text-anchor="middle"` : ` text-anchor="start"`;
+      return `<text class="edge-label ${spec.cls}" x="${spec.x.toFixed(1)}" y="${y.toFixed(1)}"${anchor}>${escapeHtml(spec.text)}</text>`;
+    })
+    .join("");
+
+  const edges = edgePaths + edgeLabels;
 
   const nodes = labels
     .map((label) => {

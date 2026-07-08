@@ -159,14 +159,26 @@ figure.relations td { padding: .18em .9em .18em 0; }
 figure.relmap-figure { margin: 1.2rem 0; padding: .7rem 1rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 figure.relmap-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .45rem; }
 svg.relmap { width: 100%; height: auto; }
-svg.relmap .edge { stroke-width: 1.6; fill: none; }
+svg.relmap .edge { stroke-width: 1.6; fill: none; stroke-linejoin: round; }
 svg.relmap .edge.failed { stroke-dasharray: 5 4; }
-svg.relmap .edge.supports, svg.relmap .arrow.supports { stroke: var(--green); fill: var(--green); }
-svg.relmap .edge.contradicts, svg.relmap .arrow.contradicts { stroke: var(--red); fill: var(--red); }
-svg.relmap .edge.entails, svg.relmap .arrow.entails { stroke: var(--accent); fill: var(--accent); }
-svg.relmap .edge.presupposes, svg.relmap .arrow.presupposes { stroke: var(--amber); fill: var(--amber); }
-svg.relmap .edge.equivalent-to, svg.relmap .arrow.equivalent-to { stroke: var(--muted); fill: var(--muted); }
+/* edges are stroked lines only; the fill belongs solely to the arrowheads —
+   a filled multi-point path would render as a solid polygon */
+svg.relmap .edge.supports { stroke: var(--green); }
+svg.relmap .edge.contradicts { stroke: var(--red); }
+svg.relmap .edge.entails { stroke: var(--accent); }
+svg.relmap .edge.presupposes { stroke: var(--amber); }
+svg.relmap .edge.equivalent-to { stroke: var(--muted); }
+svg.relmap .arrow.supports { fill: var(--green); }
+svg.relmap .arrow.contradicts { fill: var(--red); }
+svg.relmap .arrow.entails { fill: var(--accent); }
+svg.relmap .arrow.presupposes { fill: var(--amber); }
+svg.relmap .arrow.equivalent-to { fill: var(--muted); }
 svg.relmap .edge-label { fill: var(--muted); font-size: 10.5px; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+svg.relmap .edge-label.supports { fill: var(--green); }
+svg.relmap .edge-label.contradicts { fill: var(--red); }
+svg.relmap .edge-label.entails { fill: var(--accent); }
+svg.relmap .edge-label.presupposes { fill: var(--amber); }
+svg.relmap .edge-label.equivalent-to { fill: var(--muted); }
 svg.relmap .edge-label.failed { fill: var(--red); }
 svg.relmap .node rect { fill: var(--bg); stroke: var(--border); }
 svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }

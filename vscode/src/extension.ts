@@ -80,14 +80,26 @@ const STYLE = `
   figure.relmap-figure { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
   figure.relmap-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }
   svg.relmap { width: 100%; height: auto; }
-  svg.relmap .edge { stroke-width: 1.6; fill: none; }
+  svg.relmap .edge { stroke-width: 1.6; fill: none; stroke-linejoin: round; }
   svg.relmap .edge.failed { stroke-dasharray: 5 4; }
-  svg.relmap .edge.supports, svg.relmap .arrow.supports { stroke: var(--vscode-testing-iconPassed, #3fb950); fill: var(--vscode-testing-iconPassed, #3fb950); }
-  svg.relmap .edge.contradicts, svg.relmap .arrow.contradicts { stroke: var(--vscode-testing-iconFailed, #f85149); fill: var(--vscode-testing-iconFailed, #f85149); }
-  svg.relmap .edge.entails, svg.relmap .arrow.entails { stroke: var(--vscode-textLink-foreground, #58a6ff); fill: var(--vscode-textLink-foreground, #58a6ff); }
-  svg.relmap .edge.presupposes, svg.relmap .arrow.presupposes { stroke: var(--vscode-editorWarning-foreground, #cca700); fill: var(--vscode-editorWarning-foreground, #cca700); }
-  svg.relmap .edge.equivalent-to, svg.relmap .arrow.equivalent-to { stroke: var(--vscode-descriptionForeground, #8d96a0); fill: var(--vscode-descriptionForeground, #8d96a0); }
+  /* edges are stroked lines only; fill belongs solely to the arrowheads —
+     a filled multi-point path would render as a solid polygon */
+  svg.relmap .edge.supports { stroke: var(--vscode-testing-iconPassed, #3fb950); }
+  svg.relmap .edge.contradicts { stroke: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .edge.entails { stroke: var(--vscode-textLink-foreground, #58a6ff); }
+  svg.relmap .edge.presupposes { stroke: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.relmap .edge.equivalent-to { stroke: var(--vscode-descriptionForeground, #8d96a0); }
+  svg.relmap .arrow.supports { fill: var(--vscode-testing-iconPassed, #3fb950); }
+  svg.relmap .arrow.contradicts { fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .arrow.entails { fill: var(--vscode-textLink-foreground, #58a6ff); }
+  svg.relmap .arrow.presupposes { fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.relmap .arrow.equivalent-to { fill: var(--vscode-descriptionForeground, #8d96a0); }
   svg.relmap .edge-label { fill: var(--vscode-descriptionForeground, #8d96a0); font-size: 10.5px; font-family: var(--vscode-font-family); }
+  svg.relmap .edge-label.supports { fill: var(--vscode-testing-iconPassed, #3fb950); }
+  svg.relmap .edge-label.contradicts { fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .edge-label.entails { fill: var(--vscode-textLink-foreground, #58a6ff); }
+  svg.relmap .edge-label.presupposes { fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.relmap .edge-label.equivalent-to { fill: var(--vscode-descriptionForeground, #8d96a0); }
   svg.relmap .edge-label.failed { fill: var(--vscode-testing-iconFailed, #f85149); }
   svg.relmap .node rect { fill: var(--vscode-editor-inactiveSelectionBackground, #8882); stroke: var(--vscode-widget-border, #8884); }
   svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }
