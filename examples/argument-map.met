@@ -1,0 +1,27 @@
+# Mapping a debate
+
+Relations connect claims into a picture of the debate. Three kinds are
+formal — the engine verifies them and stamps holds or fails. Two are
+informal — supports and presupposes are your judgments, recorded honestly
+as assertions.
+
+prop policy : The tax cut was enacted
+prop growth : The economy grew
+
+claim A : policy -> growth
+claim B : not policy or growth
+claim C : growth -> policy
+claim D : policy and not growth
+
+// Formal assertions — each one is checked:
+A equivalent-to B
+A contradicts D
+D entails policy
+B entails C
+
+// Informal assertions — recorded, not checked:
+"Voters reward incumbents for growth" supports C
+A presupposes "a causal link from policy to growth"
+
+// The whole picture:
+map

@@ -430,6 +430,54 @@ let ``forward and dangling citations are caught`` () =
              }\n"
     Assert.Contains("doesn't exist earlier", proof.proof.[1].[4])
 
+// ---- M5: structural relations ---------------------------------------------------
+
+let private relationDoc =
+    "prop policy : The tax cut was enacted\n\
+     prop growth : The economy grew\n\
+     claim A : policy -> growth\n\
+     claim B : not policy or growth\n\
+     claim D : policy and not growth\n\
+     A equivalent-to B\n\
+     A contradicts D\n\
+     B entails A\n\
+     A entails D\n\
+     \"Voters reward growth\" supports A\n\
+     map\n"
+
+[<Fact>]
+let ``formal relation assertions are verified`` () =
+    let blocks = analyze relationDoc
+    let rels = blocks |> Array.filter (fun b -> b.kind = "relation")
+    Assert.Equal(5, rels.Length)
+    Assert.Equal("holds", rels.[0].verdict)      // A equivalent-to B
+    Assert.Equal("holds", rels.[1].verdict)      // A contradicts D
+    Assert.Equal("holds", rels.[2].verdict)      // B entails A
+    Assert.Equal("fails", rels.[3].verdict)      // A entails D — no!
+    Assert.Contains("counterexample", rels.[3].note)
+    Assert.Equal("asserted", rels.[4].verdict)   // informal support
+    Assert.Contains("not checked", rels.[4].note)
+
+[<Fact>]
+let ``the map collects every relation with its status`` () =
+    let map = analyze relationDoc |> Array.find (fun b -> b.kind = "map")
+    Assert.Equal(5, map.relations.Length)
+    Assert.Equal<string[]>([| "A"; "equivalent-to"; "B"; "holds" |], map.relations.[0])
+    Assert.Equal("“Voters reward growth”", map.relations.[4].[0])
+
+[<Fact>]
+let ``prose sentences do not become relations`` () =
+    let blocks = analyze "The engine supports many great features here.\n"
+    Assert.Equal("prose", blocks.[0].kind)
+
+[<Fact>]
+let ``relations keep props counted as used, and undeclared names warn`` () =
+    let warnings = lint "prop p : Something\nprop q : Other\np supports q\nghost entails p\n"
+    // p and q are used (via the relation), so the only warning is `ghost`.
+    let w = Assert.Single warnings
+    Assert.Contains("ghost", w.message)
+    Assert.Equal(4, w.line)
+
 // ---- Editor extras: catalog and lint -------------------------------------------
 
 [<Fact>]

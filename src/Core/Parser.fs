@@ -124,6 +124,44 @@ module Parser =
         | -1 -> None
         | idx -> Some(s.Substring(0, idx).Trim(), s.Substring(idx + marker.Length).Trim())
 
+    /// Try to read one relation end from the front of a string: either a
+    /// quoted ad-hoc statement, or a single (possibly kebab-case) name.
+    /// Returns the ref and whatever text follows it.
+    let private tryRef (s: string) : (RelRef * string) option =
+        let s = s.TrimStart()
+        if s.StartsWith "\"" then
+            match s.IndexOf('"', 1) with
+            | -1 -> None
+            | close -> Some(Quoted(s.Substring(1, close - 1)), s.Substring(close + 1))
+        else
+            let isNameChar c = System.Char.IsLetterOrDigit c || c = '_' || c = '-'
+            let len = s |> Seq.takeWhile isNameChar |> Seq.length
+            if len = 0 || not (System.Char.IsLetter s.[0]) then None
+            else Some(Named(s.Substring(0, len)), s.Substring len)
+
+    let private relationVerbs =
+        [ "supports", Supports
+          "presupposes", Presupposes
+          "contradicts", Contradicts
+          "entails", Entails
+          "equivalent-to", EquivalentTo ]
+
+    /// Recognise `<ref> <verb> <ref>` — e.g.  C1 supports C2  or
+    /// `A entails "the streets flood"`. Anything that doesn't fit exactly
+    /// (extra words, missing ref) is left alone, so prose stays prose.
+    let private tryParseRelation (line: string) : Statement option =
+        tryRef line
+        |> Option.bind (fun (left, rest) ->
+            let rest = rest.TrimStart()
+            relationVerbs
+            |> List.tryPick (fun (verb, kind) ->
+                if rest.StartsWith(verb + " ") then
+                    tryRef (rest.Substring(verb.Length + 1))
+                    |> Option.bind (fun (right, leftover) ->
+                        if leftover.Trim() = "" then Some(Relates(left, kind, right)) else None)
+                else
+                    None))
+
     /// Parse a single line into an optional statement.
     /// Blank/whitespace-only lines return `Ok None`.
     let parseLine (raw: string) : Result<Statement option, string> =
@@ -173,6 +211,9 @@ module Parser =
         elif line = "analyze" then
             Ok(Some Analyze)
 
+        elif line = "map" then
+            Ok(Some RelationMap)
+
         elif line.StartsWith "argument" then
             // Argument *blocks* are assembled in parseLines below; a header
             // reaching this function means the opening brace was missing.
@@ -182,8 +223,11 @@ module Parser =
             Error "a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"
 
         else
-            // Anything we don't recognise is plain prose.
-            Ok(Some(Prose line))
+            // A relation assertion like `C1 supports C2`?
+            // Anything else is plain prose.
+            match tryParseRelation line with
+            | Some relation -> Ok(Some relation)
+            | None -> Ok(Some(Prose line))
 
     /// Parse the interior of an `argument name { ... }` block.
     /// `body` carries (lineNumber, rawLine) for everything between the braces.

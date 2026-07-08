@@ -37,6 +37,8 @@ const KEYWORD_SNIPPETS: { label: string; detail: string; body: string }[] = [
   { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
   { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
   { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
+  { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
+  { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
   { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" },
 ];

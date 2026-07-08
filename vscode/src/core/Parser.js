@@ -1,11 +1,12 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
-import { ProofLine, CheckKind, TableTarget, Statement, Formula } from "./Ast.js";
-import { choose, ofSeq, map as map_1, filter, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { ProofLine, CheckKind, TableTarget, Statement, RelationKind, RelRef, Formula } from "./Ast.js";
+import { choose, ofSeq, map as map_1, filter, singleton, append, empty, tryPick, ofArray, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
 import { replace, printf, toText, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
 import { takeWhile, length, forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
+import { bind } from "./fable_modules/fable-library-js.5.6.0/Option.js";
 import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { parse } from "./fable_modules/fable-library-js.5.6.0/Int32.js";
 import { item, map } from "./fable_modules/fable-library-js.5.6.0/Array.js";
@@ -259,6 +260,60 @@ function splitOnKeyword(s, kw) {
     }
 }
 
+function tryRef(s) {
+    const s_1 = s.trimStart();
+    if (s_1.startsWith("\"")) {
+        const matchValue = s_1.indexOf("\"", 1) | 0;
+        if (matchValue === -1) {
+            return undefined;
+        }
+        else {
+            const close = matchValue | 0;
+            return [new RelRef(1, [substring(s_1, 1, close - 1)]), substring(s_1, close + 1)];
+        }
+    }
+    else {
+        const len = length(takeWhile((c) => {
+            if (isLetterOrDigit(c) ? true : (c === "_")) {
+                return true;
+            }
+            else {
+                return c === "-";
+            }
+        }, s_1.split(""))) | 0;
+        if ((len === 0) ? true : !isLetter(s_1[0])) {
+            return undefined;
+        }
+        else {
+            return [new RelRef(0, [substring(s_1, 0, len)]), substring(s_1, len)];
+        }
+    }
+}
+
+const relationVerbs = ofArray([["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])], ["equivalent-to", new RelationKind(4, [])]]);
+
+function tryParseRelation(line) {
+    return bind((tupledArg) => {
+        const rest_1 = tupledArg[1].trimStart();
+        return tryPick((tupledArg_1) => {
+            const verb = tupledArg_1[0];
+            if (rest_1.startsWith(verb + " ")) {
+                return bind((tupledArg_2) => {
+                    if (tupledArg_2[1].trim() === "") {
+                        return new Statement(9, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
+                    }
+                    else {
+                        return undefined;
+                    }
+                }, tryRef(substring(rest_1, verb.length + 1)));
+            }
+            else {
+                return undefined;
+            }
+        }, relationVerbs);
+    }, tryRef(line));
+}
+
 /**
  * Parse a single line into an optional statement.
  * Blank/whitespace-only lines return `Ok None`.
@@ -314,17 +369,29 @@ export function parseLine(raw) {
             return Result_Bind((lf) => Result_Map((rf) => (new Statement(5, [new CheckKind(1, [lf, rf])])), parseFormula(r)), parseFormula(matchValue_2[0]));
         }
     }
-    else if (line === "analyze") {
-        return new FSharpResult$2(0, [new Statement(8, [])]);
-    }
-    else if (line.startsWith("argument")) {
-        return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
-    }
-    else if (line.startsWith("proof")) {
-        return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"]);
-    }
     else {
-        return new FSharpResult$2(0, [new Statement(1, [line])]);
+        switch (line) {
+            case "analyze":
+                return new FSharpResult$2(0, [new Statement(8, [])]);
+            case "map":
+                return new FSharpResult$2(0, [new Statement(10, [])]);
+            default:
+                if (line.startsWith("argument")) {
+                    return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
+                }
+                else if (line.startsWith("proof")) {
+                    return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"]);
+                }
+                else {
+                    const matchValue_3 = tryParseRelation(line);
+                    if (matchValue_3 == null) {
+                        return new FSharpResult$2(0, [new Statement(1, [line])]);
+                    }
+                    else {
+                        return new FSharpResult$2(0, [matchValue_3]);
+                    }
+                }
+        }
     }
 }
 

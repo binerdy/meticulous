@@ -133,6 +133,92 @@ function renderProof(block: BlockView): string {
   return `<figure class="argument proof-figure"><figcaption><span class="arg-name">${escapeHtml(block.name)}</span>${verdictBadge(block.verdict)}<span class="check-label">proof</span></figcaption><table class="proof">${rows}</table>${note}</figure>`;
 }
 
+/** One asserted relation: left/verb/right with the engine's verdict —
+ *  holds ✓ (verified), fails ✗ (refuted), or asserted (informal). */
+function renderRelation(block: BlockView): string {
+  const mark = block.verdict === "holds" ? "✓ holds" : block.verdict === "fails" ? "✗ fails" : "asserted";
+  const note = block.note ? `<div class="note">${escapeHtml(block.note)}</div>` : "";
+  return (
+    `<div class="relation-stmt">` +
+    `<span class="rel-claim">${escapeHtml(block.formula)}</span>` +
+    `<span class="rel-verb rel-${escapeHtml(block.title)}">${escapeHtml(block.title)}</span>` +
+    `<span class="rel-claim">${escapeHtml(block.conclusion)}</span>` +
+    `<span class="chip chip-${escapeHtml(block.verdict)}">${mark}</span>` +
+    note +
+    `</div>`
+  );
+}
+
+/** The `map` block: every asserted relation drawn as a node-link diagram.
+ *  Nodes sit on an ellipse (deterministic — no physics), edges are colored by
+ *  relation kind, and a refuted formal assertion renders dashed with a ✗. */
+function renderMap(block: BlockView): string {
+  if (block.relations.length === 0) {
+    return `<figure class="relmap-figure"><p class="empty">map needs at least one relation — e.g. <code>C1 supports C2</code>.</p></figure>`;
+  }
+
+  const labels = [...new Set(block.relations.flatMap(([l, , r]) => [l, r]))];
+  const W = 760, H = Math.max(320, 150 + labels.length * 42);
+  const cx = W / 2, cy = H / 2, rx = W / 2 - 130, ry = H / 2 - 45;
+
+  const pos = new Map(
+    labels.map((label, i) => {
+      const angle = (2 * Math.PI * i) / labels.length - Math.PI / 2;
+      return [label, { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) }] as const;
+    })
+  );
+  const widthOf = (label: string) => Math.min(label.length, 26) * 7.2 + 20;
+  const shown = (label: string) => (label.length > 26 ? label.slice(0, 25) + "…" : label);
+
+  const edges = block.relations
+    .map(([l, verb, r, status]) => {
+      const a = pos.get(l)!, b = pos.get(r)!;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const ux = dx / dist, uy = dy / dist;
+      // pull each endpoint out of its node box
+      const trim = (label: string) => (widthOf(label) / 2) * Math.abs(ux) + 15 * Math.abs(uy) + 6;
+      const x1 = a.x + ux * trim(l), y1 = a.y + uy * trim(l);
+      const x2 = b.x - ux * trim(r), y2 = b.y - uy * trim(r);
+      const failed = status === "fails" ? " failed" : "";
+      const both = verb === "equivalent-to" ? ` marker-start="url(#dot-${verb})"` : "";
+      const labelText = status === "fails" ? `${verb} ✗` : verb;
+      // The label rides its arrow: rotated to the edge's angle, flipped when
+      // the arrow points leftward so the text never renders upside down, and
+      // nudged perpendicularly off the line (dy applies in the rotated frame).
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const upright = angle > 90 ? angle - 180 : angle < -90 ? angle + 180 : angle;
+      return (
+        `<line class="edge ${verb}${failed}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" marker-end="url(#arrow-${verb})"${both}/>` +
+        `<text class="edge-label${failed}" x="${mx.toFixed(1)}" y="${my.toFixed(1)}" dy="-6" text-anchor="middle" transform="rotate(${upright.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})">${escapeHtml(labelText)}</text>`
+      );
+    })
+    .join("");
+
+  const nodes = labels
+    .map((label) => {
+      const { x, y } = pos.get(label)!;
+      const w = widthOf(label);
+      const adHoc = label.startsWith("“") ? " ad-hoc" : "";
+      return (
+        `<g class="node${adHoc}"><rect x="${(x - w / 2).toFixed(1)}" y="${(y - 14).toFixed(1)}" width="${w.toFixed(1)}" height="28" rx="7"/>` +
+        `<text x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}" text-anchor="middle">${escapeHtml(shown(label))}</text></g>`
+      );
+    })
+    .join("");
+
+  const marker = (verb: string) =>
+    `<marker id="arrow-${verb}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow ${verb}" d="M 0 0 L 10 5 L 0 10 z"/></marker>` +
+    `<marker id="dot-${verb}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow ${verb}" d="M 0 0 L 10 5 L 0 10 z"/></marker>`;
+  const verbs = [...new Set(block.relations.map(([, v]) => v))];
+
+  return (
+    `<figure class="relmap-figure"><figcaption>argument map</figcaption>` +
+    `<svg class="relmap" viewBox="0 0 ${W} ${H}" role="img"><defs>${verbs.map(marker).join("")}</defs>${edges}${nodes}</svg></figure>`
+  );
+}
+
 /** The `analyze` block: how every claim stands to every other claim.
  *  Each pair arrives as [left, relation, right, explanation]. */
 function renderRelations(block: BlockView): string {
@@ -191,6 +277,12 @@ function renderBlock(block: BlockView): string {
 
     case "relations":
       return renderRelations(block);
+
+    case "relation":
+      return renderRelation(block);
+
+    case "map":
+      return renderMap(block);
 
     case "error":
       return `<div class="error"><span class="error-line">line ${block.line}</span> ${escapeHtml(block.title)}</div>`;

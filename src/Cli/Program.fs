@@ -64,6 +64,12 @@ let private printBlock (b: BlockView) =
         printfn "  claim relations:"
         if b.relations.Length = 0 then printfn "    (needs at least two claims)"
         b.relations |> Array.iter (fun r -> printfn "    %s %s %s — %s" r.[0] r.[1] r.[2] r.[3])
+    | "relation" ->
+        printfn "  %s %s %s   [%s]" b.formula b.title b.conclusion (b.verdict.ToUpper())
+        if b.note <> "" then printfn "      %s" b.note
+    | "map" ->
+        printfn "  argument map (%d relations):" b.relations.Length
+        b.relations |> Array.iter (fun r -> printfn "    %s --%s--> %s [%s]" r.[0] r.[1] r.[2] r.[3])
     | "error" -> printfn "  ! line %d: %s" b.line b.title
     | other -> printfn "  ? unknown block kind '%s'" other
 

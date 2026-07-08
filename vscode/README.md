@@ -65,6 +65,8 @@ check C1 equivalent (not p or q)
 | `argument x { premise … / --- / conclude … }` | an argument, checked for validity |
 | `proof x { 1. premise … / 2. f by rule from 1 }` | your own derivation, graded per step |
 | `analyze` | relate every claim to every other claim |
+| `C1 supports C2` | assert a relation: `supports` / `presupposes` (informal), `contradicts` / `entails` / `equivalent-to` (verified: holds ✓ or fails ✗ with a counterexample); either side may be a quoted ad-hoc statement |
+| `map` | draw all asserted relations as an argument map |
 | `// ...` | comment |
 
 The engine is written in human-readable F#, compiled to JavaScript with Fable.

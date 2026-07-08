@@ -1589,6 +1589,7 @@ function substring(str, startIndex, length3) {
 // src/core/fable_modules/fable-library-js.5.6.0/Global.js
 var SR_indexOutOfBounds = "The index was outside the range of elements in the collection.";
 var SR_inputWasEmpty = "Collection was empty.";
+var SR_keyNotFoundAlt = "An index satisfying the predicate was not found in the collection.";
 var SR_ArgumentNull_Generic = "Value cannot be null.";
 var SR_Arg_ParamName_Name = " (Parameter '";
 var SR_Arg_KeyNotFound = "The given key was not present in the dictionary.";
@@ -1691,7 +1692,7 @@ function Operators_NullArgCheck(argumentName, value2) {
 // src/core/fable_modules/fable-library-js.5.6.0/Seq.js
 var SR_enumerationAlreadyFinished = "Enumeration already finished.";
 var SR_enumerationNotStarted = "Enumeration has not started. Call MoveNext.";
-var SR_keyNotFoundAlt = "An index satisfying the predicate was not found in the collection.";
+var SR_keyNotFoundAlt2 = "An index satisfying the predicate was not found in the collection.";
 var SR_resetNotSupported = "Reset is not supported on this enumerator.";
 function Enumerator_noReset() {
   throw NotSupportedException_$ctor_Z721C83C5(SR_resetNotSupported);
@@ -1934,7 +1935,7 @@ function Enumerator_unfold(f, state) {
   });
 }
 function indexNotFound() {
-  throw KeyNotFoundException_$ctor_Z721C83C5(SR_keyNotFoundAlt);
+  throw KeyNotFoundException_$ctor_Z721C83C5(SR_keyNotFoundAlt2);
 }
 function mkSeq(f) {
   return Enumerator_Seq_$ctor_673A07F2(f);
@@ -2355,6 +2356,9 @@ function FSharpList__get_Item_Z524259A4(xs, index) {
   };
   return loop(0, xs);
 }
+function indexNotFound2() {
+  throw KeyNotFoundException_$ctor_Z721C83C5(SR_keyNotFoundAlt);
+}
 function empty2() {
   return FSharpList_get_Empty();
 }
@@ -2562,6 +2566,14 @@ function tryPick(f, xs) {
 function tryFind(f, xs) {
   return tryPick((x) => f(x) ? some(x) : void 0, xs);
 }
+function find(f, xs) {
+  const matchValue = tryFind(f, xs);
+  if (matchValue == null) {
+    return indexNotFound2();
+  } else {
+    return value(matchValue);
+  }
+}
 function tryFindIndex2(f, xs) {
   const loop = (i_mut, xs_1_mut) => {
     loop: while (true) {
@@ -2703,6 +2715,26 @@ var CheckKind = class extends Union {
     return ["Verdict", "Equivalent"];
   }
 };
+var RelationKind = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Supports", "Presupposes", "Contradicts", "Entails", "EquivalentTo"];
+  }
+};
+var RelRef = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Named", "Quoted"];
+  }
+};
 var ProofLine = class extends Union {
   constructor(tag, fields) {
     super();
@@ -2720,7 +2752,7 @@ var Statement = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Analyze"];
+    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Analyze", "Relates", "RelationMap"];
   }
 };
 
@@ -5990,6 +6022,51 @@ function splitOnKeyword(s, kw) {
     return [substring(s, 0, idx).trim(), substring(s, idx + marker.length).trim()];
   }
 }
+function tryRef(s) {
+  const s_1 = s.trimStart();
+  if (s_1.startsWith('"')) {
+    const matchValue = s_1.indexOf('"', 1) | 0;
+    if (matchValue === -1) {
+      return void 0;
+    } else {
+      const close = matchValue | 0;
+      return [new RelRef(1, [substring(s_1, 1, close - 1)]), substring(s_1, close + 1)];
+    }
+  } else {
+    const len = length2(takeWhile((c) => {
+      if (isLetterOrDigit(c) ? true : c === "_") {
+        return true;
+      } else {
+        return c === "-";
+      }
+    }, s_1.split(""))) | 0;
+    if (len === 0 ? true : !isLetter(s_1[0])) {
+      return void 0;
+    } else {
+      return [new RelRef(0, [substring(s_1, 0, len)]), substring(s_1, len)];
+    }
+  }
+}
+var relationVerbs = ofArray([["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])], ["equivalent-to", new RelationKind(4, [])]]);
+function tryParseRelation(line) {
+  return bind((tupledArg) => {
+    const rest_1 = tupledArg[1].trimStart();
+    return tryPick((tupledArg_1) => {
+      const verb = tupledArg_1[0];
+      if (rest_1.startsWith(verb + " ")) {
+        return bind((tupledArg_2) => {
+          if (tupledArg_2[1].trim() === "") {
+            return new Statement(9, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
+          } else {
+            return void 0;
+          }
+        }, tryRef(substring(rest_1, verb.length + 1)));
+      } else {
+        return void 0;
+      }
+    }, relationVerbs);
+  }, tryRef(line));
+}
 function parseLine(raw) {
   const line = stripComment(raw).trim();
   if (line === "") {
@@ -6031,14 +6108,26 @@ function parseLine(raw) {
       const r = matchValue_2[1];
       return Result_Bind((lf) => Result_Map((rf) => new Statement(5, [new CheckKind(1, [lf, rf])]), parseFormula(r)), parseFormula(matchValue_2[0]));
     }
-  } else if (line === "analyze") {
-    return new FSharpResult$2(0, [new Statement(8, [])]);
-  } else if (line.startsWith("argument")) {
-    return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line \u2014 e.g.  argument my-point {"]);
-  } else if (line.startsWith("proof")) {
-    return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line \u2014 e.g.  proof my-derivation {"]);
   } else {
-    return new FSharpResult$2(0, [new Statement(1, [line])]);
+    switch (line) {
+      case "analyze":
+        return new FSharpResult$2(0, [new Statement(8, [])]);
+      case "map":
+        return new FSharpResult$2(0, [new Statement(10, [])]);
+      default:
+        if (line.startsWith("argument")) {
+          return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line \u2014 e.g.  argument my-point {"]);
+        } else if (line.startsWith("proof")) {
+          return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line \u2014 e.g.  proof my-derivation {"]);
+        } else {
+          const matchValue_3 = tryParseRelation(line);
+          if (matchValue_3 == null) {
+            return new FSharpResult$2(0, [new Statement(1, [line])]);
+          } else {
+            return new FSharpResult$2(0, [matchValue_3]);
+          }
+        }
+    }
   }
 }
 function parseArgumentBlock(name, headerLine, body) {
@@ -6428,6 +6517,90 @@ function proofBlock(defs, name, lines) {
   const note = allOk ? "Every step checks out \u2014 the conclusion follows from the premises. \u220E" : "The first \u2717 step is where the chain breaks \u2014 repair it and the proof may go through.";
   return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations);
 }
+function relationInfo(defs, glosses, left, kind, right) {
+  let arg, arg_1, arg_2;
+  const display = (_arg) => {
+    if (_arg.tag === 1) {
+      return "\u201C" + _arg.fields[0] + "\u201D";
+    } else {
+      return _arg.fields[0];
+    }
+  };
+  const formulaOf = (ref) => {
+    let n_1;
+    let matchResult, n_2;
+    if (ref.tag === 0) {
+      if (n_1 = ref.fields[0], containsKey(n_1, defs) ? true : containsKey(n_1, glosses)) {
+        matchResult = 0;
+        n_2 = ref.fields[0];
+      } else {
+        matchResult = 1;
+      }
+    } else {
+      matchResult = 1;
+    }
+    switch (matchResult) {
+      case 0:
+        return resolve(defs, new Formula(0, [n_2]));
+      default:
+        return void 0;
+    }
+  };
+  const verb = kind.tag === 1 ? "presupposes" : kind.tag === 2 ? "contradicts" : kind.tag === 3 ? "entails" : kind.tag === 4 ? "equivalent-to" : "supports";
+  const tautology2 = (f) => equals(truthTable(f).Verdict, new Verdict(0, []));
+  let patternInput;
+  const matchValue = formulaOf(left);
+  const matchValue_1 = formulaOf(right);
+  let matchResult_1, a, b;
+  switch (kind.tag) {
+    case 0:
+    case 1: {
+      matchResult_1 = 0;
+      break;
+    }
+    default:
+      if (matchValue != null) {
+        if (matchValue_1 != null) {
+          matchResult_1 = 1;
+          a = matchValue;
+          b = matchValue_1;
+        } else {
+          matchResult_1 = 2;
+        }
+      } else {
+        matchResult_1 = 2;
+      }
+  }
+  switch (matchResult_1) {
+    case 0: {
+      patternInput = ["asserted", "an informal relation \u2014 asserted by you, recorded but not checked by the engine"];
+      break;
+    }
+    case 1: {
+      switch (kind.tag) {
+        case 3: {
+          patternInput = tautology2(new Formula(6, [a, b])) ? ["holds", "verified: whenever the first holds, so does the second"] : ["fails", (arg = describeSituation(head(checkArgument(singleton3(a), b).Counterexamples)), toText(printf("does not hold \u2014 counterexample: %s"))(arg))];
+          break;
+        }
+        case 2: {
+          patternInput = tautology2(new Formula(2, [new Formula(3, [a, b])])) ? ["holds", "verified: they can never both be true"] : ["fails", (arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(3, [a, b])).Rows)[0]), toText(printf("they CAN both be true \u2014 for instance when %s"))(arg_1))];
+          break;
+        }
+        default:
+          if (equivalent(a, b)) {
+            patternInput = ["holds", "verified: always the same truth value \u2014 two phrasings of one claim"];
+          } else {
+            const matchValue_3 = distinguishing(a, b);
+            patternInput = matchValue_3 == null ? ["fails", "not equivalent"] : ["fails", (arg_2 = describeSituation(matchValue_3), toText(printf("not equivalent \u2014 they come apart when %s"))(arg_2))];
+          }
+      }
+      break;
+    }
+    default:
+      patternInput = ["asserted", "cannot be checked \u2014 one side is not a declared claim or prop"];
+  }
+  return [display(left), verb, display(right), patternInput[0], patternInput[1]];
+}
 function relationWhy(_arg) {
   switch (_arg.tag) {
     case 1:
@@ -6461,7 +6634,7 @@ function relationsBlock(claims) {
     }
   }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))));
 }
-function toBlock(defs, glosses, claims, st) {
+function toBlock(defs, glosses, claims, relationRows, st) {
   switch (st.tag) {
     case 1:
       return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
@@ -6500,6 +6673,12 @@ function toBlock(defs, glosses, claims, st) {
       return proofBlock(defs, st.fields[0], st.fields[1]);
     case 8:
       return relationsBlock(claims);
+    case 9: {
+      const patternInput_1 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
+      return new BlockView("relation", empty5.level, patternInput_1[1], empty5.name, empty5.gloss, patternInput_1[0], patternInput_1[3], empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, patternInput_1[2], empty5.form, empty5.fallacy, patternInput_1[4], empty5.suggestion, empty5.proof, empty5.relations);
+    }
+    case 10:
+      return new BlockView("map", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, relationRows);
     default:
       return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
   }
@@ -6539,12 +6718,20 @@ function analyze(source) {
       return void 0;
     }
   }, statements);
+  const relationRows = toArray(choose2((_arg_4) => {
+    if (_arg_4.tag === 9) {
+      const patternInput = relationInfo(defs, glosses, _arg_4.fields[0], _arg_4.fields[1], _arg_4.fields[2]);
+      return [patternInput[0], patternInput[1], patternInput[2], patternInput[3]];
+    } else {
+      return void 0;
+    }
+  }, statements));
   return toArray(choose2((tupledArg_1) => {
-    const r_1 = tupledArg_1[1];
-    if (r_1.tag === 1) {
-      return new BlockView("error", empty5.level, r_1.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
-    } else if (r_1.fields[0] != null) {
-      return toBlock(defs, glosses, claims, r_1.fields[0]);
+    const r_2 = tupledArg_1[1];
+    if (r_2.tag === 1) {
+      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+    } else if (r_2.fields[0] != null) {
+      return toBlock(defs, glosses, claims, relationRows, r_2.fields[0]);
     } else {
       return void 0;
     }
@@ -6621,30 +6808,94 @@ function lint(source) {
           }
           return f_3;
         }, st_1.fields[1]);
+      case 9:
+        return choose2((_arg_1) => {
+          if (_arg_1.tag === 1) {
+            return void 0;
+          } else {
+            return new Formula(0, [_arg_1.fields[0]]);
+          }
+        }, ofArray([st_1.fields[0], st_1.fields[2]]));
       default:
         return empty2();
     }
   }, statements)), {
     Compare: (x, y) => comparePrimitives(x, y) | 0
   });
-  return toArray(choose2((tupledArg_2) => {
+  const declaredNames = ofList(choose2((tupledArg_2) => {
     const st_3 = tupledArg_2[1];
-    let matchResult_2, name_1;
-    if (st_3.tag === 2) {
-      if (!contains2(st_3.fields[0], usedNames)) {
+    let matchResult_2, n_2;
+    switch (st_3.tag) {
+      case 2: {
         matchResult_2 = 0;
-        name_1 = st_3.fields[0];
-      } else {
-        matchResult_2 = 1;
+        n_2 = st_3.fields[0];
+        break;
       }
-    } else {
-      matchResult_2 = 1;
+      case 3: {
+        matchResult_2 = 0;
+        n_2 = st_3.fields[0];
+        break;
+      }
+      default:
+        matchResult_2 = 1;
     }
     switch (matchResult_2) {
       case 0:
-        return new LintView(tupledArg_2[0], toText(printf("prop '%s' is declared but never used in a formula"))(name_1));
+        return n_2;
       default:
         return void 0;
+    }
+  }, statements), {
+    Compare: (x_1, y_1) => comparePrimitives(x_1, y_1) | 0
+  });
+  return toArray(collect2((tupledArg_3) => {
+    const lineNo = tupledArg_3[0] | 0;
+    const st_4 = tupledArg_3[1];
+    let matchResult_3, name_1, l_1, r_2;
+    switch (st_4.tag) {
+      case 2: {
+        if (!contains2(st_4.fields[0], usedNames)) {
+          matchResult_3 = 0;
+          name_1 = st_4.fields[0];
+        } else {
+          matchResult_3 = 2;
+        }
+        break;
+      }
+      case 9: {
+        matchResult_3 = 1;
+        l_1 = st_4.fields[0];
+        r_2 = st_4.fields[2];
+        break;
+      }
+      default:
+        matchResult_3 = 2;
+    }
+    switch (matchResult_3) {
+      case 0:
+        return singleton3(new LintView(lineNo, toText(printf("prop '%s' is declared but never used in a formula"))(name_1)));
+      case 1:
+        return choose2((_arg_4) => {
+          let matchResult_4, n_4;
+          if (_arg_4.tag === 0) {
+            if (!contains2(_arg_4.fields[0], declaredNames)) {
+              matchResult_4 = 0;
+              n_4 = _arg_4.fields[0];
+            } else {
+              matchResult_4 = 1;
+            }
+          } else {
+            matchResult_4 = 1;
+          }
+          switch (matchResult_4) {
+            case 0:
+              return new LintView(lineNo, toText(printf("relation references '%s', which is not a declared prop or claim \u2014 it will appear as an ad-hoc node (quote it to make that intentional)"))(n_4));
+            default:
+              return void 0;
+          }
+        }, ofArray([l_1, r_2]));
+      default:
+        return empty2();
     }
   }, statements));
 }
@@ -6729,6 +6980,52 @@ function renderProof(block) {
   const note = block.note ? `<p class="note">${escapeHtml(block.note)}</p>` : "";
   return `<figure class="argument proof-figure"><figcaption><span class="arg-name">${escapeHtml(block.name)}</span>${verdictBadge(block.verdict)}<span class="check-label">proof</span></figcaption><table class="proof">${rows}</table>${note}</figure>`;
 }
+function renderRelation(block) {
+  const mark = block.verdict === "holds" ? "\u2713 holds" : block.verdict === "fails" ? "\u2717 fails" : "asserted";
+  const note = block.note ? `<div class="note">${escapeHtml(block.note)}</div>` : "";
+  return `<div class="relation-stmt"><span class="rel-claim">${escapeHtml(block.formula)}</span><span class="rel-verb rel-${escapeHtml(block.title)}">${escapeHtml(block.title)}</span><span class="rel-claim">${escapeHtml(block.conclusion)}</span><span class="chip chip-${escapeHtml(block.verdict)}">${mark}</span>` + note + `</div>`;
+}
+function renderMap(block) {
+  if (block.relations.length === 0) {
+    return `<figure class="relmap-figure"><p class="empty">map needs at least one relation \u2014 e.g. <code>C1 supports C2</code>.</p></figure>`;
+  }
+  const labels = [...new Set(block.relations.flatMap(([l, , r]) => [l, r]))];
+  const W = 760, H = Math.max(320, 150 + labels.length * 42);
+  const cx = W / 2, cy = H / 2, rx = W / 2 - 130, ry = H / 2 - 45;
+  const pos = new Map(
+    labels.map((label, i) => {
+      const angle = 2 * Math.PI * i / labels.length - Math.PI / 2;
+      return [label, { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) }];
+    })
+  );
+  const widthOf = (label) => Math.min(label.length, 26) * 7.2 + 20;
+  const shown = (label) => label.length > 26 ? label.slice(0, 25) + "\u2026" : label;
+  const edges = block.relations.map(([l, verb, r, status]) => {
+    const a = pos.get(l), b = pos.get(r);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist, uy = dy / dist;
+    const trim = (label) => widthOf(label) / 2 * Math.abs(ux) + 15 * Math.abs(uy) + 6;
+    const x1 = a.x + ux * trim(l), y1 = a.y + uy * trim(l);
+    const x2 = b.x - ux * trim(r), y2 = b.y - uy * trim(r);
+    const failed = status === "fails" ? " failed" : "";
+    const both = verb === "equivalent-to" ? ` marker-start="url(#dot-${verb})"` : "";
+    const labelText = status === "fails" ? `${verb} \u2717` : verb;
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const upright = angle > 90 ? angle - 180 : angle < -90 ? angle + 180 : angle;
+    return `<line class="edge ${verb}${failed}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" marker-end="url(#arrow-${verb})"${both}/><text class="edge-label${failed}" x="${mx.toFixed(1)}" y="${my.toFixed(1)}" dy="-6" text-anchor="middle" transform="rotate(${upright.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})">${escapeHtml(labelText)}</text>`;
+  }).join("");
+  const nodes = labels.map((label) => {
+    const { x, y } = pos.get(label);
+    const w = widthOf(label);
+    const adHoc = label.startsWith("\u201C") ? " ad-hoc" : "";
+    return `<g class="node${adHoc}"><rect x="${(x - w / 2).toFixed(1)}" y="${(y - 14).toFixed(1)}" width="${w.toFixed(1)}" height="28" rx="7"/><text x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}" text-anchor="middle">${escapeHtml(shown(label))}</text></g>`;
+  }).join("");
+  const marker = (verb) => `<marker id="arrow-${verb}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow ${verb}" d="M 0 0 L 10 5 L 0 10 z"/></marker><marker id="dot-${verb}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow ${verb}" d="M 0 0 L 10 5 L 0 10 z"/></marker>`;
+  const verbs = [...new Set(block.relations.map(([, v]) => v))];
+  return `<figure class="relmap-figure"><figcaption>argument map</figcaption><svg class="relmap" viewBox="0 0 ${W} ${H}" role="img"><defs>${verbs.map(marker).join("")}</defs>${edges}${nodes}</svg></figure>`;
+}
 function renderRelations(block) {
   if (block.relations.length === 0) {
     return `<div class="relations"><p class="empty">analyze needs at least two <code>claim</code>s to compare.</p></div>`;
@@ -6771,6 +7068,10 @@ function renderBlock(block) {
       return renderProof(block);
     case "relations":
       return renderRelations(block);
+    case "relation":
+      return renderRelation(block);
+    case "map":
+      return renderMap(block);
     case "error":
       return `<div class="error"><span class="error-line">line ${block.line}</span> ${escapeHtml(block.title)}</div>`;
     default:
@@ -6807,6 +7108,8 @@ var KEYWORD_SNIPPETS = [
   { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
   { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
   { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
+  { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
+  { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
   { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" }
 ];
@@ -6981,6 +7284,29 @@ var STYLE = `
   .step-status.ok { color: var(--vscode-testing-iconPassed, #3fb950); font-weight: 700; }
   .step-status.bad { color: var(--vscode-testing-iconFailed, #f85149); font-weight: 700; }
   tr.step-msg td { color: var(--vscode-testing-iconFailed, #f85149); font-size: .85em; font-family: var(--vscode-font-family); padding-bottom: .4em; }
+
+  /* asserted relations + argument map */
+  .relation-stmt { font-family: var(--vscode-editor-font-family); margin: .45rem 0; display: flex; align-items: center; gap: .6em; flex-wrap: wrap; }
+  .relation-stmt .note { flex-basis: 100%; margin: 0 0 0 1rem; font-size: .95em; }
+  .rel-verb { font-size: .8rem; padding: .05em .55em; border-radius: 999px; border: 1px solid var(--vscode-widget-border, #8884); opacity: .9; }
+  .chip-holds { border-color: var(--vscode-testing-iconPassed, #3fb950); color: var(--vscode-testing-iconPassed, #3fb950); }
+  .chip-fails { border-color: var(--vscode-testing-iconFailed, #f85149); color: var(--vscode-testing-iconFailed, #f85149); }
+  .chip-asserted { opacity: .6; }
+  figure.relmap-figure { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.relmap-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }
+  svg.relmap { width: 100%; height: auto; }
+  svg.relmap .edge { stroke-width: 1.6; fill: none; }
+  svg.relmap .edge.failed { stroke-dasharray: 5 4; }
+  svg.relmap .edge.supports, svg.relmap .arrow.supports { stroke: var(--vscode-testing-iconPassed, #3fb950); fill: var(--vscode-testing-iconPassed, #3fb950); }
+  svg.relmap .edge.contradicts, svg.relmap .arrow.contradicts { stroke: var(--vscode-testing-iconFailed, #f85149); fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .edge.entails, svg.relmap .arrow.entails { stroke: var(--vscode-textLink-foreground, #58a6ff); fill: var(--vscode-textLink-foreground, #58a6ff); }
+  svg.relmap .edge.presupposes, svg.relmap .arrow.presupposes { stroke: var(--vscode-editorWarning-foreground, #cca700); fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.relmap .edge.equivalent-to, svg.relmap .arrow.equivalent-to { stroke: var(--vscode-descriptionForeground, #8d96a0); fill: var(--vscode-descriptionForeground, #8d96a0); }
+  svg.relmap .edge-label { fill: var(--vscode-descriptionForeground, #8d96a0); font-size: 10.5px; font-family: var(--vscode-font-family); }
+  svg.relmap .edge-label.failed { fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .node rect { fill: var(--vscode-editor-inactiveSelectionBackground, #8882); stroke: var(--vscode-widget-border, #8884); }
+  svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }
+  svg.relmap .node text { fill: var(--vscode-foreground); font-size: 12px; font-family: var(--vscode-editor-font-family); }
 
   /* relations (analyze) */
   figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }

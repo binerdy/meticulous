@@ -23,6 +23,8 @@ export interface BlockView {
     | "argument"
     | "proof"
     | "relations"
+    | "relation"
+    | "map"
     | "error";
   level: number;      // heading depth
   title: string;      // heading text / prose text / error message

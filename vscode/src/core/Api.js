@@ -1,9 +1,9 @@
 
 import { toString, Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { record_type, bool_type, array_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
-import { append, ofArray, singleton, collect as collect_1, choose, item, tryLast, head, tryFind, mapIndexed, reduce, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { append, ofArray, collect as collect_1, choose, item, find, singleton, tryLast, head, tryFind, mapIndexed, reduce, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
-import { atoms as atoms_1, distinguishing, equivalent, Relation, relate, Verdict, checkArgument, resolve, truthTable } from "./Engine.js";
+import { atoms as atoms_1, Relation, relate, distinguishing, equivalent, Verdict, checkArgument, resolve, truthTable } from "./Engine.js";
 import { toEnglish, toUnicode } from "./Render.js";
 import { ofList, tryFind as tryFind_1, add, containsKey, empty as empty_2, toList, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
 import { disposeSafe, getEnumerator, comparePrimitives, equals, int32ToString } from "./fable_modules/fable-library-js.5.6.0/Util.js";
@@ -266,6 +266,97 @@ function proofBlock(defs, name, lines) {
     return new BlockView("proof", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, defaultArg(map_1((l) => toUnicode(resolve(defs, (l.tag === 1) ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty.form, empty.fallacy, note, empty.suggestion, rows.slice(), empty.relations);
 }
 
+function relationInfo(defs, glosses, left, kind, right) {
+    let arg, arg_1, arg_2;
+    const display = (_arg) => {
+        if (_arg.tag === 1) {
+            return ("“" + _arg.fields[0]) + "”";
+        }
+        else {
+            return _arg.fields[0];
+        }
+    };
+    const formulaOf = (ref) => {
+        let n_1;
+        let matchResult, n_2;
+        if (ref.tag === 0) {
+            if ((n_1 = ref.fields[0], containsKey(n_1, defs) ? true : containsKey(n_1, glosses))) {
+                matchResult = 0;
+                n_2 = ref.fields[0];
+            }
+            else {
+                matchResult = 1;
+            }
+        }
+        else {
+            matchResult = 1;
+        }
+        switch (matchResult) {
+            case 0:
+                return resolve(defs, new Formula(0, [n_2]));
+            default:
+                return undefined;
+        }
+    };
+    const verb = (kind.tag === 1) ? "presupposes" : ((kind.tag === 2) ? "contradicts" : ((kind.tag === 3) ? "entails" : ((kind.tag === 4) ? "equivalent-to" : "supports")));
+    const tautology = (f) => equals(truthTable(f).Verdict, new Verdict(0, []));
+    let patternInput;
+    const matchValue = formulaOf(left);
+    const matchValue_1 = formulaOf(right);
+    let matchResult_1, a, b;
+    switch (kind.tag) {
+        case 0:
+        case 1: {
+            matchResult_1 = 0;
+            break;
+        }
+        default:
+            if (matchValue != null) {
+                if (matchValue_1 != null) {
+                    matchResult_1 = 1;
+                    a = matchValue;
+                    b = matchValue_1;
+                }
+                else {
+                    matchResult_1 = 2;
+                }
+            }
+            else {
+                matchResult_1 = 2;
+            }
+    }
+    switch (matchResult_1) {
+        case 0: {
+            patternInput = ["asserted", "an informal relation — asserted by you, recorded but not checked by the engine"];
+            break;
+        }
+        case 1: {
+            switch (kind.tag) {
+                case 3: {
+                    patternInput = (tautology(new Formula(6, [a, b])) ? ["holds", "verified: whenever the first holds, so does the second"] : ["fails", (arg = describeSituation(head(checkArgument(singleton(a), b).Counterexamples)), toText(printf("does not hold — counterexample: %s"))(arg))]);
+                    break;
+                }
+                case 2: {
+                    patternInput = (tautology(new Formula(2, [new Formula(3, [a, b])])) ? ["holds", "verified: they can never both be true"] : ["fails", (arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(3, [a, b])).Rows)[0]), toText(printf("they CAN both be true — for instance when %s"))(arg_1))]);
+                    break;
+                }
+                default:
+                    if (equivalent(a, b)) {
+                        patternInput = ["holds", "verified: always the same truth value — two phrasings of one claim"];
+                    }
+                    else {
+                        const matchValue_3 = distinguishing(a, b);
+                        patternInput = ((matchValue_3 == null) ? ["fails", "not equivalent"] : ["fails", (arg_2 = describeSituation(matchValue_3), toText(printf("not equivalent — they come apart when %s"))(arg_2))]);
+                    }
+            }
+            break;
+        }
+        default:
+            patternInput = ["asserted", "cannot be checked — one side is not a declared claim or prop"];
+    }
+    return [display(left), verb, display(right), patternInput[0], patternInput[1]];
+}
+
 function relationWhy(_arg) {
     switch (_arg.tag) {
         case 1:
@@ -302,7 +393,7 @@ function relationsBlock(claims) {
     }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))));
 }
 
-function toBlock(defs, glosses, claims, st) {
+function toBlock(defs, glosses, claims, relationRows, st) {
     switch (st.tag) {
         case 1:
             return new BlockView("prose", empty.level, st.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
@@ -344,6 +435,12 @@ function toBlock(defs, glosses, claims, st) {
             return proofBlock(defs, st.fields[0], st.fields[1]);
         case 8:
             return relationsBlock(claims);
+        case 9: {
+            const patternInput_1 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
+            return new BlockView("relation", empty.level, patternInput_1[1], empty.name, empty.gloss, patternInput_1[0], patternInput_1[3], empty.atoms, empty.rows, empty.results, empty.line, empty.premises, patternInput_1[2], empty.form, empty.fallacy, patternInput_1[4], empty.suggestion, empty.proof, empty.relations);
+        }
+        case 10:
+            return new BlockView("map", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, relationRows);
         default:
             return new BlockView("heading", st.fields[0], st.fields[1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
     }
@@ -395,13 +492,22 @@ export function analyze(source) {
             return undefined;
         }
     }, statements);
-    return toArray(choose((tupledArg_1) => {
-        const r_1 = tupledArg_1[1];
-        if (r_1.tag === 1) {
-            return new BlockView("error", empty.level, r_1.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, tupledArg_1[0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
+    const relationRows = toArray(choose((_arg_4) => {
+        if (_arg_4.tag === 9) {
+            const patternInput = relationInfo(defs, glosses, _arg_4.fields[0], _arg_4.fields[1], _arg_4.fields[2]);
+            return [patternInput[0], patternInput[1], patternInput[2], patternInput[3]];
         }
-        else if (r_1.fields[0] != null) {
-            return toBlock(defs, glosses, claims, r_1.fields[0]);
+        else {
+            return undefined;
+        }
+    }, statements));
+    return toArray(choose((tupledArg_1) => {
+        const r_2 = tupledArg_1[1];
+        if (r_2.tag === 1) {
+            return new BlockView("error", empty.level, r_2.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, tupledArg_1[0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
+        }
+        else if (r_2.fields[0] != null) {
+            return toBlock(defs, glosses, claims, relationRows, r_2.fields[0]);
         }
         else {
             return undefined;
@@ -512,32 +618,98 @@ export function lint(source) {
                     }
                     return f_3;
                 }, st_1.fields[1]);
+            case 9:
+                return choose((_arg_1) => {
+                    if (_arg_1.tag === 1) {
+                        return undefined;
+                    }
+                    else {
+                        return new Formula(0, [_arg_1.fields[0]]);
+                    }
+                }, ofArray([st_1.fields[0], st_1.fields[2]]));
             default:
                 return empty_1();
         }
     }, statements)), {
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     });
-    return toArray(choose((tupledArg_2) => {
+    const declaredNames = ofList_1(choose((tupledArg_2) => {
         const st_3 = tupledArg_2[1];
-        let matchResult_2, name_1;
-        if (st_3.tag === 2) {
-            if (!contains(st_3.fields[0], usedNames)) {
+        let matchResult_2, n_2;
+        switch (st_3.tag) {
+            case 2: {
                 matchResult_2 = 0;
-                name_1 = st_3.fields[0];
+                n_2 = st_3.fields[0];
+                break;
             }
-            else {
+            case 3: {
+                matchResult_2 = 0;
+                n_2 = st_3.fields[0];
+                break;
+            }
+            default:
                 matchResult_2 = 1;
-            }
-        }
-        else {
-            matchResult_2 = 1;
         }
         switch (matchResult_2) {
             case 0:
-                return new LintView(tupledArg_2[0], toText(printf("prop \'%s\' is declared but never used in a formula"))(name_1));
+                return n_2;
             default:
                 return undefined;
+        }
+    }, statements), {
+        Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+    });
+    return toArray(collect_1((tupledArg_3) => {
+        const lineNo = tupledArg_3[0] | 0;
+        const st_4 = tupledArg_3[1];
+        let matchResult_3, name_1, l_1, r_2;
+        switch (st_4.tag) {
+            case 2: {
+                if (!contains(st_4.fields[0], usedNames)) {
+                    matchResult_3 = 0;
+                    name_1 = st_4.fields[0];
+                }
+                else {
+                    matchResult_3 = 2;
+                }
+                break;
+            }
+            case 9: {
+                matchResult_3 = 1;
+                l_1 = st_4.fields[0];
+                r_2 = st_4.fields[2];
+                break;
+            }
+            default:
+                matchResult_3 = 2;
+        }
+        switch (matchResult_3) {
+            case 0:
+                return singleton(new LintView(lineNo, toText(printf("prop \'%s\' is declared but never used in a formula"))(name_1)));
+            case 1:
+                return choose((_arg_4) => {
+                    let matchResult_4, n_4;
+                    if (_arg_4.tag === 0) {
+                        if (!contains(_arg_4.fields[0], declaredNames)) {
+                            matchResult_4 = 0;
+                            n_4 = _arg_4.fields[0];
+                        }
+                        else {
+                            matchResult_4 = 1;
+                        }
+                    }
+                    else {
+                        matchResult_4 = 1;
+                    }
+                    switch (matchResult_4) {
+                        case 0:
+                            return new LintView(lineNo, toText(printf("relation references \'%s\', which is not a declared prop or claim — it will appear as an ad-hoc node (quote it to make that intentional)"))(n_4));
+                        default:
+                            return undefined;
+                    }
+                }, ofArray([l_1, r_2]));
+            default:
+                return empty_1();
         }
     }, statements));
 }

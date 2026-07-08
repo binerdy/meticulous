@@ -70,6 +70,29 @@ const STYLE = `
   .step-status.bad { color: var(--vscode-testing-iconFailed, #f85149); font-weight: 700; }
   tr.step-msg td { color: var(--vscode-testing-iconFailed, #f85149); font-size: .85em; font-family: var(--vscode-font-family); padding-bottom: .4em; }
 
+  /* asserted relations + argument map */
+  .relation-stmt { font-family: var(--vscode-editor-font-family); margin: .45rem 0; display: flex; align-items: center; gap: .6em; flex-wrap: wrap; }
+  .relation-stmt .note { flex-basis: 100%; margin: 0 0 0 1rem; font-size: .95em; }
+  .rel-verb { font-size: .8rem; padding: .05em .55em; border-radius: 999px; border: 1px solid var(--vscode-widget-border, #8884); opacity: .9; }
+  .chip-holds { border-color: var(--vscode-testing-iconPassed, #3fb950); color: var(--vscode-testing-iconPassed, #3fb950); }
+  .chip-fails { border-color: var(--vscode-testing-iconFailed, #f85149); color: var(--vscode-testing-iconFailed, #f85149); }
+  .chip-asserted { opacity: .6; }
+  figure.relmap-figure { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.relmap-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }
+  svg.relmap { width: 100%; height: auto; }
+  svg.relmap .edge { stroke-width: 1.6; fill: none; }
+  svg.relmap .edge.failed { stroke-dasharray: 5 4; }
+  svg.relmap .edge.supports, svg.relmap .arrow.supports { stroke: var(--vscode-testing-iconPassed, #3fb950); fill: var(--vscode-testing-iconPassed, #3fb950); }
+  svg.relmap .edge.contradicts, svg.relmap .arrow.contradicts { stroke: var(--vscode-testing-iconFailed, #f85149); fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .edge.entails, svg.relmap .arrow.entails { stroke: var(--vscode-textLink-foreground, #58a6ff); fill: var(--vscode-textLink-foreground, #58a6ff); }
+  svg.relmap .edge.presupposes, svg.relmap .arrow.presupposes { stroke: var(--vscode-editorWarning-foreground, #cca700); fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.relmap .edge.equivalent-to, svg.relmap .arrow.equivalent-to { stroke: var(--vscode-descriptionForeground, #8d96a0); fill: var(--vscode-descriptionForeground, #8d96a0); }
+  svg.relmap .edge-label { fill: var(--vscode-descriptionForeground, #8d96a0); font-size: 10.5px; font-family: var(--vscode-font-family); }
+  svg.relmap .edge-label.failed { fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.relmap .node rect { fill: var(--vscode-editor-inactiveSelectionBackground, #8882); stroke: var(--vscode-widget-border, #8884); }
+  svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }
+  svg.relmap .node text { fill: var(--vscode-foreground); font-size: 12px; font-family: var(--vscode-editor-font-family); }
+
   /* relations (analyze) */
   figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
   figure.relations figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .4rem; }

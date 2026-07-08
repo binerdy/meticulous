@@ -60,6 +60,45 @@ export function CheckKind_$reflection() {
 }
 
 /**
+ * The structural relations a document can assert between statements.
+ * Three of them make formal claims the engine can verify; two are
+ * informal judgments it can only record.
+ */
+export class RelationKind extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Supports", "Presupposes", "Contradicts", "Entails", "EquivalentTo"];
+    }
+}
+
+export function RelationKind_$reflection() {
+    return union_type("Meticulous.Ast.RelationKind", [], RelationKind, () => [[], [], [], [], []]);
+}
+
+/**
+ * One end of a relation: a declared prop/claim name, or a quoted ad-hoc
+ * statement that hasn't been formalized ("The streets flood").
+ */
+export class RelRef extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Named", "Quoted"];
+    }
+}
+
+export function RelRef_$reflection() {
+    return union_type("Meticulous.Ast.RelRef", [], RelRef, () => [[["Item", string_type]], [["Item", string_type]]]);
+}
+
+/**
  * One line of a user-written proof. Lines are numbered so later steps
  * can cite the earlier ones they build on.
  */
@@ -88,11 +127,11 @@ export class Statement extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Analyze"];
+        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Analyze", "Relates", "RelationMap"];
     }
 }
 
 export function Statement_$reflection() {
-    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", Formula_$reflection()]], [["name", string_type], ["lines", list_type(ProofLine_$reflection())]], []]);
+    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", Formula_$reflection()]], [["name", string_type], ["lines", list_type(ProofLine_$reflection())]], [], [["left", RelRef_$reflection()], ["kind", RelationKind_$reflection()], ["right", RelRef_$reflection()]], []]);
 }
 

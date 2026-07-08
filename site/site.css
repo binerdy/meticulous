@@ -149,6 +149,29 @@ figure.relations td { padding: .18em .9em .18em 0; }
 .rel-detail { color: var(--muted); font-size: .85em; }
 .rel-independent { opacity: .5; }
 
+/* asserted relations + argument map */
+.relation-stmt { font-family: var(--mono); margin: .45rem 0; display: flex; align-items: center; gap: .6em; flex-wrap: wrap; }
+.relation-stmt .note { flex-basis: 100%; margin: 0 0 0 1rem; font-size: .95em; }
+.rel-verb { font-size: .8rem; padding: .05em .55em; border-radius: 999px; border: 1px solid var(--border); }
+.chip-holds { border-color: var(--green); color: var(--green); }
+.chip-fails { border-color: var(--red); color: var(--red); }
+.chip-asserted { color: var(--muted); }
+figure.relmap-figure { margin: 1.2rem 0; padding: .7rem 1rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+figure.relmap-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .45rem; }
+svg.relmap { width: 100%; height: auto; }
+svg.relmap .edge { stroke-width: 1.6; fill: none; }
+svg.relmap .edge.failed { stroke-dasharray: 5 4; }
+svg.relmap .edge.supports, svg.relmap .arrow.supports { stroke: var(--green); fill: var(--green); }
+svg.relmap .edge.contradicts, svg.relmap .arrow.contradicts { stroke: var(--red); fill: var(--red); }
+svg.relmap .edge.entails, svg.relmap .arrow.entails { stroke: var(--accent); fill: var(--accent); }
+svg.relmap .edge.presupposes, svg.relmap .arrow.presupposes { stroke: var(--amber); fill: var(--amber); }
+svg.relmap .edge.equivalent-to, svg.relmap .arrow.equivalent-to { stroke: var(--muted); fill: var(--muted); }
+svg.relmap .edge-label { fill: var(--muted); font-size: 10.5px; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+svg.relmap .edge-label.failed { fill: var(--red); }
+svg.relmap .node rect { fill: var(--bg); stroke: var(--border); }
+svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }
+svg.relmap .node text { fill: var(--fg); font-size: 12px; font-family: var(--mono); }
+
 .error { color: var(--red); font-family: var(--mono); margin: .3rem 0; }
 .error-line { opacity: .6; margin-right: .5em; }
 .empty { color: var(--muted); }

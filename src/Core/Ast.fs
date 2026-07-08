@@ -32,6 +32,22 @@ module Ast =
         | Verdict of Formula                 // check (p -> q)      -> is it a tautology?
         | Equivalent of Formula * Formula    // check A equivalent B -> are they the same?
 
+    /// The structural relations a document can assert between statements.
+    /// Three of them make formal claims the engine can verify; two are
+    /// informal judgments it can only record.
+    type RelationKind =
+        | Supports      // informal: one statement lends weight to another
+        | Presupposes   // informal: one statement silently relies on another
+        | Contradicts   // formal: they can never both be true
+        | Entails       // formal: whenever the first holds, so does the second
+        | EquivalentTo  // formal: always the same truth value
+
+    /// One end of a relation: a declared prop/claim name, or a quoted ad-hoc
+    /// statement that hasn't been formalized ("The streets flood").
+    type RelRef =
+        | Named of string
+        | Quoted of string
+
     /// One line of a user-written proof. Lines are numbered so later steps
     /// can cite the earlier ones they build on.
     type ProofLine =
@@ -52,7 +68,10 @@ module Ast =
                                                     // argument x { premise … / --- / conclude … }
         | Proof of name: string * lines: ProofLine list
                                                     // proof x { 1. premise … / 2. … by rule from 1 }
-        | Analyze                                   // analyze — map how all claims relate
+        | Analyze                                   // analyze — compare all claims pairwise
+        | Relates of left: RelRef * kind: RelationKind * right: RelRef
+                                                    // C1 supports C2 / A entails "the streets flood"
+        | RelationMap                               // map — draw all asserted relations as a graph
 
     /// A whole document is simply an ordered list of statements.
     type Document = Statement list

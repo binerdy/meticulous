@@ -298,6 +298,68 @@ module Api =
                 |> Option.defaultValue ""
             proof = rows.ToArray() }
 
+    /// Everything worth saying about one asserted relation: how its two ends
+    /// display, whether the engine could check it, and with what outcome.
+    /// `status` is "holds" / "fails" (formal, checked) or "asserted" (informal
+    /// or involving an unformalized statement).
+    let private relationInfo
+        (defs: Map<string, Formula>)
+        (glosses: Map<string, string>)
+        (left: RelRef)
+        (kind: RelationKind)
+        (right: RelRef)
+        =
+        let display = function Named n -> n | Quoted s -> "“" + s + "”"
+
+        // A ref has a formula only when it names a declared claim or prop.
+        let formulaOf ref =
+            match ref with
+            | Named n when Map.containsKey n defs || Map.containsKey n glosses ->
+                Some(resolve defs (Atom n))
+            | _ -> None
+
+        let verb =
+            match kind with
+            | Supports -> "supports"
+            | Presupposes -> "presupposes"
+            | Contradicts -> "contradicts"
+            | Entails -> "entails"
+            | EquivalentTo -> "equivalent-to"
+
+        let tautology f = (truthTable f).Verdict = Tautology
+
+        let status, note =
+            match kind, formulaOf left, formulaOf right with
+            | (Supports | Presupposes), _, _ ->
+                "asserted", "an informal relation — asserted by you, recorded but not checked by the engine"
+            | _, Some a, Some b ->
+                match kind with
+                | Entails ->
+                    if tautology (Implies(a, b)) then
+                        "holds", "verified: whenever the first holds, so does the second"
+                    else
+                        let cx = (checkArgument [ a ] b).Counterexamples |> List.head
+                        "fails", sprintf "does not hold — counterexample: %s" (describeSituation cx)
+                | Contradicts ->
+                    if tautology (Not(And(a, b))) then
+                        "holds", "verified: they can never both be true"
+                    else
+                        let both =
+                            (truthTable (And(a, b))).Rows
+                            |> List.find snd |> fst
+                        "fails", sprintf "they CAN both be true — for instance when %s" (describeSituation both)
+                | _ ->
+                    if equivalent a b then
+                        "holds", "verified: always the same truth value — two phrasings of one claim"
+                    else
+                        match distinguishing a b with
+                        | Some env -> "fails", sprintf "not equivalent — they come apart when %s" (describeSituation env)
+                        | None -> "fails", "not equivalent"
+            | _ ->
+                "asserted", "cannot be checked — one side is not a declared claim or prop"
+
+        display left, verb, display right, status, note
+
     /// Explain what each relation *means* — shown next to the relation name.
     let private relationWhy =
         function
@@ -327,6 +389,7 @@ module Api =
         (defs: Map<string, Formula>)
         (glosses: Map<string, string>)
         (claims: (string * Formula) list)
+        (relationRows: string[][])
         (st: Statement)
         : BlockView =
         // Reading a formula out loud uses the props' glosses where they exist.
@@ -371,6 +434,16 @@ module Api =
         | Argument(name, premises, conclusion) -> argumentBlock defs name premises conclusion
         | Proof(name, lines) -> proofBlock defs name lines
         | Analyze -> relationsBlock claims
+        | Relates(left, kind, right) ->
+            let l, verb, r, status, note = relationInfo defs glosses left kind right
+            { empty with
+                kind = "relation"
+                formula = l          // left display
+                title = verb         // the relation word
+                conclusion = r       // right display
+                verdict = status     // holds / fails / asserted
+                note = note }
+        | RelationMap -> { empty with kind = "map"; relations = relationRows }
 
     /// Parse and analyse a whole document into block views for rendering.
     ///
@@ -401,11 +474,22 @@ module Api =
             statements
             |> List.choose (function Claim(n, f) -> Some(n, resolve defs f) | _ -> None)
 
+        // Every asserted relation in the document, checked where checkable —
+        // this is what a `map` statement draws.
+        let relationRows =
+            statements
+            |> List.choose (function
+                | Relates(l, k, r) ->
+                    let left, verb, right, status, _ = relationInfo defs glosses l k r
+                    Some [| left; verb; right; status |]
+                | _ -> None)
+            |> List.toArray
+
         parsed
         |> List.choose (fun (lineNo, r) ->
             match r with
             | Ok None -> None
-            | Ok(Some st) -> Some(toBlock defs glosses claims st)
+            | Ok(Some st) -> Some(toBlock defs glosses claims relationRows st)
             | Error msg -> Some { empty with kind = "error"; line = lineNo; title = msg })
         |> List.toArray
 
@@ -457,6 +541,9 @@ module Api =
             | Argument(_, ps, c) -> ps @ [ c ]
             | Proof(_, lines) ->
                 lines |> List.map (function ProofPremise(_, f) | ProofDerived(_, f, _, _) -> f)
+            | Relates(l, _, r) ->
+                // A prop that only appears in a relation still counts as used.
+                [ l; r ] |> List.choose (function Named n -> Some(Atom n) | Quoted _ -> None)
             | _ -> []
 
         let usedNames =
@@ -465,10 +552,25 @@ module Api =
             |> List.collect atoms
             |> Set.ofList
 
+        let declaredNames =
+            statements
+            |> List.choose (fun (_, st) ->
+                match st with
+                | Prop(n, _) | Claim(n, _) -> Some n
+                | _ -> None)
+            |> Set.ofList
+
         statements
-        |> List.choose (fun (lineNo, st) ->
+        |> List.collect (fun (lineNo, st) ->
             match st with
             | Prop(name, _) when not (Set.contains name usedNames) ->
-                Some { line = lineNo; message = sprintf "prop '%s' is declared but never used in a formula" name }
-            | _ -> None)
+                [ { line = lineNo; message = sprintf "prop '%s' is declared but never used in a formula" name } ]
+            | Relates(l, _, r) ->
+                [ l; r ]
+                |> List.choose (function
+                    | Named n when not (Set.contains n declaredNames) ->
+                        Some { line = lineNo
+                               message = sprintf "relation references '%s', which is not a declared prop or claim — it will appear as an ad-hoc node (quote it to make that intentional)" n }
+                    | _ -> None)
+            | _ -> [])
         |> List.toArray
