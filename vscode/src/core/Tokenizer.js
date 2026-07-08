@@ -221,7 +221,7 @@ export function tokenize(input) {
                     case 13: {
                         const start = i | 0;
                         let j = i;
-                        while ((j < input.length) && isIdentChar(input[j])) {
+                        while ((j < input.length) && (isIdentChar(input[j]) ? true : (((input[j] === "-") && ((j + 1) < input.length)) && isLetterOrDigit(input[j + 1])))) {
                             j = ((j + 1) | 0);
                         }
                         const word = substring(input, start, j - start);

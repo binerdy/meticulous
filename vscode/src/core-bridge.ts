@@ -4,7 +4,11 @@
 // JavaScript with no type declarations) into ./core/. We give it a typed face
 // here so the rest of the extension is fully type-checked.
 
-import { analyze as fableAnalyze } from "./core/Api.js";
+import {
+  analyze as fableAnalyze,
+  catalog as fableCatalog,
+  lint as fableLint,
+} from "./core/Api.js";
 
 /** One rendered block. Mirrors `Meticulous.Api.BlockView` in Api.fs.
  *  Which fields are meaningful depends on `kind`. */
@@ -17,6 +21,7 @@ export interface BlockView {
     | "table"
     | "check"
     | "argument"
+    | "proof"
     | "relations"
     | "error";
   level: number;      // heading depth
@@ -40,3 +45,24 @@ export interface BlockView {
 }
 
 export const analyze = fableAnalyze as unknown as (source: string) => BlockView[];
+
+/** One inference-rule catalog entry. Mirrors `Meticulous.Api.FormView`. */
+export interface FormView {
+  name: string;        // machine name, e.g. "modus-ponens"
+  title: string;       // display name, e.g. "modus ponens"
+  aka: string;         // traditional alias ("" if none)
+  note: string;        // one-line explanation
+  premises: string[];  // patterns with metavariables, e.g. "φ → ψ"
+  conclusion: string;
+  isFallacy: boolean;
+}
+
+export const catalog = fableCatalog as unknown as () => FormView[];
+
+/** A lint warning. Mirrors `Meticulous.Api.LintView`. */
+export interface LintView {
+  line: number; // 1-based
+  message: string;
+}
+
+export const lint = fableLint as unknown as (source: string) => LintView[];

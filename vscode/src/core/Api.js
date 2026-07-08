@@ -1,19 +1,20 @@
 
-import { Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
+import { toString, Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { record_type, bool_type, array_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
-import { choose, item, mapIndexed, reduce, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { append, ofArray, singleton, collect as collect_1, choose, item, tryLast, head, tryFind, mapIndexed, reduce, empty as empty_1, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
-import { distinguishing, equivalent, Relation, relate, Verdict, checkArgument, resolve, truthTable } from "./Engine.js";
+import { atoms as atoms_1, distinguishing, equivalent, Relation, relate, Verdict, checkArgument, resolve, truthTable } from "./Engine.js";
 import { toEnglish, toUnicode } from "./Render.js";
-import { ofList, tryFind, toList, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
-import { comparePrimitives, equals, int32ToString } from "./fable_modules/fable-library-js.5.6.0/Util.js";
-import { suggestRepairs, prove, recognize } from "./Recognition.js";
-import { fallacies, validForms } from "./InferenceRules.js";
+import { ofList, tryFind as tryFind_1, add, containsKey, empty as empty_2, toList, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
+import { disposeSafe, getEnumerator, comparePrimitives, equals, int32ToString } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { checkStep, suggestRepairs, prove, recognize } from "./Recognition.js";
+import { FormKind, forms, fallacies, validForms } from "./InferenceRules.js";
 import { map as map_1, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
 import { Formula } from "./Ast.js";
 import { map as map_2, collect, delay } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
 import { parseLines } from "./Parser.js";
+import { contains, ofList as ofList_1 } from "./fable_modules/fable-library-js.5.6.0/Set.js";
 
 /**
  * One rendered block. Every field always exists; which ones are meaningful
@@ -178,6 +179,93 @@ function argumentBlock(defs, name, premises, conclusion) {
     return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(check.Atoms), toArray(map((env) => toArray(map((a_1) => FSharpMap__get_Item(env, a_1), check.Atoms)), check.Counterexamples)), toArray(map((_arg) => false, check.Counterexamples)), empty.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty.relations);
 }
 
+function proofBlock(defs, name, lines) {
+    let known = empty_2({
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    });
+    let allOk = true;
+    const rows = [];
+    const enumerator = getEnumerator(lines);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            let arg_2, arg_6, arg_7, arg_12, title, refs;
+            const line = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            if (line.tag === 1) {
+                const ruleName = line.fields[2];
+                const refs_1 = line.fields[3];
+                const n_1 = line.fields[0] | 0;
+                const rf_1 = resolve(defs, line.fields[1]);
+                const duplicate = containsKey(n_1, known);
+                const missing = filter((r) => !containsKey(r, known), refs_1);
+                const form = tryFind((fm) => (fm.Name === ruleName), forms);
+                let patternInput;
+                if (duplicate) {
+                    patternInput = ["bad", toText(printf("line number %d is used twice"))(n_1), ruleName];
+                }
+                else if (!isEmpty(missing)) {
+                    patternInput = ["bad", (arg_2 = (head(missing) | 0), toText(printf("cites line %d, which doesn\'t exist earlier in the proof"))(arg_2)), ruleName];
+                }
+                else if (form != null) {
+                    if (equals(form.Kind, new FormKind(1, []))) {
+                        const fm_2 = form;
+                        patternInput = ["bad", toText(printf("\'%s\' is a fallacy, not a rule — it cannot justify a step"))(fm_2.Title), fm_2.Title];
+                    }
+                    else {
+                        const fm_3 = form;
+                        const cited = map((r_1) => FSharpMap__get_Item(known, r_1), refs_1);
+                        if (length(fm_3.Premises) !== length(cited)) {
+                            patternInput = ["bad", (arg_6 = (length(fm_3.Premises) | 0), (arg_7 = (length(cited) | 0), toText(printf("%s needs %d cited line(s) after `from`, got %d"))(fm_3.Title)(arg_6)(arg_7))), fm_3.Title];
+                        }
+                        else if (checkStep(fm_3, cited, rf_1)) {
+                            patternInput = ["ok", "", fm_3.Title];
+                        }
+                        else {
+                            const matchValue = recognize(validForms, cited, rf_1);
+                            if (matchValue == null) {
+                                const semantic = checkArgument(cited, rf_1);
+                                patternInput = (semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s — and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title] : ["bad", (arg_12 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all — counterexample: %s"))(arg_12)), fm_3.Title]);
+                            }
+                            else {
+                                const actual = matchValue;
+                                patternInput = ["bad", toText(printf("this step doesn\'t match %s — it is actually %s (%s)"))(fm_3.Title)(actual.Title)(actual.Note), fm_3.Title];
+                            }
+                        }
+                    }
+                }
+                else {
+                    patternInput = ["bad", toText(printf("unknown rule \'%s\' — rule names are the kebab-case catalog names, e.g. modus-ponens"))(ruleName), ruleName];
+                }
+                const status = patternInput[0];
+                if (status === "bad") {
+                    allOk = false;
+                }
+                if (!duplicate) {
+                    known = add(n_1, rf_1, known);
+                }
+                void (rows.push([int32ToString(n_1), toUnicode(rf_1), (title = patternInput[2], (refs = refs_1, isEmpty(refs) ? title : (((title + " (") + join(", ", map(toString, refs))) + ")"))), status, patternInput[1]]));
+            }
+            else {
+                const n = line.fields[0] | 0;
+                const rf = resolve(defs, line.fields[1]);
+                if (containsKey(n, known)) {
+                    allOk = false;
+                    void (rows.push([int32ToString(n), toUnicode(rf), "premise", "bad", toText(printf("line number %d is used twice"))(n)]));
+                }
+                else {
+                    known = add(n, rf, known);
+                    void (rows.push([int32ToString(n), toUnicode(rf), "premise", "premise", ""]));
+                }
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    const verdict = allOk ? "valid" : "invalid";
+    const note = allOk ? "Every step checks out — the conclusion follows from the premises. ∎" : "The first ✗ step is where the chain breaks — repair it and the proof may go through.";
+    return new BlockView("proof", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, defaultArg(map_1((l) => toUnicode(resolve(defs, (l.tag === 1) ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty.form, empty.fallacy, note, empty.suggestion, rows.slice(), empty.relations);
+}
+
 function relationWhy(_arg) {
     switch (_arg.tag) {
         case 1:
@@ -221,7 +309,7 @@ function toBlock(defs, glosses, claims, st) {
         case 2:
             return new BlockView("prop", empty.level, empty.title, st.fields[0], st.fields[1], empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
         case 3:
-            return new BlockView("claim", empty.level, empty.title, st.fields[0], empty.gloss, toUnicode(st.fields[1]), empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toEnglish((name) => tryFind(name, glosses), resolve(defs, st.fields[1])), empty.suggestion, empty.proof, empty.relations);
+            return new BlockView("claim", empty.level, empty.title, st.fields[0], empty.gloss, toUnicode(st.fields[1]), empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toEnglish((name) => tryFind_1(name, glosses), resolve(defs, st.fields[1])), empty.suggestion, empty.proof, empty.relations);
         case 4:
             return tableBlock((st.fields[0].tag === 0) ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]));
         case 5:
@@ -253,6 +341,8 @@ function toBlock(defs, glosses, claims, st) {
         case 6:
             return argumentBlock(defs, st.fields[0], st.fields[1], st.fields[2]);
         case 7:
+            return proofBlock(defs, st.fields[0], st.fields[1]);
+        case 8:
             return relationsBlock(claims);
         default:
             return new BlockView("heading", st.fields[0], st.fields[1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations);
@@ -317,5 +407,138 @@ export function analyze(source) {
             return undefined;
         }
     }, parsed));
+}
+
+/**
+ * One catalog entry, as plain data. The VS Code extension turns these into
+ * completions: argument snippets for each form, and rule names after `by`.
+ */
+export class FormView extends Record {
+    constructor(name, title, aka, note, premises, conclusion, isFallacy) {
+        super();
+        this.name = name;
+        this.title = title;
+        this.aka = aka;
+        this.note = note;
+        this.premises = premises;
+        this.conclusion = conclusion;
+        this.isFallacy = isFallacy;
+    }
+}
+
+export function FormView_$reflection() {
+    return record_type("Meticulous.Api.FormView", [], FormView, () => [["name", string_type], ["title", string_type], ["aka", string_type], ["note", string_type], ["premises", array_type(string_type)], ["conclusion", string_type], ["isFallacy", bool_type]]);
+}
+
+/**
+ * The full inference-rule catalog, for the editor.
+ */
+export function catalog() {
+    return toArray(map((f) => (new FormView(f.Name, f.Title, f.Aka, f.Note, toArray(map(toUnicode, f.Premises)), toUnicode(f.Conclusion), equals(f.Kind, new FormKind(1, [])))), forms));
+}
+
+/**
+ * A non-fatal observation about the document (rendered as a warning
+ * squiggle in the editor, not shown in the preview).
+ */
+export class LintView extends Record {
+    constructor(line, message) {
+        super();
+        this.line = (line | 0);
+        this.message = message;
+    }
+}
+
+export function LintView_$reflection() {
+    return record_type("Meticulous.Api.LintView", [], LintView, () => [["line", int32_type], ["message", string_type]]);
+}
+
+/**
+ * Style warnings the parser can't raise: currently, props that are
+ * declared but never used in any formula — usually a sign the glosses
+ * and the atoms have drifted apart.
+ */
+export function lint(source) {
+    const statements = choose((tupledArg) => {
+        const r = tupledArg[1];
+        let matchResult;
+        if (r.tag === 0) {
+            if (r.fields[0] != null) {
+                matchResult = 0;
+            }
+            else {
+                matchResult = 1;
+            }
+        }
+        else {
+            matchResult = 1;
+        }
+        switch (matchResult) {
+            case 0:
+                return [tupledArg[0], r.fields[0]];
+            default:
+                return undefined;
+        }
+    }, parseLines(source));
+    const usedNames = ofList_1(collect_1(atoms_1, collect_1((tupledArg_1) => {
+        const st_1 = tupledArg_1[1];
+        switch (st_1.tag) {
+            case 3:
+                return singleton(st_1.fields[1]);
+            case 4:
+                if (st_1.fields[0].tag === 0) {
+                    return singleton(new Formula(0, [st_1.fields[0].fields[0]]));
+                }
+                else {
+                    return singleton(st_1.fields[0].fields[0]);
+                }
+            case 5:
+                if (st_1.fields[0].tag === 1) {
+                    return ofArray([st_1.fields[0].fields[0], st_1.fields[0].fields[1]]);
+                }
+                else {
+                    return singleton(st_1.fields[0].fields[0]);
+                }
+            case 6:
+                return append(st_1.fields[1], singleton(st_1.fields[2]));
+            case 7:
+                return map((_arg) => {
+                    let f_3;
+                    if (_arg.tag === 1) {
+                        f_3 = _arg.fields[1];
+                    }
+                    else {
+                        f_3 = _arg.fields[1];
+                    }
+                    return f_3;
+                }, st_1.fields[1]);
+            default:
+                return empty_1();
+        }
+    }, statements)), {
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    });
+    return toArray(choose((tupledArg_2) => {
+        const st_3 = tupledArg_2[1];
+        let matchResult_2, name_1;
+        if (st_3.tag === 2) {
+            if (!contains(st_3.fields[0], usedNames)) {
+                matchResult_2 = 0;
+                name_1 = st_3.fields[0];
+            }
+            else {
+                matchResult_2 = 1;
+            }
+        }
+        else {
+            matchResult_2 = 1;
+        }
+        switch (matchResult_2) {
+            case 0:
+                return new LintView(tupledArg_2[0], toText(printf("prop \'%s\' is declared but never used in a formula"))(name_1));
+            default:
+                return undefined;
+        }
+    }, statements));
 }
 

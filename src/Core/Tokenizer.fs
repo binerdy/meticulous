@@ -68,9 +68,16 @@ module Tokenizer =
                     loop (i + 3) (TIff :: acc)
                 | _ when System.Char.IsLetter c ->
                     // Read a whole word, then decide if it's a keyword.
+                    // A '-' continues the word only when a letter or digit
+                    // follows, so kebab-case names like possibly-god work
+                    // while `p->q` still tokenizes as an implication.
                     let start = i
                     let mutable j = i
-                    while j < input.Length && isIdentChar input.[j] do
+                    while j < input.Length
+                          && (isIdentChar input.[j]
+                              || (input.[j] = '-'
+                                  && j + 1 < input.Length
+                                  && System.Char.IsLetterOrDigit input.[j + 1])) do
                         j <- j + 1
                     let word = input.Substring(start, j - start)
                     loop j (wordToToken word :: acc)

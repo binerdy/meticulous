@@ -6,6 +6,7 @@
     { "include": "#comment" },
     { "include": "#heading" },
     { "include": "#statement" },
+    { "include": "#justification" },
     { "include": "#relation" },
     { "include": "#string" },
     { "include": "#operator" },
@@ -24,9 +25,17 @@
       }
     },
     "statement": {
-      "match": "^\\s*(prop|claim|table|check|argument|premise|conclude|analyze)\\b",
+      "match": "^\\s*(prop|claim|table|check|argument|proof|premise|conclude|analyze)\\b",
       "captures": {
         "1": { "name": "keyword.control.meticulous" }
+      }
+    },
+    "justification": {
+      "match": "\\b(by)\\s+([\\w-]+)(?:\\s+(from)\\b)?",
+      "captures": {
+        "1": { "name": "keyword.control.meticulous" },
+        "2": { "name": "entity.name.function.meticulous" },
+        "3": { "name": "keyword.control.meticulous" }
       }
     },
     "relation": {

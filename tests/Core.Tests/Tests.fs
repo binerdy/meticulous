@@ -37,6 +37,15 @@ let ``parentheses override precedence`` () =
     Assert.Equal(parse "(p or q) and r", And(Or(Atom "p", Atom "q"), Atom "r"))
 
 [<Fact>]
+let ``kebab-case names work in formulas without breaking the arrow`` () =
+    Assert.Equal(
+        Implies(Atom "possibly-god", Atom "necessarily-god"),
+        parse "possibly-god -> necessarily-god"
+    )
+    // and directly glued to the arrow:
+    Assert.Equal(Implies(Atom "p", Atom "q"), parse "p->q")
+
+[<Fact>]
 let ``a malformed formula reports an error`` () =
     match parseFormula "p and" with
     | Error _ -> ()
@@ -339,6 +348,106 @@ let ``contradictory premises are called out as vacuous validity`` () =
     let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("valid", arg.verdict)
     Assert.Contains("ex falso quodlibet", arg.note)
+
+// ---- Proof mode: the engine grades user-written derivations -------------------
+
+let private findProof doc =
+    analyze doc |> Array.find (fun b -> b.kind = "proof")
+
+[<Fact>]
+let ``a correct proof checks out step by step`` () =
+    let proof =
+        findProof
+            "proof chain {\n\
+               1. premise p -> q\n\
+               2. premise q -> r\n\
+               3. premise p\n\
+               4. q by modus-ponens from 1, 3\n\
+               5. r by modus-ponens from 2, 4\n\
+             }\n"
+    Assert.Equal("valid", proof.verdict)
+    Assert.Contains("∎", proof.note)
+    Assert.Equal("ok", proof.proof.[4].[3])   // last step status
+    Assert.Equal("r", proof.conclusion)
+
+[<Fact>]
+let ``citing the wrong rule names the rule it actually is`` () =
+    let proof =
+        findProof
+            "proof oops {\n\
+               1. premise p -> q\n\
+               2. premise p\n\
+               3. q by modus-tollens from 1, 2\n\
+             }\n"
+    Assert.Equal("invalid", proof.verdict)
+    let step = proof.proof.[2]
+    Assert.Equal("bad", step.[3])
+    Assert.Contains("actually modus ponens", step.[4])
+
+[<Fact>]
+let ``a non-consequence step gets a counterexample`` () =
+    let proof =
+        findProof
+            "proof wild {\n\
+               1. premise p or q\n\
+               2. q by simplification from 1\n\
+             }\n"
+    Assert.Equal("invalid", proof.verdict)
+    Assert.Contains("counterexample", proof.proof.[1].[4])
+
+[<Fact>]
+let ``citing a fallacy as a rule is rejected by name`` () =
+    let proof =
+        findProof
+            "proof cheeky {\n\
+               1. premise p -> q\n\
+               2. premise q\n\
+               3. p by affirming-the-consequent from 1, 2\n\
+             }\n"
+    Assert.Contains("fallacy, not a rule", proof.proof.[2].[4])
+
+[<Fact>]
+let ``laws need no citations and claim references resolve in proofs`` () =
+    let proof =
+        findProof
+            "claim C1 : p -> q\n\
+             proof themed {\n\
+               1. p or not p by excluded-middle\n\
+               2. premise C1\n\
+             }\n"
+    Assert.Equal("valid", proof.verdict)
+    Assert.Equal("ok", proof.proof.[0].[3])
+    Assert.Equal("p → q", proof.proof.[1].[1])  // C1 expanded
+
+[<Fact>]
+let ``forward and dangling citations are caught`` () =
+    let proof =
+        findProof
+            "proof timey {\n\
+               1. premise p -> q\n\
+               2. q by modus-ponens from 1, 3\n\
+               3. premise p\n\
+             }\n"
+    Assert.Contains("doesn't exist earlier", proof.proof.[1].[4])
+
+// ---- Editor extras: catalog and lint -------------------------------------------
+
+[<Fact>]
+let ``the catalog is exposed for the editor with patterns intact`` () =
+    let entries = catalog ()
+    Assert.True(entries.Length >= 25)
+    let mp = entries |> Array.find (fun e -> e.name = "modus-ponens")
+    Assert.Equal<string[]>([| "φ → ψ"; "φ" |], mp.premises)
+    Assert.Equal("ψ", mp.conclusion)
+    Assert.False(mp.isFallacy)
+    Assert.True(entries |> Array.exists (fun e -> e.isFallacy))
+
+[<Fact>]
+let ``lint flags props that never appear in a formula`` () =
+    let warnings = lint "prop ghost : Never used\nprop p : Used\nclaim C1 : p -> p\n"
+    let w = Assert.Single warnings
+    Assert.Equal(1, w.line)
+    Assert.Contains("ghost", w.message)
 
 [<Fact>]
 let ``a valid but unrecognized argument still explains its verdict`` () =

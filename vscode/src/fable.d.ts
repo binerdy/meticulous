@@ -3,4 +3,6 @@
 // JavaScript; core-bridge.ts gives `analyze` its real, precise type.
 declare module "*/Api.js" {
   export const analyze: (source: string) => unknown;
+  export const catalog: () => unknown;
+  export const lint: (source: string) => unknown;
 }

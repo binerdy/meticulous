@@ -138,6 +138,9 @@ table.proof { font-family: var(--mono); border-collapse: collapse; margin: .6rem
 table.proof td { padding: .12em .7em .12em 0; }
 .step-no { color: var(--muted); }
 .step-why { color: var(--muted); font-size: .85em; }
+.step-status.ok { color: var(--green); font-weight: 700; }
+.step-status.bad { color: var(--red); font-weight: 700; }
+tr.step-msg td { color: var(--red); font-size: .85em; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: .4em; }
 
 figure.relations figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .45rem; }
 figure.relations table { border-collapse: collapse; }

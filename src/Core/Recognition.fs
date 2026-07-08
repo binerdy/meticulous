@@ -82,6 +82,17 @@ module Recognition =
                    |> Option.bind (matchPattern form.Conclusion conclusion)
                    |> Option.isSome))
 
+    /// Does one proof step check out? The cited formulas (in any order) must
+    /// match the rule's premise patterns, and the stated formula must match
+    /// its conclusion — all under a single consistent substitution.
+    let checkStep (rule: ArgumentForm) (cited: Formula list) (stated: Formula) : bool =
+        List.length rule.Premises = List.length cited
+        && permutations cited
+           |> List.exists (fun arrangement ->
+               matchAll rule.Premises arrangement
+               |> Option.bind (matchPattern rule.Conclusion stated)
+               |> Option.isSome)
+
     // ---- Proof search ------------------------------------------------------
 
     /// One line of a derivation. `Refs` are 1-based numbers of the earlier

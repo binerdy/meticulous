@@ -34,7 +34,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var path = __toESM(require("path"));
 
 // src/core/fable_modules/fable-library-js.5.6.0/Util.js
@@ -120,8 +120,8 @@ function toIterator(en) {
     }
   };
 }
-function padWithZeros(i, length2) {
-  return i.toString(10).padStart(length2, "0");
+function padWithZeros(i, length3) {
+  return i.toString(10).padStart(length3, "0");
 }
 function dateOffset(date) {
   const date1 = date;
@@ -1579,11 +1579,11 @@ function trimStart(str, ...chars) {
 function trimEnd(str, ...chars) {
   return chars.length === 0 ? str.trimEnd() : str.replace(new RegExp("[" + escape(chars.join("")) + "]+$"), "");
 }
-function substring(str, startIndex, length2) {
-  if (startIndex + (length2 || 0) > str.length) {
+function substring(str, startIndex, length3) {
+  if (startIndex + (length3 || 0) > str.length) {
     throw new Exception("Invalid startIndex and/or length");
   }
-  return length2 != null ? str.substr(startIndex, length2) : str.substr(startIndex);
+  return length3 != null ? str.substr(startIndex, length3) : str.substr(startIndex);
 }
 
 // src/core/fable_modules/fable-library-js.5.6.0/Global.js
@@ -1647,10 +1647,22 @@ function fill(target, targetIndex, count, value2) {
   const start = targetIndex | 0;
   return target.fill(value2, start, start + count);
 }
+function map2(f, source, cons2) {
+  const len = source.length | 0;
+  const target = Helpers_allocateArrayFromCons(cons2, len);
+  for (let i = 0; i <= len - 1; i++) {
+    setItem(target, i, f(item(i, source)));
+  }
+  return target;
+}
 function singleton(value2, cons2) {
   const ar = Helpers_allocateArrayFromCons(cons2, 1);
   setItem(ar, 0, value2);
   return ar;
+}
+function fold(folder, state, array) {
+  const folder_1 = folder;
+  return array.reduce(folder_1, state);
 }
 function item(index, array) {
   if (index < 0 ? true : index >= array.length) {
@@ -2045,7 +2057,7 @@ function findIndex(predicate, xs) {
     return value(matchValue) | 0;
   }
 }
-function fold(folder, state, xs) {
+function fold2(folder, state, xs) {
   const e = ofSeq2(xs);
   try {
     let acc = state;
@@ -2061,18 +2073,42 @@ function forAll(predicate, xs) {
   return !exists((x) => !predicate(x), xs);
 }
 function iterate(action, xs) {
-  fold((unitVar, x) => {
+  fold2((unitVar, x) => {
     action(x);
   }, void 0, xs);
 }
 function iterateIndexed(action, xs) {
-  fold((i, x) => {
+  fold2((i, x) => {
     action(i, x);
     return i + 1 | 0;
   }, 0, xs);
 }
+function length2(xs) {
+  if (isArrayLike(xs)) {
+    const a = xs;
+    return a.length | 0;
+  } else if (xs instanceof FSharpList) {
+    return length(xs) | 0;
+  } else {
+    const e = ofSeq2(xs);
+    try {
+      let count = 0;
+      while (e["System.Collections.IEnumerator.MoveNext"]()) {
+        count = count + 1 | 0;
+      }
+      return count | 0;
+    } finally {
+      disposeSafe(e);
+    }
+  }
+}
 function map3(mapping, xs) {
   return generate(() => ofSeq2(xs), (e) => e["System.Collections.IEnumerator.MoveNext"]() ? some(mapping(e["System.Collections.Generic.IEnumerator`1.get_Current"]())) : void 0, (e_1) => {
+    disposeSafe(e_1);
+  });
+}
+function takeWhile(predicate, xs) {
+  return generate(() => ofSeq2(xs), (e) => e["System.Collections.IEnumerator.MoveNext"]() && predicate(e["System.Collections.Generic.IEnumerator`1.get_Current"]()) ? some(e["System.Collections.Generic.IEnumerator`1.get_Current"]()) : void 0, (e_1) => {
     disposeSafe(e_1);
   });
 }
@@ -2340,6 +2376,23 @@ function head(xs) {
 function tail(xs) {
   return FSharpList__get_Tail(xs);
 }
+function tryLast(xs_mut) {
+  tryLast: while (true) {
+    const xs = xs_mut;
+    if (FSharpList__get_IsEmpty(xs)) {
+      return void 0;
+    } else {
+      const t = FSharpList__get_Tail(xs);
+      if (FSharpList__get_IsEmpty(t)) {
+        return some(FSharpList__get_Head(xs));
+      } else {
+        xs_mut = t;
+        continue tryLast;
+      }
+    }
+    break;
+  }
+}
 function toArray(xs) {
   const len = FSharpList__get_Length(xs) | 0;
   const res = fill(new Array(len), 0, len, null);
@@ -2358,7 +2411,7 @@ function toArray(xs) {
   loop(0, xs);
   return res;
 }
-function fold2(folder, state, xs) {
+function fold3(folder, state, xs) {
   let acc = state;
   let xs_1 = xs;
   while (!FSharpList__get_IsEmpty(xs_1)) {
@@ -2368,7 +2421,7 @@ function fold2(folder, state, xs) {
   return acc;
 }
 function reverse2(xs) {
-  return fold2((acc, x) => FSharpList_Cons_305B8EAC(x, acc), FSharpList_get_Empty(), xs);
+  return fold3((acc, x) => FSharpList_Cons_305B8EAC(x, acc), FSharpList_get_Empty(), xs);
 }
 function foldIndexed(folder, state, xs) {
   const loop = (i_mut, acc_mut, xs_1_mut) => {
@@ -2433,7 +2486,7 @@ function ofSeq(xs) {
   }
 }
 function append(xs, ys) {
-  return fold2((acc, x) => FSharpList_Cons_305B8EAC(x, acc), ys, reverse2(xs));
+  return fold3((acc, x) => FSharpList_Cons_305B8EAC(x, acc), ys, reverse2(xs));
 }
 function collect2(mapping, xs) {
   const root = FSharpList_get_Empty();
@@ -2466,7 +2519,7 @@ function mapIndexed(mapping, xs) {
 }
 function map4(mapping, xs) {
   const root = FSharpList_get_Empty();
-  const node = fold2((acc, x) => {
+  const node = fold3((acc, x) => {
     const t = new FSharpList(mapping(x), void 0);
     acc.tail = t;
     return t;
@@ -2532,7 +2585,7 @@ function item2(n, xs) {
 }
 function filter2(f, xs) {
   const root = FSharpList_get_Empty();
-  const node = fold2((acc, x) => {
+  const node = fold3((acc, x) => {
     if (f(x)) {
       const t = new FSharpList(x, void 0);
       acc.tail = t;
@@ -2547,7 +2600,7 @@ function filter2(f, xs) {
 }
 function choose2(f, xs) {
   const root = FSharpList_get_Empty();
-  const node = fold2((acc, x) => {
+  const node = fold3((acc, x) => {
     const matchValue = f(x);
     if (matchValue == null) {
       return acc;
@@ -2568,11 +2621,11 @@ function reduce(f, xs) {
   if (FSharpList__get_IsEmpty(xs)) {
     throw new Exception(SR_inputWasEmpty);
   } else {
-    return fold2(f, head(xs), tail(xs));
+    return fold3(f, head(xs), tail(xs));
   }
 }
 function forAll2(f, xs) {
-  return fold2((acc, x) => acc && f(x), true, xs);
+  return fold3((acc, x) => acc && f(x), true, xs);
 }
 function exists2(f, xs) {
   return tryFindIndex2(f, xs) != null;
@@ -2650,6 +2703,16 @@ var CheckKind = class extends Union {
     return ["Verdict", "Equivalent"];
   }
 };
+var ProofLine = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["ProofPremise", "ProofDerived"];
+  }
+};
 var Statement = class extends Union {
   constructor(tag, fields) {
     super();
@@ -2657,7 +2720,7 @@ var Statement = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Analyze"];
+    return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Analyze"];
   }
 };
 
@@ -3605,6 +3668,40 @@ function SetTreeModule_copyToArray(s, arr, i) {
     j = j + 1 | 0;
   }, s);
 }
+function SetTreeModule_mkFromEnumerator(comparer_mut, acc_mut, e_mut) {
+  SetTreeModule_mkFromEnumerator: while (true) {
+    const comparer = comparer_mut, acc = acc_mut, e = e_mut;
+    if (e["System.Collections.IEnumerator.MoveNext"]()) {
+      comparer_mut = comparer;
+      acc_mut = SetTreeModule_add(comparer, e["System.Collections.Generic.IEnumerator`1.get_Current"](), acc);
+      e_mut = e;
+      continue SetTreeModule_mkFromEnumerator;
+    } else {
+      return acc;
+    }
+    break;
+  }
+}
+function SetTreeModule_ofArray(comparer, l) {
+  return fold((acc, k) => SetTreeModule_add(comparer, k, acc), SetTreeModule_empty(), l);
+}
+function SetTreeModule_ofList(comparer, l) {
+  return fold3((acc, k) => SetTreeModule_add(comparer, k, acc), SetTreeModule_empty(), l);
+}
+function SetTreeModule_ofSeq(comparer, c) {
+  if (isArrayLike(c)) {
+    return SetTreeModule_ofArray(comparer, c);
+  } else if (c instanceof FSharpList) {
+    return SetTreeModule_ofList(comparer, c);
+  } else {
+    const ie = getEnumerator(c);
+    try {
+      return SetTreeModule_mkFromEnumerator(comparer, SetTreeModule_empty(), ie);
+    } finally {
+      disposeSafe(ie);
+    }
+  }
+}
 var FSharpSet = class _FSharpSet {
   constructor(comparer, tree) {
     this.comparer = comparer;
@@ -3758,6 +3855,9 @@ function add(value2, set$) {
 }
 function empty3(comparer) {
   return FSharpSet_Empty(comparer);
+}
+function ofList(elements, comparer) {
+  return FSharpSet_$ctor(comparer, SetTreeModule_ofSeq(comparer, elements));
 }
 function toList2(set$) {
   return FSharpSet__ToList(set$);
@@ -4044,7 +4144,7 @@ function MapTreeModule_copyToArray(m, arr, i) {
   }, m);
 }
 function MapTreeModule_ofList(comparer, l) {
-  return fold2((acc, tupledArg) => MapTreeModule_add(comparer, tupledArg[0], tupledArg[1], acc), MapTreeModule_empty(), l);
+  return fold3((acc, tupledArg) => MapTreeModule_add(comparer, tupledArg[0], tupledArg[1], acc), MapTreeModule_empty(), l);
 }
 function MapTreeModule_mkFromEnumerator(comparer_mut, acc_mut, e_mut) {
   MapTreeModule_mkFromEnumerator: while (true) {
@@ -4382,7 +4482,7 @@ function tryFind2(key, table) {
 function containsKey(key, table) {
   return FSharpMap__ContainsKey(table, key);
 }
-function ofList(elements, comparer) {
+function ofList2(elements, comparer) {
   return FSharpMap_$ctor(comparer, MapTreeModule_ofSeq(comparer, elements));
 }
 function toList3(table) {
@@ -4578,7 +4678,7 @@ function eval$(env_mut, f_mut) {
 }
 function assignments(names) {
   const n = length(names) | 0;
-  return toList(delay(() => map3((i) => ofList(mapIndexed((bit, name) => [name, (i >> n - 1 - bit & 1) === 1], names), {
+  return toList(delay(() => map3((i) => ofList2(mapIndexed((bit, name) => [name, (i >> n - 1 - bit & 1) === 1], names), {
     Compare: (x, y) => comparePrimitives(x, y) | 0
   }), rangeDouble(0, 1, (1 << n) - 1))));
 }
@@ -4624,7 +4724,7 @@ var ArgumentCheck = class extends Record {
   }
 };
 function checkArgument(premises, conclusion) {
-  const names = fold2((acc, a) => {
+  const names = fold3((acc, a) => {
     if (contains(a, acc, {
       Equals: (x, y) => x === y,
       GetHashCode: (x) => stringHash(x) | 0
@@ -4754,6 +4854,7 @@ function charCodeAt(s, index) {
     throw new Exception("Index out of range.");
   }
 }
+var isDigit = (s) => isDigit2(s, 0);
 var isLetter = (s) => isLetter2(s, 0);
 var isLetterOrDigit = (s) => isLetterOrDigit2(s, 0);
 var isUpper = (s) => isUpper2(s, 0);
@@ -4761,6 +4862,10 @@ var isLower = (s) => isLower2(s, 0);
 function getUnicodeCategory2(s, index) {
   const cp = charCodeAt(s, index);
   return unicodeCategoryFunc(cp);
+}
+function isDigit2(s, index) {
+  const test = 1 << getUnicodeCategory2(s, index);
+  return (test & isDigitMask) !== 0;
 }
 function isLetter2(s, index) {
   const test = 1 << getUnicodeCategory2(s, index);
@@ -5041,7 +5146,7 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
 }
 function matchAll(patterns, targets) {
   const list = zip(patterns, targets);
-  return fold2((acc, tupledArg) => bind((subst) => matchPattern(tupledArg[0], tupledArg[1], subst), acc), empty4({
+  return fold3((acc, tupledArg) => bind((subst) => matchPattern(tupledArg[0], tupledArg[1], subst), acc), empty4({
     Compare: (x, y) => comparePrimitives(x, y) | 0
   }), list);
 }
@@ -5088,6 +5193,13 @@ function recognize(forms2, premises, conclusion) {
       return false;
     }
   }, forms2);
+}
+function checkStep(rule, cited, stated) {
+  if (length(rule.Premises) === length(cited)) {
+    return exists2((arrangement) => bind((subst) => matchPattern(rule.Conclusion, stated, subst), matchAll(rule.Premises, arrangement)) != null, permutations(cited));
+  } else {
+    return false;
+  }
 }
 var ProofStep = class extends Record {
   constructor(Formula2, Rule, Refs) {
@@ -5222,14 +5334,14 @@ function prove(premises, goal) {
   } else {
     const neededFrom = (idx, acc) => {
       const patternInput_1 = item(idx, steps);
-      return fold2((a, r) => neededFrom(r - 1, a), add(idx, acc), patternInput_1[2]);
+      return fold3((a, r) => neededFrom(r - 1, a), add(idx, acc), patternInput_1[2]);
     };
     const needed = sort(toList2(neededFrom(findIndex((tupledArg_1) => equals(tupledArg_1[0], goal), steps), empty3({
       Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
     }))), {
       Compare: (x_3, y_3) => comparePrimitives(x_3, y_3) | 0
     });
-    const renumber = ofList(mapIndexed((newIdx, oldIdx) => [oldIdx, newIdx + 1], needed), {
+    const renumber = ofList2(mapIndexed((newIdx, oldIdx) => [oldIdx, newIdx + 1], needed), {
       Compare: (x_4, y_4) => comparePrimitives(x_4, y_4) | 0
     });
     return map4((oldIdx_1) => {
@@ -5272,14 +5384,14 @@ function suggestRepairs(premises, conclusion) {
         return "";
     }
   };
-  return truncate(2, fold2((kept, c_3) => {
+  return truncate(2, fold3((kept, c_3) => {
     if (exists2((k) => equivalent(k, c_3), kept)) {
       return kept;
     } else {
       return append(kept, singleton3(c_3));
     }
   }, empty2(), sortBy((f_1) => size(f_1) | 0, filter2((c_2) => {
-    if (checkArgument(cons(c_2, premises), conclusion).IsValid && !equals(truthTable(fold2((acc, p) => new Formula(3, [acc, p]), c_2, premises)).Verdict, new Verdict(1, []))) {
+    if (checkArgument(cons(c_2, premises), conclusion).IsValid && !equals(truthTable(fold3((acc, p) => new Formula(3, [acc, p]), c_2, premises)).Verdict, new Verdict(1, []))) {
       return !equals(truthTable(new Formula(6, [c_2, conclusion])).Verdict, new Verdict(0, []));
     } else {
       return false;
@@ -5522,7 +5634,7 @@ function tokenize(input) {
             case 13: {
               const start = i | 0;
               let j = i;
-              while (j < input.length && isIdentChar(input[j])) {
+              while (j < input.length && (isIdentChar(input[j]) ? true : input[j] === "-" && j + 1 < input.length && isLetterOrDigit(input[j + 1]))) {
                 j = j + 1 | 0;
               }
               const word = substring(input, start, j - start);
@@ -5538,6 +5650,128 @@ function tokenize(input) {
       }
   };
   return loop(0, empty2());
+}
+
+// src/core/fable_modules/fable-library-js.5.6.0/Int32.js
+var NumberStyles = {
+  // None: 0x00000000,
+  // AllowLeadingWhite: 0x00000001,
+  // AllowTrailingWhite: 0x00000002,
+  // AllowLeadingSign: 0x00000004,
+  // AllowTrailingSign: 0x00000008,
+  // AllowParentheses: 0x00000010,
+  // AllowDecimalPoint: 0x00000020,
+  // AllowThousands: 0x00000040,
+  // AllowExponent: 0x00000080,
+  // AllowCurrencySymbol: 0x00000100,
+  AllowHexSpecifier: 512
+  // Integer = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign,
+  // HexNumber = AllowLeadingWhite | AllowTrailingWhite | AllowHexSpecifier,
+  // Number = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign |
+  //          AllowTrailingSign | AllowDecimalPoint | AllowThousands,
+  // Float = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign |
+  //         AllowDecimalPoint | AllowExponent,
+  // Currency = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign | AllowTrailingSign |
+  //            AllowParentheses | AllowDecimalPoint | AllowThousands | AllowCurrencySymbol,
+  // Any = AllowLeadingWhite | AllowTrailingWhite | AllowLeadingSign | AllowTrailingSign |
+  //       AllowParentheses | AllowDecimalPoint | AllowThousands | AllowCurrencySymbol | AllowExponent,
+};
+function validResponse(regexMatch, radix) {
+  const [
+    /*all*/
+    ,
+    sign,
+    prefix,
+    digits
+  ] = regexMatch;
+  return {
+    sign: sign || "",
+    prefix: prefix || "",
+    digits,
+    radix
+  };
+}
+function getRange(unsigned, bitsize) {
+  switch (bitsize) {
+    case 8:
+      return unsigned ? [0, 255] : [-128, 127];
+    case 16:
+      return unsigned ? [0, 65535] : [-32768, 32767];
+    case 32:
+      return unsigned ? [0, 4294967295] : [-2147483648, 2147483647];
+    default:
+      throw new Exception("Invalid bit size.");
+  }
+}
+function getInvalidDigits(radix) {
+  switch (radix) {
+    case 2:
+      return /[^0-1]/;
+    case 8:
+      return /[^0-7]/;
+    case 10:
+      return /[^0-9]/;
+    case 16:
+      return /[^0-9a-fA-F]/;
+    default:
+      throw new Exception("Invalid Base.");
+  }
+}
+function getRadix(prefix, style) {
+  if (style & NumberStyles.AllowHexSpecifier) {
+    return 16;
+  } else {
+    switch (prefix) {
+      case "0b":
+      case "0B":
+        return 2;
+      case "0o":
+      case "0O":
+        return 8;
+      case "0x":
+      case "0X":
+        return 16;
+      default:
+        return 10;
+    }
+  }
+}
+function isValid(str, style, radix) {
+  const integerRegex = /^\s*([\+\-])?(0[xXoObB])?([0-9a-fA-F]+)\s*$/;
+  const res = integerRegex.exec(str.replace(/_/g, ""));
+  if (res != null) {
+    const [
+      /*all*/
+      ,
+      /*sign*/
+      ,
+      prefix,
+      digits
+    ] = res;
+    radix = radix || getRadix(prefix, style);
+    const invalidDigits = getInvalidDigits(radix);
+    if (!invalidDigits.test(digits)) {
+      return validResponse(res, radix);
+    }
+  }
+  return null;
+}
+function parse(str, style, unsigned, bitsize, radix) {
+  const res = isValid(str, style, radix);
+  if (res != null) {
+    let v = Number.parseInt(res.sign + res.digits, res.radix);
+    if (!Number.isNaN(v)) {
+      const [umin, umax] = getRange(true, bitsize);
+      if (!unsigned && res.radix !== 10 && v >= umin && v <= umax) {
+        v = v << 32 - bitsize >> 32 - bitsize;
+      }
+      const [min, max2] = getRange(unsigned, bitsize);
+      if (v >= min && v <= max2) {
+        return v;
+      }
+    }
+  }
+  throw new Exception(`The input string ${str} was not in a correct format.`);
 }
 
 // src/core/Parser.js
@@ -5798,9 +6032,11 @@ function parseLine(raw) {
       return Result_Bind((lf) => Result_Map((rf) => new Statement(5, [new CheckKind(1, [lf, rf])]), parseFormula(r)), parseFormula(matchValue_2[0]));
     }
   } else if (line === "analyze") {
-    return new FSharpResult$2(0, [new Statement(7, [])]);
+    return new FSharpResult$2(0, [new Statement(8, [])]);
   } else if (line.startsWith("argument")) {
     return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line \u2014 e.g.  argument my-point {"]);
+  } else if (line.startsWith("proof")) {
+    return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line \u2014 e.g.  proof my-derivation {"]);
   } else {
     return new FSharpResult$2(0, [new Statement(1, [line])]);
   }
@@ -5855,33 +6091,120 @@ function parseArgumentBlock(name, headerLine, body) {
     return new FSharpResult$2(1, [errors_1]);
   }
 }
+function parseProofBlock(name, headerLine, body) {
+  let steps = empty2();
+  let errors = empty2();
+  const enumerator = getEnumerator(body);
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      let array_1, arg;
+      const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      const no = forLoopVar[0] | 0;
+      const line_1 = stripComment(forLoopVar[1]).trim();
+      if (line_1 === "") {
+      } else {
+        let matchValue;
+        const line = line_1;
+        const digits = length2(takeWhile(isDigit, line.split(""))) | 0;
+        matchValue = digits > 0 && digits < line.length && line[digits] === "." ? [parse(substring(line, 0, digits), 511, false, 32), substring(line, digits + 1).trim()] : void 0;
+        if (matchValue != null) {
+          const rest = matchValue[1];
+          const number = matchValue[0] | 0;
+          if (rest.startsWith("premise ")) {
+            const matchValue_1 = parseFormula(substring(rest, 8));
+            if (matchValue_1.tag === 1) {
+              errors = append(errors, singleton3([no, matchValue_1.fields[0]]));
+            } else {
+              steps = append(steps, singleton3(new ProofLine(0, [number, matchValue_1.fields[0]])));
+            }
+          } else {
+            const matchValue_2 = rest.lastIndexOf(" by ") | 0;
+            if (matchValue_2 === -1) {
+              errors = append(errors, singleton3([no, "a derived line needs a justification \u2014 e.g.  wet by modus-ponens from 1, 2"]));
+            } else {
+              const idx = matchValue_2 | 0;
+              const formulaText = substring(rest, 0, idx);
+              const justification = substring(rest, idx + 4).trim();
+              let patternInput;
+              const matchValue_3 = justification.indexOf(" from ") | 0;
+              if (matchValue_3 === -1) {
+                patternInput = [justification, ""];
+              } else {
+                const j = matchValue_3 | 0;
+                patternInput = [substring(justification, 0, j).trim(), substring(justification, j + 6)];
+              }
+              const rule = patternInput[0];
+              const refs = ofArray((array_1 = map2((s) => s.trim(), split(patternInput[1], [","], void 0, 0)), array_1.filter((s_1) => s_1 !== "")));
+              const badRefs = filter2((r) => !forAll(isDigit, r.split("")), refs);
+              if (rule === "") {
+                errors = append(errors, singleton3([no, "missing rule name after `by`"]));
+              } else if (!isEmpty(badRefs)) {
+                errors = append(errors, singleton3([no, (arg = head(badRefs), toText(printf("citations after `from` must be line numbers, not %A"))(arg))]));
+              } else {
+                const matchValue_4 = parseFormula(formulaText);
+                if (matchValue_4.tag === 1) {
+                  errors = append(errors, singleton3([no, matchValue_4.fields[0]]));
+                } else {
+                  steps = append(steps, singleton3(new ProofLine(1, [number, matchValue_4.fields[0], rule, map4((value2) => parse(value2, 511, false, 32) | 0, refs)])));
+                }
+              }
+            }
+          }
+        } else {
+          errors = append(errors, singleton3([no, "every proof line starts with its number \u2014 e.g.  3. wet by modus-ponens from 1, 2"]));
+        }
+      }
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  const errors_1 = errors;
+  const steps_1 = steps;
+  if (isEmpty(errors_1)) {
+    if (isEmpty(steps_1)) {
+      return new FSharpResult$2(1, [singleton3([headerLine, "a proof needs at least one line"])]);
+    } else {
+      return new FSharpResult$2(0, [new Statement(7, [name, steps])]);
+    }
+  } else {
+    return new FSharpResult$2(1, [errors_1]);
+  }
+}
 function parseLines(source) {
   const lines = split(replace(source, "\r\n", "\n"), ["\n"], void 0, 0);
   const results = [];
   let i = 0;
   while (i < lines.length) {
     const no = i + 1 | 0;
-    const line = stripComment(item(i, lines)).trim();
-    if (line.startsWith("argument ") && line.endsWith("{")) {
-      const name = substring(line, 9, line.length - 10).trim();
-      const body = [];
+    const line_1 = stripComment(item(i, lines)).trim();
+    let matchValue;
+    const line = line_1;
+    matchValue = line.startsWith("argument ") && line.endsWith("{") ? ["argument", (name) => (headerLine) => (body) => parseArgumentBlock(name, headerLine, body)] : line.startsWith("proof ") && line.endsWith("{") ? ["proof", (name_1) => (headerLine_1) => (body_1) => parseProofBlock(name_1, headerLine_1, body_1)] : void 0;
+    if (matchValue == null) {
+      void results.push([no, parseLine(item(i, lines))]);
+      i = i + 1 | 0;
+    } else {
+      const parseBlock = matchValue[1];
+      const keyword = matchValue[0];
+      const name_2 = substring(line_1, keyword.length, line_1.length - keyword.length - 1).trim();
+      const body_2 = [];
       let j = i + 1;
       let closed = false;
       while (!closed && j < lines.length) {
         if (stripComment(item(j, lines)).trim() === "}") {
           closed = true;
         } else {
-          void body.push([j + 1, item(j, lines)]);
+          void body_2.push([j + 1, item(j, lines)]);
           j = j + 1 | 0;
         }
       }
       if (!closed) {
-        void results.push([no, new FSharpResult$2(1, ["this `argument {` is never closed with `}`"])]);
+        void results.push([no, new FSharpResult$2(1, [toText(printf("this `%s {` is never closed with `}`"))(keyword)])]);
         i = lines.length | 0;
       } else {
-        const matchValue = parseArgumentBlock(name, no, ofSeq(body));
-        if (matchValue.tag === 1) {
-          const enumerator = getEnumerator(matchValue.fields[0]);
+        const matchValue_1 = parseBlock(name_2)(no)(ofSeq(body_2));
+        if (matchValue_1.tag === 1) {
+          const enumerator = getEnumerator(matchValue_1.fields[0]);
           try {
             while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
               const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
@@ -5891,13 +6214,10 @@ function parseLines(source) {
             disposeSafe(enumerator);
           }
         } else {
-          void results.push([no, new FSharpResult$2(0, [matchValue.fields[0]])]);
+          void results.push([no, new FSharpResult$2(0, [matchValue_1.fields[0]])]);
         }
         i = j + 1 | 0;
       }
-    } else {
-      void results.push([no, parseLine(item(i, lines))]);
-      i = i + 1 | 0;
     }
   }
   return ofSeq(results);
@@ -6032,6 +6352,82 @@ function argumentBlock(defs, name, premises, conclusion) {
   const proof = toArray(mapIndexed(proofRow, proofSteps));
   return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(check.Atoms), toArray(map4((env) => toArray(map4((a_1) => FSharpMap__get_Item(env, a_1), check.Atoms)), check.Counterexamples)), toArray(map4((_arg) => false, check.Counterexamples)), empty5.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty5.relations);
 }
+function proofBlock(defs, name, lines) {
+  let known = empty4({
+    Compare: (x, y) => comparePrimitives(x, y) | 0
+  });
+  let allOk = true;
+  const rows = [];
+  const enumerator = getEnumerator(lines);
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      let arg_2, arg_6, arg_7, arg_12, title, refs;
+      const line = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      if (line.tag === 1) {
+        const ruleName = line.fields[2];
+        const refs_1 = line.fields[3];
+        const n_1 = line.fields[0] | 0;
+        const rf_1 = resolve(defs, line.fields[1]);
+        const duplicate = containsKey(n_1, known);
+        const missing = filter2((r) => !containsKey(r, known), refs_1);
+        const form = tryFind((fm) => fm.Name === ruleName, forms);
+        let patternInput;
+        if (duplicate) {
+          patternInput = ["bad", toText(printf("line number %d is used twice"))(n_1), ruleName];
+        } else if (!isEmpty(missing)) {
+          patternInput = ["bad", (arg_2 = head(missing) | 0, toText(printf("cites line %d, which doesn't exist earlier in the proof"))(arg_2)), ruleName];
+        } else if (form != null) {
+          if (equals(form.Kind, new FormKind(1, []))) {
+            const fm_2 = form;
+            patternInput = ["bad", toText(printf("'%s' is a fallacy, not a rule \u2014 it cannot justify a step"))(fm_2.Title), fm_2.Title];
+          } else {
+            const fm_3 = form;
+            const cited = map4((r_1) => FSharpMap__get_Item(known, r_1), refs_1);
+            if (length(fm_3.Premises) !== length(cited)) {
+              patternInput = ["bad", (arg_6 = length(fm_3.Premises) | 0, arg_7 = length(cited) | 0, toText(printf("%s needs %d cited line(s) after `from`, got %d"))(fm_3.Title)(arg_6)(arg_7)), fm_3.Title];
+            } else if (checkStep(fm_3, cited, rf_1)) {
+              patternInput = ["ok", "", fm_3.Title];
+            } else {
+              const matchValue = recognize(validForms, cited, rf_1);
+              if (matchValue == null) {
+                const semantic = checkArgument(cited, rf_1);
+                patternInput = semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s \u2014 and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title] : ["bad", (arg_12 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all \u2014 counterexample: %s"))(arg_12)), fm_3.Title];
+              } else {
+                const actual = matchValue;
+                patternInput = ["bad", toText(printf("this step doesn't match %s \u2014 it is actually %s (%s)"))(fm_3.Title)(actual.Title)(actual.Note), fm_3.Title];
+              }
+            }
+          }
+        } else {
+          patternInput = ["bad", toText(printf("unknown rule '%s' \u2014 rule names are the kebab-case catalog names, e.g. modus-ponens"))(ruleName), ruleName];
+        }
+        const status = patternInput[0];
+        if (status === "bad") {
+          allOk = false;
+        }
+        if (!duplicate) {
+          known = add2(n_1, rf_1, known);
+        }
+        void rows.push([int32ToString(n_1), toUnicode(rf_1), (title = patternInput[2], refs = refs_1, isEmpty(refs) ? title : title + " (" + join(", ", map4(toString, refs)) + ")"), status, patternInput[1]]);
+      } else {
+        const n = line.fields[0] | 0;
+        const rf = resolve(defs, line.fields[1]);
+        if (containsKey(n, known)) {
+          allOk = false;
+          void rows.push([int32ToString(n), toUnicode(rf), "premise", "bad", toText(printf("line number %d is used twice"))(n)]);
+        } else {
+          known = add2(n, rf, known);
+          void rows.push([int32ToString(n), toUnicode(rf), "premise", "premise", ""]);
+        }
+      }
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  const verdict = allOk ? "valid" : "invalid";
+  const note = allOk ? "Every step checks out \u2014 the conclusion follows from the premises. \u220E" : "The first \u2717 step is where the chain breaks \u2014 repair it and the proof may go through.";
+  return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations);
+}
 function relationWhy(_arg) {
   switch (_arg.tag) {
     case 1:
@@ -6101,6 +6497,8 @@ function toBlock(defs, glosses, claims, st) {
     case 6:
       return argumentBlock(defs, st.fields[0], st.fields[1], st.fields[2]);
     case 7:
+      return proofBlock(defs, st.fields[0], st.fields[1]);
+    case 8:
       return relationsBlock(claims);
     default:
       return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
@@ -6116,7 +6514,7 @@ function analyze(source) {
       return r.fields[0];
     }
   }, parsed);
-  const defs = ofList(choose2((_arg_1) => {
+  const defs = ofList2(choose2((_arg_1) => {
     if (_arg_1.tag === 3) {
       return [_arg_1.fields[0], _arg_1.fields[1]];
     } else {
@@ -6125,7 +6523,7 @@ function analyze(source) {
   }, statements), {
     Compare: (x, y) => comparePrimitives(x, y) | 0
   });
-  const glosses = ofList(choose2((_arg_2) => {
+  const glosses = ofList2(choose2((_arg_2) => {
     if (_arg_2.tag === 2) {
       return [_arg_2.fields[0], _arg_2.fields[1]];
     } else {
@@ -6152,9 +6550,109 @@ function analyze(source) {
     }
   }, parsed));
 }
+var FormView = class extends Record {
+  constructor(name, title, aka, note, premises, conclusion, isFallacy) {
+    super();
+    this.name = name;
+    this.title = title;
+    this.aka = aka;
+    this.note = note;
+    this.premises = premises;
+    this.conclusion = conclusion;
+    this.isFallacy = isFallacy;
+  }
+};
+function catalog() {
+  return toArray(map4((f) => new FormView(f.Name, f.Title, f.Aka, f.Note, toArray(map4(toUnicode, f.Premises)), toUnicode(f.Conclusion), equals(f.Kind, new FormKind(1, []))), forms));
+}
+var LintView = class extends Record {
+  constructor(line, message) {
+    super();
+    this.line = line | 0;
+    this.message = message;
+  }
+};
+function lint(source) {
+  const statements = choose2((tupledArg) => {
+    const r = tupledArg[1];
+    let matchResult;
+    if (r.tag === 0) {
+      if (r.fields[0] != null) {
+        matchResult = 0;
+      } else {
+        matchResult = 1;
+      }
+    } else {
+      matchResult = 1;
+    }
+    switch (matchResult) {
+      case 0:
+        return [tupledArg[0], r.fields[0]];
+      default:
+        return void 0;
+    }
+  }, parseLines(source));
+  const usedNames = ofList(collect2(atoms, collect2((tupledArg_1) => {
+    const st_1 = tupledArg_1[1];
+    switch (st_1.tag) {
+      case 3:
+        return singleton3(st_1.fields[1]);
+      case 4:
+        if (st_1.fields[0].tag === 0) {
+          return singleton3(new Formula(0, [st_1.fields[0].fields[0]]));
+        } else {
+          return singleton3(st_1.fields[0].fields[0]);
+        }
+      case 5:
+        if (st_1.fields[0].tag === 1) {
+          return ofArray([st_1.fields[0].fields[0], st_1.fields[0].fields[1]]);
+        } else {
+          return singleton3(st_1.fields[0].fields[0]);
+        }
+      case 6:
+        return append(st_1.fields[1], singleton3(st_1.fields[2]));
+      case 7:
+        return map4((_arg) => {
+          let f_3;
+          if (_arg.tag === 1) {
+            f_3 = _arg.fields[1];
+          } else {
+            f_3 = _arg.fields[1];
+          }
+          return f_3;
+        }, st_1.fields[1]);
+      default:
+        return empty2();
+    }
+  }, statements)), {
+    Compare: (x, y) => comparePrimitives(x, y) | 0
+  });
+  return toArray(choose2((tupledArg_2) => {
+    const st_3 = tupledArg_2[1];
+    let matchResult_2, name_1;
+    if (st_3.tag === 2) {
+      if (!contains2(st_3.fields[0], usedNames)) {
+        matchResult_2 = 0;
+        name_1 = st_3.fields[0];
+      } else {
+        matchResult_2 = 1;
+      }
+    } else {
+      matchResult_2 = 1;
+    }
+    switch (matchResult_2) {
+      case 0:
+        return new LintView(tupledArg_2[0], toText(printf("prop '%s' is declared but never used in a formula"))(name_1));
+      default:
+        return void 0;
+    }
+  }, statements));
+}
 
 // src/core-bridge.ts
 var analyze2 = analyze;
+var catalog2 = catalog;
+var lint2 = lint;
 
 // src/render.ts
 function escapeHtml(s) {
@@ -6221,6 +6719,16 @@ function renderArgument(block) {
   }
   return `<figure class="argument">${parts.join("")}</figure>`;
 }
+function renderProof(block) {
+  const rows = block.proof.map(([n, formula, why, status, message]) => {
+    const mark = status === "ok" ? `<td class="step-status ok">\u2713</td>` : status === "bad" ? `<td class="step-status bad">\u2717</td>` : `<td class="step-status"></td>`;
+    const main = `<tr class="step-${status}"><td class="step-no">${escapeHtml(n)}.</td><td class="step-formula">${escapeHtml(formula)}</td><td class="step-why">${escapeHtml(why)}</td>${mark}</tr>`;
+    const detail = message ? `<tr class="step-msg"><td></td><td colspan="3">${escapeHtml(message)}</td></tr>` : "";
+    return main + detail;
+  }).join("");
+  const note = block.note ? `<p class="note">${escapeHtml(block.note)}</p>` : "";
+  return `<figure class="argument proof-figure"><figcaption><span class="arg-name">${escapeHtml(block.name)}</span>${verdictBadge(block.verdict)}<span class="check-label">proof</span></figcaption><table class="proof">${rows}</table>${note}</figure>`;
+}
 function renderRelations(block) {
   if (block.relations.length === 0) {
     return `<div class="relations"><p class="empty">analyze needs at least two <code>claim</code>s to compare.</p></div>`;
@@ -6259,6 +6767,8 @@ function renderBlock(block) {
     }
     case "argument":
       return renderArgument(block);
+    case "proof":
+      return renderProof(block);
     case "relations":
       return renderRelations(block);
     case "error":
@@ -6272,6 +6782,140 @@ function renderDocument(blocks) {
     return `<p class="empty">Nothing to show yet \u2014 write a <code>prop</code>, <code>claim</code>, or <code>table</code>.</p>`;
   }
   return blocks.map(renderBlock).join("\n");
+}
+
+// src/completion.ts
+var vscode = __toESM(require("vscode"));
+function toPlaceholders(pattern) {
+  return pattern.replace(/φ/g, "${1:p}").replace(/ψ/g, "${2:q}").replace(/χ/g, "${3:r}").replace(/ω/g, "${4:s}");
+}
+function formSnippet(form) {
+  const premises = form.premises.map((p) => `  premise ${toPlaceholders(p)}`).join("\n");
+  const body = premises === "" ? "" : `${premises}
+`;
+  return `argument \${5:${form.name}} {
+${body}  ---
+  conclude ${toPlaceholders(form.conclusion)}
+}`;
+}
+var KEYWORD_SNIPPETS = [
+  { label: "prop", detail: "declare an atomic proposition", body: "prop ${1:p} : ${2:its meaning in plain language}" },
+  { label: "claim", detail: "name a compound formula", body: "claim ${1:C1} : ${2:p -> q}" },
+  { label: "table", detail: "truth table + verdict", body: "table ${1:C1}" },
+  { label: "check", detail: "verdict for a formula", body: "check ${1:p -> q}" },
+  { label: "check equivalent", detail: "are two formulas the same claim?", body: "check ${1:A} equivalent ${2:B}" },
+  { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
+  { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
+  { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
+  { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
+  { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" }
+];
+function registerCompletions(context) {
+  const forms2 = catalog2();
+  const provider = {
+    provideCompletionItems(document, position) {
+      const prefix = document.lineAt(position).text.slice(0, position.character);
+      const items = [];
+      if (/\bby\s+[\w-]*$/.test(prefix)) {
+        for (const form of forms2.filter((f) => !f.isFallacy)) {
+          const item3 = new vscode.CompletionItem(form.name, vscode.CompletionItemKind.Function);
+          item3.detail = form.aka ? `${form.title} (${form.aka})` : form.title;
+          item3.documentation = `${form.premises.join(";  ")}  \u22A2  ${form.conclusion}
+${form.note}`;
+          items.push(item3);
+        }
+        return items;
+      }
+      const slash = prefix.match(/\/[\w-]*$/);
+      const slashRange = slash ? new vscode.Range(position.line, position.character - slash[0].length, position.line, position.character) : void 0;
+      for (const form of forms2.filter((f) => !f.isFallacy)) {
+        const item3 = new vscode.CompletionItem(
+          `/${form.name}`,
+          vscode.CompletionItemKind.Snippet
+        );
+        item3.detail = form.aka ? `${form.title} (${form.aka})` : form.title;
+        item3.documentation = new vscode.MarkdownString(
+          `\`${form.premises.join("`,  `")}\`  \u22A2  \`${form.conclusion}\`
+
+${form.note}`
+        );
+        item3.insertText = new vscode.SnippetString(formSnippet(form));
+        item3.filterText = `/${form.name} ${form.name}`;
+        if (slashRange) item3.range = slashRange;
+        items.push(item3);
+      }
+      if (slash) return items;
+      for (const kw of KEYWORD_SNIPPETS) {
+        const item3 = new vscode.CompletionItem(kw.label, vscode.CompletionItemKind.Keyword);
+        item3.detail = kw.detail;
+        item3.insertText = new vscode.SnippetString(kw.body);
+        items.push(item3);
+      }
+      for (const match of document.getText().matchAll(/^\s*(prop|claim)\s+([A-Za-z_]\w*)\s*:/gm)) {
+        const item3 = new vscode.CompletionItem(
+          match[2],
+          match[1] === "prop" ? vscode.CompletionItemKind.Variable : vscode.CompletionItemKind.Constant
+        );
+        item3.detail = match[1];
+        items.push(item3);
+      }
+      return items;
+    }
+  };
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      { language: "meticulous" },
+      provider,
+      "/"
+      // typing a slash pops the form catalog; Ctrl+Space works everywhere
+    )
+  );
+}
+
+// src/diagnostics.ts
+var vscode2 = __toESM(require("vscode"));
+function refresh(document, collection) {
+  if (document.languageId !== "meticulous") return;
+  const diagnostics = [];
+  const fullLineRange = (line1based) => {
+    const line = Math.max(0, Math.min(line1based - 1, document.lineCount - 1));
+    return document.lineAt(line).range;
+  };
+  try {
+    for (const block of analyze2(document.getText())) {
+      if (block.kind === "error") {
+        diagnostics.push(
+          new vscode2.Diagnostic(fullLineRange(block.line), block.title, vscode2.DiagnosticSeverity.Error)
+        );
+      }
+    }
+    for (const warning of lint2(document.getText())) {
+      const d = new vscode2.Diagnostic(
+        fullLineRange(warning.line),
+        warning.message,
+        vscode2.DiagnosticSeverity.Warning
+      );
+      d.tags = [vscode2.DiagnosticTag.Unnecessary];
+      diagnostics.push(d);
+    }
+  } catch {
+  }
+  collection.set(document.uri, diagnostics);
+}
+function registerDiagnostics(context) {
+  const collection = vscode2.languages.createDiagnosticCollection("meticulous");
+  let debounce;
+  const scheduleRefresh = (document) => {
+    if (debounce) clearTimeout(debounce);
+    debounce = setTimeout(() => refresh(document, collection), 300);
+  };
+  for (const document of vscode2.workspace.textDocuments) refresh(document, collection);
+  context.subscriptions.push(
+    collection,
+    vscode2.workspace.onDidOpenTextDocument((d) => refresh(d, collection)),
+    vscode2.workspace.onDidChangeTextDocument((e) => scheduleRefresh(e.document)),
+    vscode2.workspace.onDidCloseTextDocument((d) => collection.delete(d.uri))
+  );
 }
 
 // src/extension.ts
@@ -6334,6 +6978,9 @@ var STYLE = `
   table.proof td { padding: .12em .6em .12em 0; }
   .step-no { opacity: .55; }
   .step-why { opacity: .7; font-size: .85em; }
+  .step-status.ok { color: var(--vscode-testing-iconPassed, #3fb950); font-weight: 700; }
+  .step-status.bad { color: var(--vscode-testing-iconFailed, #f85149); font-weight: 700; }
+  tr.step-msg td { color: var(--vscode-testing-iconFailed, #f85149); font-size: .85em; font-family: var(--vscode-font-family); padding-bottom: .4em; }
 
   /* relations (analyze) */
   figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
@@ -6357,12 +7004,14 @@ function wrapHtml(body) {
 </html>`;
 }
 function activate(context) {
+  registerCompletions(context);
+  registerDiagnostics(context);
   let panel;
   let trackedUri;
   let debounce;
   const render = () => {
     if (!panel || !trackedUri) return;
-    const doc = vscode.workspace.textDocuments.find(
+    const doc = vscode3.workspace.textDocuments.find(
       (d) => d.uri.toString() === trackedUri.toString()
     );
     if (!doc) return;
@@ -6375,17 +7024,17 @@ function activate(context) {
     }
   };
   const openPreview = () => {
-    const editor = vscode.window.activeTextEditor;
+    const editor = vscode3.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "meticulous") {
-      vscode.window.showInformationMessage("Open a .met file to preview it.");
+      vscode3.window.showInformationMessage("Open a .met file to preview it.");
       return;
     }
     trackedUri = editor.document.uri;
     if (!panel) {
-      panel = vscode.window.createWebviewPanel(
+      panel = vscode3.window.createWebviewPanel(
         "meticulousPreview",
         "meticulous preview",
-        { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+        { viewColumn: vscode3.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: false }
       );
       panel.onDidDispose(
@@ -6401,9 +7050,9 @@ function activate(context) {
     render();
   };
   context.subscriptions.push(
-    vscode.commands.registerCommand("meticulous.showPreview", openPreview),
+    vscode3.commands.registerCommand("meticulous.showPreview", openPreview),
     // Live update: re-render (debounced) whenever the tracked document changes.
-    vscode.workspace.onDidChangeTextDocument((e) => {
+    vscode3.workspace.onDidChangeTextDocument((e) => {
       if (trackedUri && e.document.uri.toString() === trackedUri.toString()) {
         if (debounce) clearTimeout(debounce);
         debounce = setTimeout(render, 150);

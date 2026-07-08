@@ -208,6 +208,96 @@ module Api =
                 |> List.toArray
             results = check.Counterexamples |> List.map (fun _ -> false) |> List.toArray }
 
+    /// Check a user-written proof line by line. Each derived step must
+    /// genuinely follow from the lines it cites, *by the rule it names* —
+    /// this is where the engine grades your reasoning rather than doing it.
+    let private proofBlock (defs: Map<string, Formula>) (name: string) (lines: ProofLine list) =
+        // Formulas established so far, by line number. A failed step is still
+        // recorded, so one mistake doesn't cascade into every later citation.
+        let mutable known: Map<int, Formula> = Map.empty
+        let mutable allOk = true
+        let rows = ResizeArray<string[]>()
+
+        // How the justification reads in the output, e.g. "modus ponens (1, 2)".
+        let justify (title: string) refs =
+            if List.isEmpty refs then title
+            else title + " (" + (refs |> List.map string |> String.concat ", ") + ")"
+
+        for line in lines do
+            match line with
+            | ProofPremise(n, f) ->
+                let rf = resolve defs f
+                if Map.containsKey n known then
+                    allOk <- false
+                    rows.Add [| string n; toUnicode rf; "premise"; "bad"; sprintf "line number %d is used twice" n |]
+                else
+                    known <- Map.add n rf known
+                    rows.Add [| string n; toUnicode rf; "premise"; "premise"; "" |]
+
+            | ProofDerived(n, f, ruleName, refs) ->
+                let rf = resolve defs f
+                let duplicate = Map.containsKey n known
+                // A citation is valid only if that line already exists above us.
+                let missing = refs |> List.filter (fun r -> not (Map.containsKey r known))
+                let form = forms |> List.tryFind (fun fm -> fm.Name = ruleName)
+
+                // Work out the step's verdict and, when it fails, the most
+                // helpful thing we can say about *why*.
+                let status, message, displayTitle =
+                    if duplicate then
+                        "bad", sprintf "line number %d is used twice" n, ruleName
+                    elif not (List.isEmpty missing) then
+                        "bad", sprintf "cites line %d, which doesn't exist earlier in the proof" (List.head missing), ruleName
+                    else
+                        match form with
+                        | None ->
+                            "bad", sprintf "unknown rule '%s' — rule names are the kebab-case catalog names, e.g. modus-ponens" ruleName, ruleName
+                        | Some fm when fm.Kind = FallacyForm ->
+                            "bad", sprintf "'%s' is a fallacy, not a rule — it cannot justify a step" fm.Title, fm.Title
+                        | Some fm ->
+                            let cited = refs |> List.map (fun r -> known.[r])
+                            if List.length fm.Premises <> List.length cited then
+                                "bad",
+                                sprintf "%s needs %d cited line(s) after `from`, got %d" fm.Title (List.length fm.Premises) (List.length cited),
+                                fm.Title
+                            elif checkStep fm cited rf then
+                                "ok", "", fm.Title
+                            else
+                                // The step is wrong as justified. Diagnose in tiers:
+                                // is it a different rule? valid but ruleless? or
+                                // not even a consequence?
+                                match recognize validForms cited rf with
+                                | Some actual ->
+                                    "bad", sprintf "this step doesn't match %s — it is actually %s (%s)" fm.Title actual.Title actual.Note, fm.Title
+                                | None ->
+                                    let semantic = checkArgument cited rf
+                                    if semantic.IsValid then
+                                        "bad", sprintf "it does follow from the cited lines, but not by %s — and no single catalog rule derives it in one step" fm.Title, fm.Title
+                                    else
+                                        "bad",
+                                        sprintf "it does not follow from the cited lines at all — counterexample: %s" (describeSituation (List.head semantic.Counterexamples)),
+                                        fm.Title
+
+                if status = "bad" then allOk <- false
+                if not duplicate then known <- Map.add n rf known
+                rows.Add [| string n; toUnicode rf; justify displayTitle refs; status; message |]
+
+        { empty with
+            kind = "proof"
+            name = name
+            verdict = if allOk then "valid" else "invalid"
+            note =
+                if allOk then
+                    "Every step checks out — the conclusion follows from the premises. ∎"
+                else
+                    "The first ✗ step is where the chain breaks — repair it and the proof may go through."
+            conclusion =
+                lines
+                |> List.tryLast
+                |> Option.map (fun l -> toUnicode (resolve defs (match l with ProofPremise(_, f) | ProofDerived(_, f, _, _) -> f)))
+                |> Option.defaultValue ""
+            proof = rows.ToArray() }
+
     /// Explain what each relation *means* — shown next to the relation name.
     let private relationWhy =
         function
@@ -279,6 +369,7 @@ module Api =
                 verdict = if same then "equivalent" else "not-equivalent"
                 note = note }
         | Argument(name, premises, conclusion) -> argumentBlock defs name premises conclusion
+        | Proof(name, lines) -> proofBlock defs name lines
         | Analyze -> relationsBlock claims
 
     /// Parse and analyse a whole document into block views for rendering.
@@ -316,4 +407,68 @@ module Api =
             | Ok None -> None
             | Ok(Some st) -> Some(toBlock defs glosses claims st)
             | Error msg -> Some { empty with kind = "error"; line = lineNo; title = msg })
+        |> List.toArray
+
+    // ---- Extras for the editor tooling --------------------------------------
+
+    /// One catalog entry, as plain data. The VS Code extension turns these into
+    /// completions: argument snippets for each form, and rule names after `by`.
+    type FormView =
+        { name: string
+          title: string
+          aka: string
+          note: string
+          premises: string[]   // patterns with metavariables, e.g. "φ → ψ"
+          conclusion: string
+          isFallacy: bool }
+
+    /// The full inference-rule catalog, for the editor.
+    let catalog () : FormView[] =
+        forms
+        |> List.map (fun f ->
+            { name = f.Name
+              title = f.Title
+              aka = f.Aka
+              note = f.Note
+              premises = f.Premises |> List.map toUnicode |> List.toArray
+              conclusion = toUnicode f.Conclusion
+              isFallacy = (f.Kind = FallacyForm) })
+        |> List.toArray
+
+    /// A non-fatal observation about the document (rendered as a warning
+    /// squiggle in the editor, not shown in the preview).
+    type LintView = { line: int; message: string }
+
+    /// Style warnings the parser can't raise: currently, props that are
+    /// declared but never used in any formula — usually a sign the glosses
+    /// and the atoms have drifted apart.
+    let lint (source: string) : LintView[] =
+        let statements =
+            parseLines source
+            |> List.choose (fun (no, r) -> match r with Ok(Some st) -> Some(no, st) | _ -> None)
+
+        let formulasOf st =
+            match st with
+            | Claim(_, f) -> [ f ]
+            | Table(TargetFormula f) -> [ f ]
+            | Table(TargetRef n) -> [ Atom n ]
+            | Check(Verdict f) -> [ f ]
+            | Check(Equivalent(a, b)) -> [ a; b ]
+            | Argument(_, ps, c) -> ps @ [ c ]
+            | Proof(_, lines) ->
+                lines |> List.map (function ProofPremise(_, f) | ProofDerived(_, f, _, _) -> f)
+            | _ -> []
+
+        let usedNames =
+            statements
+            |> List.collect (fun (_, st) -> formulasOf st)
+            |> List.collect atoms
+            |> Set.ofList
+
+        statements
+        |> List.choose (fun (lineNo, st) ->
+            match st with
+            | Prop(name, _) when not (Set.contains name usedNames) ->
+                Some { line = lineNo; message = sprintf "prop '%s' is declared but never used in a formula" name }
+            | _ -> None)
         |> List.toArray

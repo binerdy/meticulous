@@ -32,6 +32,14 @@ module Ast =
         | Verdict of Formula                 // check (p -> q)      -> is it a tautology?
         | Equivalent of Formula * Formula    // check A equivalent B -> are they the same?
 
+    /// One line of a user-written proof. Lines are numbered so later steps
+    /// can cite the earlier ones they build on.
+    type ProofLine =
+        | ProofPremise of number: int * formula: Formula
+                          // 1. premise rain -> wet
+        | ProofDerived of number: int * formula: Formula * rule: string * refs: int list
+                          // 3. wet   by modus-ponens from 1, 2
+
     /// A top-level statement — one meaningful line or block in a document.
     type Statement =
         | Heading of level: int * text: string   // # Title / ## Subtitle
@@ -42,6 +50,8 @@ module Ast =
         | Check of CheckKind                        // check ...
         | Argument of name: string * premises: Formula list * conclusion: Formula
                                                     // argument x { premise … / --- / conclude … }
+        | Proof of name: string * lines: ProofLine list
+                                                    // proof x { 1. premise … / 2. … by rule from 1 }
         | Analyze                                   // analyze — map how all claims relate
 
     /// A whole document is simply an ordered list of statements.

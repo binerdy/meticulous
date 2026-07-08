@@ -107,6 +107,32 @@ function renderArgument(block: BlockView): string {
   return `<figure class="argument">${parts.join("")}</figure>`;
 }
 
+/** A user-written proof, graded step by step. Each row arrives as
+ *  [number, formula, justification, status, message] where status is
+ *  "premise" | "ok" | "bad". */
+function renderProof(block: BlockView): string {
+  const rows = block.proof
+    .map(([n, formula, why, status, message]) => {
+      const mark =
+        status === "ok" ? `<td class="step-status ok">✓</td>` :
+        status === "bad" ? `<td class="step-status bad">✗</td>` :
+        `<td class="step-status"></td>`;
+      const main =
+        `<tr class="step-${status}"><td class="step-no">${escapeHtml(n)}.</td>` +
+        `<td class="step-formula">${escapeHtml(formula)}</td>` +
+        `<td class="step-why">${escapeHtml(why)}</td>${mark}</tr>`;
+      const detail = message
+        ? `<tr class="step-msg"><td></td><td colspan="3">${escapeHtml(message)}</td></tr>`
+        : "";
+      return main + detail;
+    })
+    .join("");
+
+  const note = block.note ? `<p class="note">${escapeHtml(block.note)}</p>` : "";
+
+  return `<figure class="argument proof-figure"><figcaption><span class="arg-name">${escapeHtml(block.name)}</span>${verdictBadge(block.verdict)}<span class="check-label">proof</span></figcaption><table class="proof">${rows}</table>${note}</figure>`;
+}
+
 /** The `analyze` block: how every claim stands to every other claim.
  *  Each pair arrives as [left, relation, right, explanation]. */
 function renderRelations(block: BlockView): string {
@@ -159,6 +185,9 @@ function renderBlock(block: BlockView): string {
 
     case "argument":
       return renderArgument(block);
+
+    case "proof":
+      return renderProof(block);
 
     case "relations":
       return renderRelations(block);

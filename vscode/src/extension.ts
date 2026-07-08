@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { analyze } from "./core-bridge";
 import { renderDocument } from "./render";
+import { registerCompletions } from "./completion";
+import { registerDiagnostics } from "./diagnostics";
 
 // Styling for the preview. Uses VS Code theme variables so it matches the
 // user's editor theme (light/dark) automatically.
@@ -64,6 +66,9 @@ const STYLE = `
   table.proof td { padding: .12em .6em .12em 0; }
   .step-no { opacity: .55; }
   .step-why { opacity: .7; font-size: .85em; }
+  .step-status.ok { color: var(--vscode-testing-iconPassed, #3fb950); font-weight: 700; }
+  .step-status.bad { color: var(--vscode-testing-iconFailed, #f85149); font-weight: 700; }
+  tr.step-msg td { color: var(--vscode-testing-iconFailed, #f85149); font-size: .85em; font-family: var(--vscode-font-family); padding-bottom: .4em; }
 
   /* relations (analyze) */
   figure.relations { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
@@ -90,6 +95,9 @@ function wrapHtml(body: string): string {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  registerCompletions(context);
+  registerDiagnostics(context);
+
   let panel: vscode.WebviewPanel | undefined;
   let trackedUri: vscode.Uri | undefined;
   let debounce: ReturnType<typeof setTimeout> | undefined;

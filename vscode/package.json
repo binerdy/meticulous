@@ -2,7 +2,7 @@
   "name": "meticulous",
   "displayName": "Meticulous",
   "description": "A philosophical DSL: propositions, truth tables, and structural relations, with live preview.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "meticulous-lang",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,7 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Programming Languages", "Visualization"],
+  "activationEvents": ["onLanguage:meticulous"],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [

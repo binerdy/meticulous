@@ -1,13 +1,14 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
-import { CheckKind, TableTarget, Statement, Formula } from "./Ast.js";
-import { choose, ofSeq, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { ProofLine, CheckKind, TableTarget, Statement, Formula } from "./Ast.js";
+import { choose, ofSeq, map as map_1, filter, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
-import { replace, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
-import { isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
-import { forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
+import { replace, printf, toText, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
+import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
+import { takeWhile, length, forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
-import { item } from "./fable_modules/fable-library-js.5.6.0/Array.js";
+import { parse } from "./fable_modules/fable-library-js.5.6.0/Int32.js";
+import { item, map } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
 function parseIff(tokens) {
     return Result_Bind((tupledArg) => {
@@ -314,10 +315,13 @@ export function parseLine(raw) {
         }
     }
     else if (line === "analyze") {
-        return new FSharpResult$2(0, [new Statement(7, [])]);
+        return new FSharpResult$2(0, [new Statement(8, [])]);
     }
     else if (line.startsWith("argument")) {
         return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
+    }
+    else if (line.startsWith("proof")) {
+        return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"]);
     }
     else {
         return new FSharpResult$2(0, [new Statement(1, [line])]);
@@ -385,6 +389,98 @@ function parseArgumentBlock(name, headerLine, body) {
     }
 }
 
+function parseProofBlock(name, headerLine, body) {
+    let steps = empty();
+    let errors = empty();
+    const enumerator = getEnumerator(body);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            let array_1, arg;
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const no = forLoopVar[0] | 0;
+            const line_1 = stripComment(forLoopVar[1]).trim();
+            if (line_1 === "") {
+            }
+            else {
+                let matchValue;
+                const line = line_1;
+                const digits = length(takeWhile(isDigit, line.split(""))) | 0;
+                matchValue = ((((digits > 0) && (digits < line.length)) && (line[digits] === ".")) ? [parse(substring(line, 0, digits), 511, false, 32), substring(line, digits + 1).trim()] : undefined);
+                if (matchValue != null) {
+                    const rest = matchValue[1];
+                    const number = matchValue[0] | 0;
+                    if (rest.startsWith("premise ")) {
+                        const matchValue_1 = parseFormula(substring(rest, 8));
+                        if (matchValue_1.tag === 1) {
+                            errors = append(errors, singleton([no, matchValue_1.fields[0]]));
+                        }
+                        else {
+                            steps = append(steps, singleton(new ProofLine(0, [number, matchValue_1.fields[0]])));
+                        }
+                    }
+                    else {
+                        const matchValue_2 = rest.lastIndexOf(" by ") | 0;
+                        if (matchValue_2 === -1) {
+                            errors = append(errors, singleton([no, "a derived line needs a justification — e.g.  wet by modus-ponens from 1, 2"]));
+                        }
+                        else {
+                            const idx = matchValue_2 | 0;
+                            const formulaText = substring(rest, 0, idx);
+                            const justification = substring(rest, idx + 4).trim();
+                            let patternInput;
+                            const matchValue_3 = justification.indexOf(" from ") | 0;
+                            if (matchValue_3 === -1) {
+                                patternInput = [justification, ""];
+                            }
+                            else {
+                                const j = matchValue_3 | 0;
+                                patternInput = [substring(justification, 0, j).trim(), substring(justification, j + 6)];
+                            }
+                            const rule = patternInput[0];
+                            const refs = ofArray((array_1 = map((s) => s.trim(), split(patternInput[1], [","], undefined, 0)), array_1.filter((s_1) => (s_1 !== ""))));
+                            const badRefs = filter((r) => !forAll(isDigit, r.split("")), refs);
+                            if (rule === "") {
+                                errors = append(errors, singleton([no, "missing rule name after `by`"]));
+                            }
+                            else if (!isEmpty(badRefs)) {
+                                errors = append(errors, singleton([no, (arg = head(badRefs), toText(printf("citations after `from` must be line numbers, not %A"))(arg))]));
+                            }
+                            else {
+                                const matchValue_4 = parseFormula(formulaText);
+                                if (matchValue_4.tag === 1) {
+                                    errors = append(errors, singleton([no, matchValue_4.fields[0]]));
+                                }
+                                else {
+                                    steps = append(steps, singleton(new ProofLine(1, [number, matchValue_4.fields[0], rule, map_1((value) => (parse(value, 511, false, 32) | 0), refs)])));
+                                }
+                            }
+                        }
+                    }
+                }
+                else {
+                    errors = append(errors, singleton([no, "every proof line starts with its number — e.g.  3. wet by modus-ponens from 1, 2"]));
+                }
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    const errors_1 = errors;
+    const steps_1 = steps;
+    if (isEmpty(errors_1)) {
+        if (isEmpty(steps_1)) {
+            return new FSharpResult$2(1, [singleton([headerLine, "a proof needs at least one line"])]);
+        }
+        else {
+            return new FSharpResult$2(0, [new Statement(7, [name, steps])]);
+        }
+    }
+    else {
+        return new FSharpResult$2(1, [errors_1]);
+    }
+}
+
 /**
  * Parse a whole source into (lineNumber, statement-or-error) entries,
  * grouping multi-line `argument { }` blocks into single statements.
@@ -397,10 +493,19 @@ export function parseLines(source) {
     let i = 0;
     while (i < lines.length) {
         const no = (i + 1) | 0;
-        const line = stripComment(item(i, lines)).trim();
-        if (line.startsWith("argument ") && line.endsWith("{")) {
-            const name = substring(line, 9, line.length - 10).trim();
-            const body = [];
+        const line_1 = stripComment(item(i, lines)).trim();
+        let matchValue;
+        const line = line_1;
+        matchValue = ((line.startsWith("argument ") && line.endsWith("{")) ? ["argument", (name) => ((headerLine) => ((body) => parseArgumentBlock(name, headerLine, body)))] : ((line.startsWith("proof ") && line.endsWith("{")) ? ["proof", (name_1) => ((headerLine_1) => ((body_1) => parseProofBlock(name_1, headerLine_1, body_1)))] : undefined));
+        if (matchValue == null) {
+            void (results.push([no, parseLine(item(i, lines))]));
+            i = ((i + 1) | 0);
+        }
+        else {
+            const parseBlock = matchValue[1];
+            const keyword = matchValue[0];
+            const name_2 = substring(line_1, keyword.length, (line_1.length - keyword.length) - 1).trim();
+            const body_2 = [];
             let j = i + 1;
             let closed = false;
             while (!closed && (j < lines.length)) {
@@ -408,18 +513,18 @@ export function parseLines(source) {
                     closed = true;
                 }
                 else {
-                    void (body.push([j + 1, item(j, lines)]));
+                    void (body_2.push([j + 1, item(j, lines)]));
                     j = ((j + 1) | 0);
                 }
             }
             if (!closed) {
-                void (results.push([no, new FSharpResult$2(1, ["this `argument {` is never closed with `}`"])]));
+                void (results.push([no, new FSharpResult$2(1, [toText(printf("this `%s {` is never closed with `}`"))(keyword)])]));
                 i = (lines.length | 0);
             }
             else {
-                const matchValue = parseArgumentBlock(name, no, ofSeq(body));
-                if (matchValue.tag === 1) {
-                    const enumerator = getEnumerator(matchValue.fields[0]);
+                const matchValue_1 = parseBlock(name_2)(no)(ofSeq(body_2));
+                if (matchValue_1.tag === 1) {
+                    const enumerator = getEnumerator(matchValue_1.fields[0]);
                     try {
                         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
                             const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
@@ -431,14 +536,10 @@ export function parseLines(source) {
                     }
                 }
                 else {
-                    void (results.push([no, new FSharpResult$2(0, [matchValue.fields[0]])]));
+                    void (results.push([no, new FSharpResult$2(0, [matchValue_1.fields[0]])]));
                 }
                 i = ((j + 1) | 0);
             }
-        }
-        else {
-            void (results.push([no, parseLine(item(i, lines))]));
-            i = ((i + 1) | 0);
         }
     }
     return ofSeq(results);

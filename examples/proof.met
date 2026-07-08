@@ -1,0 +1,31 @@
+# Writing proofs
+
+In an argument block the engine reasons for you. In a proof block, *you*
+reason — and the engine grades every step.
+
+prop rain : It is raining
+prop wet : The street is wet
+prop slippery : The street is slippery
+
+claim C1 : rain -> wet
+claim C2 : wet -> slippery
+
+proof wet-streets {
+  1. premise C1
+  2. premise C2
+  3. premise rain
+  4. wet by modus-ponens from 1, 3
+  5. slippery by modus-ponens from 2, 4
+}
+
+## When a step goes wrong
+
+The engine doesn't just say no — it tells you what the step actually is,
+or shows the situation where it fails.
+
+proof lessons {
+  1. premise rain -> wet
+  2. premise rain
+  3. wet by modus-ponens from 1, 2
+  4. wet or slippery by addition from 3
+}

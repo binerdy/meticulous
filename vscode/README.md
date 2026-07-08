@@ -21,6 +21,16 @@ structure of your thoughts the way Markdown lets you write documents.
   smallest premise that would make it valid — the hidden assumption.
 - **Proofs generated**: valid arguments come with a step-by-step derivation
   (modus ponens, hypothetical syllogism, …) when one is found.
+- **Proof mode — write your own derivations**: in a `proof { }` block *you*
+  reason and the engine grades every step. Cite the wrong rule and it tells
+  you which rule the step actually is; cite a non-consequence and it shows
+  the counterexample.
+- **Completions**: `Ctrl+Space` suggests every keyword as a fill-in snippet;
+  typing `/` opens the inference-form catalog (`/modus-ponens`,
+  `/disjunctive-syllogism`, …) and expands a ready-made argument skeleton
+  with mirrored placeholders; after `by` in a proof you get rule names.
+- **Diagnostics**: parse errors as red squiggles, and warnings for props
+  that are declared but never used in a formula.
 - **`analyze`**: compares every claim with every other — equivalent,
   contradictory, contrary, entails, independent — so false equivalences and
   hidden contradictions surface by themselves.
@@ -53,6 +63,7 @@ check C1 equivalent (not p or q)
 | `table X` | truth table for a claim or inline formula |
 | `check A equivalent B` | are two formulas logically equivalent? |
 | `argument x { premise … / --- / conclude … }` | an argument, checked for validity |
+| `proof x { 1. premise … / 2. f by rule from 1 }` | your own derivation, graded per step |
 | `analyze` | relate every claim to every other claim |
 | `// ...` | comment |
 

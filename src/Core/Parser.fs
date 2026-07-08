@@ -178,6 +178,9 @@ module Parser =
             // reaching this function means the opening brace was missing.
             Error "an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"
 
+        elif line.StartsWith "proof" then
+            Error "a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"
+
         else
             // Anything we don't recognise is plain prose.
             Ok(Some(Prose line))
@@ -215,6 +218,68 @@ module Parser =
         | [], Some c -> Ok(Argument(name, premises, c))
         | errs, _ -> Error errs
 
+    /// Parse the interior of a `proof name { ... }` block. Each line is
+    ///   N. premise <formula>
+    ///   N. <formula> by <rule-name>            (for laws needing no citations)
+    ///   N. <formula> by <rule-name> from 1, 2
+    let private parseProofBlock name headerLine (body: (int * string) list) : Result<Statement, (int * string) list> =
+        let mutable steps = []
+        let mutable errors = []
+
+        // "3." -> Some (3, rest-of-line); None when the line has no number.
+        let splitNumber (line: string) =
+            let digits = line |> Seq.takeWhile System.Char.IsDigit |> Seq.length
+            if digits > 0 && digits < line.Length && line.[digits] = '.' then
+                Some(int (line.Substring(0, digits)), line.Substring(digits + 1).Trim())
+            else
+                None
+
+        for (no, raw) in body do
+            let line = (stripComment raw).Trim()
+            if line = "" then
+                ()
+            else
+                match splitNumber line with
+                | None ->
+                    errors <- errors @ [ no, "every proof line starts with its number — e.g.  3. wet by modus-ponens from 1, 2" ]
+                | Some(number, rest) ->
+                    if rest.StartsWith "premise " then
+                        match parseFormula (rest.Substring 8) with
+                        | Ok f -> steps <- steps @ [ ProofPremise(number, f) ]
+                        | Error e -> errors <- errors @ [ no, e ]
+                    else
+                        // The justification comes after the *last* " by ", so a
+                        // proposition named `by` can't confuse the split.
+                        match rest.LastIndexOf " by " with
+                        | -1 ->
+                            errors <- errors @ [ no, "a derived line needs a justification — e.g.  wet by modus-ponens from 1, 2" ]
+                        | idx ->
+                            let formulaText = rest.Substring(0, idx)
+                            let justification = rest.Substring(idx + 4).Trim()
+                            let rule, refsText =
+                                match justification.IndexOf " from " with
+                                | -1 -> justification, ""
+                                | j -> justification.Substring(0, j).Trim(), justification.Substring(j + 6)
+                            let refs =
+                                refsText.Split(',')
+                                |> Array.map (fun s -> s.Trim())
+                                |> Array.filter (fun s -> s <> "")
+                                |> Array.toList
+                            let badRefs = refs |> List.filter (fun r -> not (r |> Seq.forall System.Char.IsDigit))
+                            if rule = "" then
+                                errors <- errors @ [ no, "missing rule name after `by`" ]
+                            elif not (List.isEmpty badRefs) then
+                                errors <- errors @ [ no, sprintf "citations after `from` must be line numbers, not %A" (List.head badRefs) ]
+                            else
+                                match parseFormula formulaText with
+                                | Ok f -> steps <- steps @ [ ProofDerived(number, f, rule, refs |> List.map int) ]
+                                | Error e -> errors <- errors @ [ no, e ]
+
+        match errors, steps with
+        | [], [] -> Error [ headerLine, "a proof needs at least one line" ]
+        | [], _ -> Ok(Proof(name, steps))
+        | errs, _ -> Error errs
+
     /// Parse a whole source into (lineNumber, statement-or-error) entries,
     /// grouping multi-line `argument { }` blocks into single statements.
     /// This per-line shape lets callers be *resilient*: one bad line becomes
@@ -224,13 +289,23 @@ module Parser =
         let results = ResizeArray()
         let mutable i = 0
 
+        // Which block parser handles a given header keyword.
+        let blockKind (line: string) =
+            if line.StartsWith "argument " && line.EndsWith "{" then
+                Some("argument", parseArgumentBlock)
+            elif line.StartsWith "proof " && line.EndsWith "{" then
+                Some("proof", parseProofBlock)
+            else
+                None
+
         while i < lines.Length do
             let no = i + 1
             let line = (stripComment lines.[i]).Trim()
 
-            if line.StartsWith "argument " && line.EndsWith "{" then
+            match blockKind line with
+            | Some(keyword, parseBlock) ->
                 // Collect the block body up to the closing brace.
-                let name = line.Substring(9, line.Length - 10).Trim()
+                let name = line.Substring(keyword.Length, line.Length - keyword.Length - 1).Trim()
                 let body = ResizeArray()
                 let mutable j = i + 1
                 let mutable closed = false
@@ -241,14 +316,14 @@ module Parser =
                         j <- j + 1
 
                 if not closed then
-                    results.Add(no, Error "this `argument {` is never closed with `}`")
+                    results.Add(no, Error(sprintf "this `%s {` is never closed with `}`" keyword))
                     i <- lines.Length
                 else
-                    match parseArgumentBlock name no (List.ofSeq body) with
+                    match parseBlock name no (List.ofSeq body) with
                     | Ok st -> results.Add(no, Ok(Some st))
                     | Error errs -> for (n, e) in errs do results.Add(n, Error e)
                     i <- j + 1
-            else
+            | None ->
                 results.Add(no, parseLine lines.[i])
                 i <- i + 1
 

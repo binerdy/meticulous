@@ -48,6 +48,18 @@ let private printBlock (b: BlockView) =
         if b.proof.Length > 0 then
             printfn "    proof:"
             b.proof |> Array.iter (fun step -> printfn "      %s. %s   (%s)" step.[0] step.[1] step.[2])
+    | "proof" ->
+        printfn "  proof %s:   [%s]" b.name (b.verdict.ToUpper())
+        b.proof
+        |> Array.iter (fun step ->
+            let mark =
+                match step.[3] with
+                | "ok" -> "✓"
+                | "bad" -> "✗"
+                | _ -> " " // premises need no check mark
+            printfn "    %s %s. %s   (%s)" mark step.[0] step.[1] step.[2]
+            if step.[4] <> "" then printfn "        ^ %s" step.[4])
+        if b.note <> "" then printfn "    %s" b.note
     | "relations" ->
         printfn "  claim relations:"
         if b.relations.Length = 0 then printfn "    (needs at least two claims)"
