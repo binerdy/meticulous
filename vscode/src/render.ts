@@ -20,6 +20,7 @@ function verdictBadge(verdict: string): string {
     "not-equivalent": "not equivalent",
     valid: "valid",
     invalid: "invalid",
+    unknown: "unknown",
   };
   const text = label[verdict] ?? verdict;
   return `<span class="badge badge-${verdict}">${escapeHtml(text)}</span>`;
@@ -29,20 +30,28 @@ function tf(value: boolean): string {
   return `<td class="${value ? "t" : "f"}">${value ? "T" : "F"}</td>`;
 }
 
-/** Render a truth table: atom columns plus one result column. */
+/** Render a truth table: atom columns plus one result column. When `actual`
+ *  is set (modal blocks) the rows are possible worlds — a leading column
+ *  names them w1, w2, … and → marks the actual world. */
 function renderTruthTable(
   atoms: string[],
   rows: boolean[][],
   results: boolean[],
-  resultHeader: string
+  resultHeader: string,
+  actual = -1
 ): string {
+  const worldly = actual >= 0;
   const head =
+    (worldly ? `<th class="world-name">world</th>` : "") +
     atoms.map((a) => `<th>${escapeHtml(a)}</th>`).join("") +
     `<th class="result">${escapeHtml(resultHeader)}</th>`;
 
   const body = rows
     .map((row, i) => {
-      const cells = row.map((v) => tf(v)).join("") + tf(results[i]);
+      const name = worldly
+        ? `<td class="world-name${i === actual ? " actual" : ""}">${i === actual ? "→ " : ""}w${i + 1}</td>`
+        : "";
+      const cells = name + row.map((v) => tf(v)).join("") + tf(results[i]);
       return `<tr>${cells}</tr>`;
     })
     .join("");
@@ -51,7 +60,7 @@ function renderTruthTable(
 }
 
 function renderTable(block: BlockView): string {
-  return renderTruthTable(block.atoms, block.rows, block.results, block.formula);
+  return renderTruthTable(block.atoms, block.rows, block.results, block.formula, block.actual);
 }
 
 /** The boxed rendering of an `argument { }` block: premises over an inference
@@ -78,9 +87,13 @@ function renderArgument(block: BlockView): string {
   }
 
   if (block.verdict === "invalid" && block.rows.length > 0) {
+    const label =
+      block.actual >= 0
+        ? "countermodel — premises true at the actual world (→), conclusion false there:"
+        : "counterexample — premises true, conclusion false:";
     parts.push(
-      `<div class="counterexample"><span class="cx-label">counterexample — premises true, conclusion false:</span>` +
-        renderTruthTable(block.atoms, block.rows, block.results, block.conclusion) +
+      `<div class="counterexample"><span class="cx-label">${label}</span>` +
+        renderTruthTable(block.atoms, block.rows, block.results, block.conclusion, block.actual) +
         `</div>`
     );
   }

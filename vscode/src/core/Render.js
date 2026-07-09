@@ -6,6 +6,8 @@ import { substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
 function precedence(f) {
     switch (f.tag) {
         case 2:
+        case 8:
+        case 9:
             return 90;
         case 3:
             return 80;
@@ -47,6 +49,10 @@ export function toUnicode(formula) {
                 }
             case 2:
                 return "¬" + wrap(true, f.fields[0]);
+            case 8:
+                return "□" + wrap(true, f.fields[0]);
+            case 9:
+                return "◇" + wrap(true, f.fields[0]);
             case 3:
                 return (wrap(true, f.fields[0]) + " ∧ ") + wrap(false, f.fields[1]);
             case 4:
@@ -82,6 +88,10 @@ export function toEnglish(glossOf, formula) {
                 }
             case 2:
                 return "it is not the case that " + go(f.fields[0]);
+            case 8:
+                return "it is necessary that " + go(f.fields[0]);
+            case 9:
+                return "it is possible that " + go(f.fields[0]);
             case 3:
                 return (("both " + go(f.fields[0])) + ", and ") + go(f.fields[1]);
             case 4:

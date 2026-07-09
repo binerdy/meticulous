@@ -77,6 +77,8 @@ module Parser =
     and private parseUnary tokens =
         match tokens with
         | TNot :: more -> parseUnary more |> Result.map (fun (f, rest) -> Not f, rest)
+        | TBox :: more -> parseUnary more |> Result.map (fun (f, rest) -> Box f, rest)
+        | TDiamond :: more -> parseUnary more |> Result.map (fun (f, rest) -> Diamond f, rest)
         | _ -> parseAtom tokens
 
     and private parseAtom tokens =

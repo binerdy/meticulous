@@ -1643,6 +1643,14 @@ function Helpers_allocateArrayFromCons(cons2, len) {
   }
 }
 
+// src/core/fable_modules/fable-library-js.5.6.0/Double.js
+function max(x, y) {
+  return x > y ? x : y;
+}
+function min(x, y) {
+  return x < y ? x : y;
+}
+
 // src/core/fable_modules/fable-library-js.5.6.0/Array.js
 function fill(target, targetIndex, count, value2) {
   const start = targetIndex | 0;
@@ -2656,7 +2664,7 @@ function sort(xs, comparer) {
 function sortBy(projection, xs, comparer) {
   return sortWith((x, y) => comparer.Compare(projection(x), projection(y)) | 0, xs);
 }
-function max(xs, comparer) {
+function max2(xs, comparer) {
   return reduce((x, y) => comparer.Compare(y, x) > 0 ? y : x, xs);
 }
 function truncate(count, xs) {
@@ -2692,7 +2700,7 @@ var Formula = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff"];
+    return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond"];
   }
 };
 var TableTarget = class extends Union {
@@ -4565,6 +4573,10 @@ function resolve(defs, formula) {
             return new Formula(6, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
           case 7:
             return new Formula(7, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+          case 8:
+            return new Formula(8, [go(seen, f.fields[0])]);
+          case 9:
+            return new Formula(9, [go(seen, f.fields[0])]);
           default:
             if (!contains2(f.fields[0], seen)) {
               const matchValue = tryFind2(f.fields[0], defs);
@@ -4592,7 +4604,7 @@ function atoms(f) {
     go:
       while (true) {
         const f_1 = f_1_mut, acc = acc_mut;
-        let matchResult, a_1, b;
+        let matchResult, a, a_1, b;
         switch (f_1.tag) {
           case 1: {
             matchResult = 1;
@@ -4600,6 +4612,17 @@ function atoms(f) {
           }
           case 2: {
             matchResult = 2;
+            a = f_1.fields[0];
+            break;
+          }
+          case 8: {
+            matchResult = 2;
+            a = f_1.fields[0];
+            break;
+          }
+          case 9: {
+            matchResult = 2;
+            a = f_1.fields[0];
             break;
           }
           case 3: {
@@ -4650,7 +4673,7 @@ function atoms(f) {
           case 1:
             return acc;
           case 2: {
-            f_1_mut = f_1.fields[0];
+            f_1_mut = a;
             acc_mut = acc;
             continue go;
           }
@@ -4669,7 +4692,52 @@ function eval$(env_mut, f_mut) {
   eval$:
     while (true) {
       const env = env_mut, f = f_mut;
+      let matchResult, a_6;
       switch (f.tag) {
+        case 1: {
+          matchResult = 1;
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        case 3: {
+          matchResult = 3;
+          break;
+        }
+        case 4: {
+          matchResult = 4;
+          break;
+        }
+        case 5: {
+          matchResult = 5;
+          break;
+        }
+        case 6: {
+          matchResult = 6;
+          break;
+        }
+        case 7: {
+          matchResult = 7;
+          break;
+        }
+        case 8: {
+          matchResult = 8;
+          a_6 = f.fields[0];
+          break;
+        }
+        case 9: {
+          matchResult = 8;
+          a_6 = f.fields[0];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return defaultArg(tryFind2(f.fields[0], env), false);
         case 1:
           return f.fields[0];
         case 2:
@@ -4702,8 +4770,11 @@ function eval$(env_mut, f_mut) {
           }
         case 7:
           return eval$(env, f.fields[0]) === eval$(env, f.fields[1]);
-        default:
-          return defaultArg(tryFind2(f.fields[0], env), false);
+        default: {
+          env_mut = env;
+          f_mut = a_6;
+          continue eval$;
+        }
       }
       break;
     }
@@ -4738,14 +4809,321 @@ function truthTable(f) {
   const results = map4((tuple) => tuple[1], rows);
   return new TruthTable(names, rows, forAll2((x) => x, results) ? new Verdict(0, []) : forAll2((value2) => !value2, results) ? new Verdict(1, []) : new Verdict(2, []));
 }
+function containsModal(f_mut) {
+  containsModal:
+    while (true) {
+      const f = f_mut;
+      let matchResult, a_1, b;
+      switch (f.tag) {
+        case 8:
+        case 9: {
+          matchResult = 1;
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        case 3: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 4: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 5: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 6: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 7: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return false;
+        case 1:
+          return true;
+        case 2: {
+          f_mut = f.fields[0];
+          continue containsModal;
+        }
+        default:
+          if (containsModal(a_1)) {
+            return true;
+          } else {
+            f_mut = b;
+            continue containsModal;
+          }
+      }
+      break;
+    }
+}
+function modalOps(f_mut) {
+  modalOps:
+    while (true) {
+      const f = f_mut;
+      let matchResult, a, a_2, b;
+      switch (f.tag) {
+        case 8: {
+          matchResult = 1;
+          a = f.fields[0];
+          break;
+        }
+        case 9: {
+          matchResult = 1;
+          a = f.fields[0];
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        case 3: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 4: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 5: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 6: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 7: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return 0;
+        case 1:
+          return 1 + modalOps(a) | 0;
+        case 2: {
+          f_mut = f.fields[0];
+          continue modalOps;
+        }
+        default:
+          return modalOps(a_2) + modalOps(b) | 0;
+      }
+      break;
+    }
+}
+function evalS5(model_mut, w_mut, f_mut) {
+  evalS5:
+    while (true) {
+      const model = model_mut, w = w_mut, f = f_mut;
+      switch (f.tag) {
+        case 1:
+          return f.fields[0];
+        case 2:
+          return !evalS5(model, w, f.fields[0]);
+        case 3:
+          if (evalS5(model, w, f.fields[0])) {
+            model_mut = model;
+            w_mut = w;
+            f_mut = f.fields[1];
+            continue evalS5;
+          } else {
+            return false;
+          }
+        case 4:
+          if (evalS5(model, w, f.fields[0])) {
+            return true;
+          } else {
+            model_mut = model;
+            w_mut = w;
+            f_mut = f.fields[1];
+            continue evalS5;
+          }
+        case 5:
+          return evalS5(model, w, f.fields[0]) !== evalS5(model, w, f.fields[1]);
+        case 6:
+          if (!evalS5(model, w, f.fields[0])) {
+            return true;
+          } else {
+            model_mut = model;
+            w_mut = w;
+            f_mut = f.fields[1];
+            continue evalS5;
+          }
+        case 7:
+          return evalS5(model, w, f.fields[0]) === evalS5(model, w, f.fields[1]);
+        case 8:
+          return forAll2((v) => evalS5(model, v, f.fields[0]), model);
+        case 9:
+          return exists2((v_1) => evalS5(model, v_1, f.fields[0]), model);
+        default:
+          return defaultArg(tryFind2(f.fields[0], w), false);
+      }
+      break;
+    }
+}
+var ModalSearch = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["NoModel", "Model", "TooLarge"];
+  }
+};
+function s5Satisfy(f) {
+  const valuations = toArray(assignments(atoms(f)));
+  const neededWorlds = max(1, modalOps(f) + 1) | 0;
+  const maxWorlds = min(neededWorlds, 6) | 0;
+  let examined = 0;
+  const search = (k_mut) => {
+    search:
+      while (true) {
+        const k = k_mut;
+        if (k > maxWorlds) {
+          return new ModalSearch(0, []);
+        } else {
+          const extend = (chosen, start) => {
+            if (length(chosen) === k) {
+              examined = examined + 1 | 0;
+              if (examined > 2e5) {
+                return new ModalSearch(2, []);
+              } else {
+                const worlds = map4((i) => item(i, valuations), reverse2(chosen));
+                const tryActual = (idx_mut, seen_mut, indices_mut) => {
+                  tryActual:
+                    while (true) {
+                      const idx = idx_mut, seen = seen_mut, indices = indices_mut;
+                      if (!isEmpty(indices)) {
+                        const rest = tail(indices);
+                        const i_1 = head(indices) | 0;
+                        if (contains2(i_1, seen)) {
+                          idx_mut = idx + 1;
+                          seen_mut = seen;
+                          indices_mut = rest;
+                          continue tryActual;
+                        } else if (evalS5(worlds, item(i_1, valuations), f)) {
+                          return new ModalSearch(1, [worlds, idx]);
+                        } else {
+                          idx_mut = idx + 1;
+                          seen_mut = add(i_1, seen);
+                          indices_mut = rest;
+                          continue tryActual;
+                        }
+                      } else {
+                        return new ModalSearch(0, []);
+                      }
+                      break;
+                    }
+                };
+                return tryActual(0, empty3({
+                  Compare: (x, y) => comparePrimitives(x, y) | 0
+                }), reverse2(chosen));
+              }
+            } else {
+              let result = new ModalSearch(0, []);
+              let i_2 = start;
+              while (equals(result, new ModalSearch(0, [])) && i_2 < valuations.length) {
+                result = extend(cons(i_2, chosen), i_2);
+                i_2 = i_2 + 1 | 0;
+              }
+              return result;
+            }
+          };
+          const matchValue = extend(empty2(), 0);
+          if (matchValue.tag === 0) {
+            k_mut = k + 1;
+            continue search;
+          } else {
+            return matchValue;
+          }
+        }
+        break;
+      }
+  };
+  const matchValue_1 = search(1);
+  let matchResult, result_1;
+  if (matchValue_1.tag === 0) {
+    if (neededWorlds > maxWorlds) {
+      matchResult = 0;
+    } else {
+      matchResult = 1;
+      result_1 = matchValue_1;
+    }
+  } else {
+    matchResult = 1;
+    result_1 = matchValue_1;
+  }
+  switch (matchResult) {
+    case 0:
+      return new ModalSearch(2, []);
+    default:
+      return result_1;
+  }
+}
+function s5Valid(f) {
+  const matchValue = s5Satisfy(new Formula(2, [f]));
+  switch (matchValue.tag) {
+    case 1:
+      return false;
+    case 2:
+      return void 0;
+    default:
+      return true;
+  }
+}
+function valid(f) {
+  if (containsModal(f)) {
+    return s5Valid(f);
+  } else {
+    return equals(truthTable(f).Verdict, new Verdict(0, []));
+  }
+}
+function equivalent2(a, b) {
+  return valid(new Formula(7, [a, b]));
+}
 function equivalent(a, b) {
   return equals(truthTable(new Formula(7, [a, b])).Verdict, new Verdict(0, []));
 }
+function checkArgumentS5(premises, conclusion) {
+  return s5Satisfy(fold3((acc, p) => new Formula(3, [acc, p]), new Formula(2, [conclusion]), premises));
+}
 function distinguishing(a, b) {
   return tryFind((env) => eval$(env, a) !== eval$(env, b), assignments(atoms(new Formula(7, [a, b]))));
-}
-function tautology(f) {
-  return equals(truthTable(f).Verdict, new Verdict(0, []));
 }
 var ArgumentCheck = class extends Record {
   constructor(Atoms, Counterexamples, IsValid) {
@@ -4786,17 +5164,18 @@ var Relation = class extends Union {
   }
 };
 function relate(a, b) {
-  if (tautology(new Formula(7, [a, b]))) {
+  const holds = (f) => equals(valid(f), true);
+  if (holds(new Formula(7, [a, b]))) {
     return new Relation(0, []);
-  } else if (tautology(new Formula(7, [a, new Formula(2, [b])]))) {
+  } else if (holds(new Formula(7, [a, new Formula(2, [b])]))) {
     return new Relation(1, []);
-  } else if (tautology(new Formula(2, [new Formula(3, [a, b])]))) {
+  } else if (holds(new Formula(2, [new Formula(3, [a, b])]))) {
     return new Relation(2, []);
-  } else if (tautology(new Formula(4, [a, b]))) {
+  } else if (holds(new Formula(4, [a, b]))) {
     return new Relation(3, []);
-  } else if (tautology(new Formula(6, [a, b]))) {
+  } else if (holds(new Formula(6, [a, b]))) {
     return new Relation(4, []);
-  } else if (tautology(new Formula(6, [b, a]))) {
+  } else if (holds(new Formula(6, [b, a]))) {
     return new Relation(5, []);
   } else {
     return new Relation(6, []);
@@ -4920,6 +5299,8 @@ function isLower2(s, index) {
 function precedence(f) {
   switch (f.tag) {
     case 2:
+    case 8:
+    case 9:
       return 90;
     case 3:
       return 80;
@@ -4955,6 +5336,10 @@ function toUnicode(formula) {
         }
       case 2:
         return "\xAC" + wrap(true, f.fields[0]);
+      case 8:
+        return "\u25A1" + wrap(true, f.fields[0]);
+      case 9:
+        return "\u25C7" + wrap(true, f.fields[0]);
       case 3:
         return wrap(true, f.fields[0]) + " \u2227 " + wrap(false, f.fields[1]);
       case 4:
@@ -4982,6 +5367,10 @@ function toEnglish(glossOf, formula) {
         }
       case 2:
         return "it is not the case that " + go(f.fields[0]);
+      case 8:
+        return "it is necessary that " + go(f.fields[0]);
+      case 9:
+        return "it is possible that " + go(f.fields[0]);
       case 3:
         return "both " + go(f.fields[0]) + ", and " + go(f.fields[1]);
       case 4:
@@ -5048,7 +5437,7 @@ var \u03C6 = new Formula(0, ["\u03C6"]);
 var \u03C8 = new Formula(0, ["\u03C8"]);
 var \u03C7 = new Formula(0, ["\u03C7"]);
 var \u03C9 = new Formula(0, ["\u03C9"]);
-var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(6, [\u03C6, \u03C7]), new Formula(6, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [new Formula(2, [\u03C8]), new Formula(2, [\u03C9])])]), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(3, [\u03C6, \u03C8])])), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(4, [\u03C6, \u03C8])])), new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [new Formula(2, [\u03C8]), new Formula(2, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(6, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(6, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(4, [new Formula(2, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), \u03C8])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7])), new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])])), new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(4, [\u03C6, new Formula(2, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(2, [new Formula(3, [\u03C6, new Formula(2, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
+var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(6, [\u03C6, \u03C7]), new Formula(6, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [new Formula(2, [\u03C8]), new Formula(2, [\u03C9])])]), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(3, [\u03C6, \u03C8])])), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(4, [\u03C6, \u03C8])])), new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [new Formula(2, [\u03C8]), new Formula(2, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(6, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(6, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(4, [new Formula(2, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), \u03C8])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7])), new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])])), new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(4, [\u03C6, new Formula(2, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(2, [new Formula(3, [\u03C6, new Formula(2, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("axiom-t", "axiom T", "necessity elimination", singleton3(new Formula(8, [\u03C6])), \u03C6, new FormKind(0, []), "What is necessary is actually so."), new ArgumentForm("possibility-intro", "possibility introduction", "", singleton3(\u03C6), new Formula(9, [\u03C6]), new FormKind(0, []), "What is actually so is possible."), new ArgumentForm("k-distribution", "K distribution", "", ofArray([new Formula(8, [new Formula(6, [\u03C6, \u03C8])]), new Formula(8, [\u03C6])]), new Formula(8, [\u03C8]), new FormKind(0, []), "Necessity distributes over implication: a necessary if\u2013then with a necessary if gives a necessary then."), new ArgumentForm("axiom-4", "axiom 4", "", singleton3(new Formula(8, [\u03C6])), new Formula(8, [new Formula(8, [\u03C6])]), new FormKind(0, []), "What is necessary is necessarily necessary."), new ArgumentForm("axiom-5", "axiom 5", "", singleton3(new Formula(9, [\u03C6])), new Formula(8, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is possible is necessarily possible \u2014 possibility doesn't vary between worlds (S5)."), new ArgumentForm("axiom-b", "axiom B", "", singleton3(\u03C6), new Formula(8, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is so is necessarily possible."), new ArgumentForm("s5-collapse", "S5 collapse", "", singleton3(new Formula(9, [new Formula(8, [\u03C6])])), new Formula(8, [\u03C6]), new FormKind(0, []), "Possibly necessary is necessary \u2014 the load-bearing step of the modal ontological argument."), new ArgumentForm("dual-box", "modal duality", "", singleton3(new Formula(2, [new Formula(9, [\u03C6])])), new Formula(8, [new Formula(2, [\u03C6])]), new FormKind(0, []), "Not possible means necessarily not \u2014 \u25C7 and \u25A1 are two sides of one coin."), new ArgumentForm("dual-diamond", "modal duality", "", singleton3(new Formula(2, [new Formula(8, [\u03C6])])), new Formula(9, [new Formula(2, [\u03C6])]), new FormKind(0, []), "Not necessary means possibly not \u2014 \u25A1 and \u25C7 are two sides of one coin."), new ArgumentForm("illicit-necessitation", "illicit necessitation", "", singleton3(\u03C6), new Formula(8, [\u03C6]), new FormKind(1, []), "True doesn't mean necessarily true \u2014 the world could have been otherwise."), new ArgumentForm("actualizing-the-possible", "actualizing the possible", "", singleton3(new Formula(9, [\u03C6])), \u03C6, new FormKind(1, []), "Possible doesn't mean actual \u2014 some possibilities stay unrealized."), new ArgumentForm("necessity-of-the-consequent", "necessity of the consequent", "modal scope fallacy", ofArray([new Formula(8, [new Formula(6, [\u03C6, \u03C8])]), \u03C6]), new Formula(8, [\u03C8]), new FormKind(1, []), "The necessity governs the whole if\u2013then, not its then: a contingent if only yields a contingent then."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
 var validForms = filter2((f) => equals(f.Kind, new FormKind(0, [])), forms);
 var fallacies = filter2((f) => equals(f.Kind, new FormKind(1, [])), forms);
 
@@ -5075,6 +5464,26 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
         }
         case 2: {
           if (target.tag === 2) {
+            matchResult = 2;
+            p = pattern.fields[0];
+            t_1 = target.fields[0];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 8: {
+          if (target.tag === 8) {
+            matchResult = 2;
+            p = pattern.fields[0];
+            t_1 = target.fields[0];
+          } else {
+            matchResult = 4;
+          }
+          break;
+        }
+        case 9: {
+          if (target.tag === 9) {
             matchResult = 2;
             p = pattern.fields[0];
             t_1 = target.fields[0];
@@ -5188,6 +5597,10 @@ function instantiate(subst, pattern) {
       return pattern;
     case 2:
       return new Formula(2, [instantiate(subst, pattern.fields[0])]);
+    case 8:
+      return new Formula(8, [instantiate(subst, pattern.fields[0])]);
+    case 9:
+      return new Formula(9, [instantiate(subst, pattern.fields[0])]);
     case 3:
       return new Formula(3, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
     case 4:
@@ -5242,10 +5655,21 @@ var ProofStep = class extends Record {
   }
 };
 function size(f) {
-  let matchResult, a_1, b;
+  let matchResult, a, a_1, b;
   switch (f.tag) {
     case 2: {
       matchResult = 1;
+      a = f.fields[0];
+      break;
+    }
+    case 8: {
+      matchResult = 1;
+      a = f.fields[0];
+      break;
+    }
+    case 9: {
+      matchResult = 1;
+      a = f.fields[0];
       break;
     }
     case 3: {
@@ -5285,13 +5709,13 @@ function size(f) {
     case 0:
       return 1;
     case 1:
-      return 1 + size(f.fields[0]) | 0;
+      return 1 + size(a) | 0;
     default:
       return 1 + size(a_1) + size(b) | 0;
   }
 }
 function subformulas(f) {
-  return cons(f, f.tag === 1 ? empty2() : f.tag === 2 ? subformulas(f.fields[0]) : f.tag === 3 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 4 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 5 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 6 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 7 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : empty2());
+  return cons(f, f.tag === 1 ? empty2() : f.tag === 2 ? subformulas(f.fields[0]) : f.tag === 8 ? subformulas(f.fields[0]) : f.tag === 9 ? subformulas(f.fields[0]) : f.tag === 3 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 4 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 5 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 6 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 7 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : empty2());
 }
 function prove(premises, goal) {
   const steps = [];
@@ -5311,12 +5735,12 @@ function prove(premises, goal) {
     Equals: equals,
     GetHashCode: (x) => safeHash(x) | 0
   });
-  const sizeLimit = max(map4((f_2) => size(f_2) | 0, append(premises, singleton3(goal))), {
+  const sizeLimit = max2(map4((f_2) => size(f_2) | 0, append(premises, singleton3(goal))), {
     Compare: (x_1, y_1) => comparePrimitives(x_1, y_1) | 0
   }) * 2 + 2 | 0;
   let found = known(goal);
   let round = 0;
-  while (!found && round < 6 && steps.length < 40) {
+  while (!found && round < 6 && steps.length < 120) {
     round = round + 1 | 0;
     const snapshot = steps.length | 0;
     const enumerator_1 = getEnumerator(validForms);
@@ -5328,7 +5752,7 @@ function prove(premises, goal) {
         try {
           while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
             const indices = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            if (!found && steps.length < 40) {
+            if (!found && steps.length < 120) {
               const matchValue_1 = matchAll(rule.Premises, map4((i_3) => item(i_3, steps)[0], indices));
               if (matchValue_1 != null) {
                 const subst = matchValue_1;
@@ -5337,7 +5761,7 @@ function prove(premises, goal) {
                 try {
                   while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
                     const s = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (!found && steps.length < 40) {
+                    if (!found && steps.length < 120) {
                       const derived = instantiate(s, rule.Conclusion);
                       if (size(derived) <= sizeLimit && !known(derived)) {
                         void steps.push([derived, rule.Title, map4((i_4) => i_4 + 1 | 0, indices)]);
@@ -5475,7 +5899,7 @@ var Token = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TLParen", "TRParen"];
+    return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TLParen", "TRParen"];
   }
 };
 function isIdentChar(c) {
@@ -5499,6 +5923,10 @@ function wordToToken(word) {
       return new Token(7, []);
     case "iff":
       return new Token(8, []);
+    case "necessarily":
+      return new Token(9, []);
+    case "possibly":
+      return new Token(10, []);
     case "true":
       return new Token(1, []);
     case "false":
@@ -5567,33 +5995,54 @@ function tokenize(input) {
               matchResult = 10;
               break;
             }
+            case "\u25A1": {
+              matchResult = 11;
+              break;
+            }
+            case "\u25C7": {
+              matchResult = 12;
+              break;
+            }
             case "-": {
               if (i + 1 < input.length && input[i + 1] === ">") {
-                matchResult = 11;
-              } else if (isLetter(c)) {
-                matchResult = 13;
-              } else {
                 matchResult = 14;
+              } else if (isLetter(c)) {
+                matchResult = 17;
+              } else {
+                matchResult = 18;
                 other = c;
               }
               break;
             }
             case "<": {
               if (i + 2 < input.length && input[i + 1] === "-" && input[i + 2] === ">") {
-                matchResult = 12;
+                matchResult = 15;
+              } else if (i + 1 < input.length && input[i + 1] === ">") {
+                matchResult = 16;
               } else if (isLetter(c)) {
-                matchResult = 13;
+                matchResult = 17;
               } else {
-                matchResult = 14;
+                matchResult = 18;
+                other = c;
+              }
+              break;
+            }
+            case "[": {
+              if (i + 1 < input.length && input[i + 1] === "]") {
+                matchResult = 13;
+              } else if (isLetter(c)) {
+                matchResult = 17;
+              } else {
+                matchResult = 18;
                 other = c;
               }
               break;
             }
             default:
               if (isLetter(c)) {
-                matchResult = 13;
+                matchResult = 17;
               } else {
-                matchResult = 14;
+                matchResult = 18;
                 other = c;
               }
           }
@@ -5605,12 +6054,12 @@ function tokenize(input) {
             }
             case 1: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(9, []), acc);
+              acc_mut = cons(new Token(11, []), acc);
               continue loop;
             }
             case 2: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(10, []), acc);
+              acc_mut = cons(new Token(12, []), acc);
               continue loop;
             }
             case 3: {
@@ -5654,16 +6103,36 @@ function tokenize(input) {
               continue loop;
             }
             case 11: {
+              i_mut = i + 1;
+              acc_mut = cons(new Token(9, []), acc);
+              continue loop;
+            }
+            case 12: {
+              i_mut = i + 1;
+              acc_mut = cons(new Token(10, []), acc);
+              continue loop;
+            }
+            case 13: {
+              i_mut = i + 2;
+              acc_mut = cons(new Token(9, []), acc);
+              continue loop;
+            }
+            case 14: {
               i_mut = i + 2;
               acc_mut = cons(new Token(7, []), acc);
               continue loop;
             }
-            case 12: {
+            case 15: {
               i_mut = i + 3;
               acc_mut = cons(new Token(8, []), acc);
               continue loop;
             }
-            case 13: {
+            case 16: {
+              i_mut = i + 2;
+              acc_mut = cons(new Token(10, []), acc);
+              continue loop;
+            }
+            case 17: {
               const start = i | 0;
               let j = i;
               while (j < input.length && (isIdentChar(input[j]) ? true : input[j] === "-" && j + 1 < input.length && isLetterOrDigit(input[j + 1]))) {
@@ -5797,8 +6266,8 @@ function parse(str, style, unsigned, bitsize, radix) {
       if (!unsigned && res.radix !== 10 && v >= umin && v <= umax) {
         v = v << 32 - bitsize >> 32 - bitsize;
       }
-      const [min, max2] = getRange(unsigned, bitsize);
-      if (v >= min && v <= max2) {
+      const [min2, max3] = getRange(unsigned, bitsize);
+      if (v >= min2 && v <= max3) {
         return v;
       }
     }
@@ -5927,20 +6396,37 @@ function parseAnd(tokens) {
   }, parseUnary(tokens));
 }
 function parseUnary(tokens) {
-  let matchResult, more;
+  let matchResult, more, more_1, more_2;
   if (!isEmpty(tokens)) {
-    if (head(tokens).tag === 3) {
-      matchResult = 0;
-      more = tail(tokens);
-    } else {
-      matchResult = 1;
+    switch (head(tokens).tag) {
+      case 3: {
+        matchResult = 0;
+        more = tail(tokens);
+        break;
+      }
+      case 9: {
+        matchResult = 1;
+        more_1 = tail(tokens);
+        break;
+      }
+      case 10: {
+        matchResult = 2;
+        more_2 = tail(tokens);
+        break;
+      }
+      default:
+        matchResult = 3;
     }
   } else {
-    matchResult = 1;
+    matchResult = 3;
   }
   switch (matchResult) {
     case 0:
       return Result_Map((tupledArg) => [new Formula(2, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
+    case 1:
+      return Result_Map((tupledArg_1) => [new Formula(8, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
+    case 2:
+      return Result_Map((tupledArg_2) => [new Formula(9, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
     default:
       return parseAtom(tokens);
   }
@@ -5956,12 +6442,12 @@ function parseAtom(tokens) {
         return new FSharpResult$2(0, [[new Formula(1, [true]), tail(tokens)]]);
       case 2:
         return new FSharpResult$2(0, [[new Formula(1, [false]), tail(tokens)]]);
-      case 9:
+      case 11:
         return Result_Bind((tupledArg) => {
           const rest$0027 = tupledArg[1];
           let matchResult, rest$0027$0027;
           if (!isEmpty(rest$0027)) {
-            if (head(rest$0027).tag === 10) {
+            if (head(rest$0027).tag === 12) {
               matchResult = 0;
               rest$0027$0027 = tail(rest$0027);
             } else {
@@ -6314,7 +6800,7 @@ function parseLines(source) {
 
 // src/core/Api.js
 var BlockView = class extends Record {
-  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations) {
+  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, actual, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations) {
     super();
     this.kind = kind;
     this.level = level | 0;
@@ -6326,6 +6812,7 @@ var BlockView = class extends Record {
     this.atoms = atoms2;
     this.rows = rows;
     this.results = results;
+    this.actual = actual | 0;
     this.line = line | 0;
     this.premises = premises;
     this.conclusion = conclusion;
@@ -6337,7 +6824,7 @@ var BlockView = class extends Record {
     this.relations = relations;
   }
 };
-var empty5 = new BlockView("", 0, "", "", "", "", "", [], [], [], 0, [], "", "", "", "", [], [], []);
+var empty5 = new BlockView("", 0, "", "", "", "", "", [], [], [], -1, 0, [], "", "", "", "", [], [], []);
 function verdictName(_arg) {
   switch (_arg.tag) {
     case 1:
@@ -6385,7 +6872,60 @@ function tableBlock(f) {
   const atoms2 = toArray(t.Atoms);
   const rows = toArray(map4((tupledArg) => toArray(map4((a) => FSharpMap__get_Item(tupledArg[0], a), t.Atoms)), t.Rows));
   const results = toArray(map4((tuple) => tuple[1], t.Rows));
-  return new BlockView("table", empty5.level, empty5.title, empty5.name, empty5.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, verdictNote(t), empty5.suggestion, empty5.proof, empty5.relations);
+  return new BlockView("table", empty5.level, empty5.title, empty5.name, empty5.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, verdictNote(t), empty5.suggestion, empty5.proof, empty5.relations);
+}
+var tooLargeNote = "Too many atoms and modal operators to check exhaustively \u2014 the engine won't guess.";
+function modalBlock(kindName, f) {
+  const base$0027 = new BlockView(kindName, empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(f), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+  const matchValue = s5Satisfy(new Formula(2, [f]));
+  const matchValue_1 = s5Satisfy(f);
+  let matchResult, actual, worlds;
+  switch (matchValue.tag) {
+    case 2: {
+      switch (matchValue_1.tag) {
+        case 0: {
+          matchResult = 1;
+          break;
+        }
+        default:
+          matchResult = 2;
+      }
+      break;
+    }
+    case 1: {
+      switch (matchValue_1.tag) {
+        case 0: {
+          matchResult = 1;
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        default: {
+          matchResult = 3;
+          actual = matchValue.fields[1];
+          worlds = matchValue.fields[0];
+        }
+      }
+      break;
+    }
+    default:
+      matchResult = 0;
+  }
+  switch (matchResult) {
+    case 0:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Necessarily true: it holds at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations);
+    case 1:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Impossible: it fails at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations);
+    case 2:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations);
+    default: {
+      const names = atoms(f);
+      const note_2 = "Contingent: its truth depends on the facts and on how the possibilities are arranged \u2014 here is an arrangement where it fails at the actual world.";
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", toArray(names), toArray(map4((w) => toArray(map4((a) => defaultArg(tryFind2(a, w), false), names)), worlds)), toArray(map4((w_1) => evalS5(worlds, w_1, f), worlds)), actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations);
+    }
+  }
 }
 function describeSituation(env) {
   return join(" and ", map4((tupledArg) => {
@@ -6400,8 +6940,24 @@ function proofRow(index, step) {
 function argumentBlock(defs, name, premises, conclusion) {
   const rp = map4((formula) => resolve(defs, formula), premises);
   const rc = resolve(defs, conclusion);
-  const check = checkArgument(rp, rc);
-  const recognized = recognize(check.IsValid ? validForms : fallacies, rp, rc);
+  const modal = exists2(containsModal, cons(rc, rp));
+  let patternInput;
+  if (modal) {
+    const matchValue = checkArgumentS5(rp, rc);
+    patternInput = matchValue.tag === 2 ? [false, true, empty2(), empty2(), -1] : matchValue.tag === 1 ? [false, false, List_distinct(collect2(atoms, append(rp, singleton3(rc))), {
+      Equals: (x, y) => x === y,
+      GetHashCode: (x) => stringHash(x) | 0
+    }), matchValue.fields[0], matchValue.fields[1]] : [true, false, empty2(), empty2(), -1];
+  } else {
+    const check = checkArgument(rp, rc);
+    patternInput = [check.IsValid, false, check.Atoms, check.Counterexamples, -1];
+  }
+  const unknown = patternInput[1];
+  const isValid2 = patternInput[0];
+  const cxRows = patternInput[3];
+  const cxAtoms = patternInput[2];
+  const cxActual = patternInput[4] | 0;
+  const recognized = unknown ? void 0 : recognize(isValid2 ? validForms : fallacies, rp, rc);
   const displayTitle = (form) => {
     if (form.Aka === "") {
       return form.Title;
@@ -6409,37 +6965,51 @@ function argumentBlock(defs, name, premises, conclusion) {
       return form.Title + " (" + form.Aka + ")";
     }
   };
-  const proofSteps = check.IsValid ? defaultArg(prove(rp, rc), empty2()) : empty2();
-  const repairs = check.IsValid ? empty2() : suggestRepairs(rp, rc);
-  const premisesConsistent = isEmpty(rp) ? true : !equals(truthTable(reduce((a, b) => new Formula(3, [a, b]), rp)).Verdict, new Verdict(1, []));
-  let explanation;
+  const proofSteps = isValid2 ? defaultArg(prove(rp, rc), empty2()) : empty2();
+  const repairs = ((isValid2 ? true : unknown) ? true : modal) ? empty2() : suggestRepairs(rp, rc);
+  let premisesConsistent;
   if (isEmpty(rp)) {
-    if (check.IsValid) {
-      explanation = recognized == null ? "A theorem: the conclusion holds in every possible situation \u2014 a tautology, provable from no premises at all." : recognized.Note;
+    premisesConsistent = true;
+  } else {
+    const together = reduce((a, b) => new Formula(3, [a, b]), rp);
+    premisesConsistent = modal ? !equals(s5Satisfy(together), new ModalSearch(0, [])) : !equals(truthTable(together).Verdict, new Verdict(1, []));
+  }
+  let explanation;
+  if (unknown) {
+    explanation = tooLargeNote;
+  } else if (isEmpty(rp)) {
+    if (isValid2) {
+      explanation = recognized == null ? modal ? "A theorem of S5: the conclusion holds at every world of every arrangement \u2014 provable from no premises at all." : "A theorem: the conclusion holds in every possible situation \u2014 a tautology, provable from no premises at all." : recognized.Note;
+    } else if (modal) {
+      explanation = "Not a theorem: there is an arrangement of possible worlds where the conclusion fails.";
     } else {
-      const arg = length(check.Counterexamples) | 0;
+      const arg = length(cxRows) | 0;
       explanation = toText(printf("Not a theorem: the conclusion fails in %d situation(s), so it is no tautology."))(arg);
     }
-  } else if (check.IsValid && !premisesConsistent) {
+  } else if (isValid2 && !premisesConsistent) {
     explanation = "Valid, but vacuously so: the premises contradict one another and can never all hold \u2014 and from a contradiction, anything follows (ex falso quodlibet).";
   } else if (recognized == null) {
-    if (check.IsValid) {
+    if (isValid2 && modal) {
+      explanation = "Valid in S5: no arrangement of possible worlds makes every premise true at the actual world while the conclusion fails there.";
+    } else if (isValid2) {
       explanation = "Valid: no possible situation makes every premise true and the conclusion false.";
+    } else if (modal) {
+      explanation = "Invalid in S5: there is an arrangement of possible worlds where every premise holds at the actual world while the conclusion fails there.";
     } else {
-      const arg_1 = length(check.Counterexamples) | 0;
+      const arg_1 = length(cxRows) | 0;
       explanation = toText(printf("Invalid: %d situation(s) make every premise true while the conclusion fails."))(arg_1);
     }
   } else {
     explanation = recognized.Note;
   }
-  const formLabel = !check.IsValid ? "" : recognized == null ? isEmpty(rp) ? "tautology" : "" : displayTitle(recognized);
+  const formLabel = !isValid2 ? "" : recognized == null ? isEmpty(rp) ? "tautology" : "" : displayTitle(recognized);
   const premises_1 = toArray(map4(toUnicode, rp));
   const conclusion_1 = toUnicode(rc);
-  const verdict = check.IsValid ? "valid" : "invalid";
-  const fallacy = defaultArg(check.IsValid ? void 0 : map(displayTitle, recognized), "");
+  const verdict = unknown ? "unknown" : isValid2 ? "valid" : "invalid";
+  const fallacy = defaultArg((isValid2 ? true : unknown) ? void 0 : map(displayTitle, recognized), "");
   const suggestion = toArray(map4(toUnicode, repairs));
   const proof = toArray(mapIndexed(proofRow, proofSteps));
-  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(check.Atoms), toArray(map4((env) => toArray(map4((a_1) => FSharpMap__get_Item(env, a_1), check.Atoms)), check.Counterexamples)), toArray(map4((_arg) => false, check.Counterexamples)), empty5.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty5.relations);
+  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(cxAtoms), toArray(map4((env) => toArray(map4((a_1) => defaultArg(tryFind2(a_1, env), false), cxAtoms)), cxRows)), cxActual >= 0 ? toArray(map4((w) => evalS5(cxRows, w, rc), cxRows)) : toArray(map4((_arg) => false, cxRows)), cxActual, empty5.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty5.relations);
 }
 function proofBlock(defs, name, lines) {
   let known = empty4({
@@ -6450,7 +7020,7 @@ function proofBlock(defs, name, lines) {
   const enumerator = getEnumerator(lines);
   try {
     while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-      let arg_2, arg_6, arg_7, arg_12, title, refs;
+      let arg_2, arg_6, arg_7, arg_13, title, refs;
       const line = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
       if (line.tag === 1) {
         const ruleName = line.fields[2];
@@ -6479,8 +7049,13 @@ function proofBlock(defs, name, lines) {
             } else {
               const matchValue = recognize(validForms, cited, rf_1);
               if (matchValue == null) {
-                const semantic = checkArgument(cited, rf_1);
-                patternInput = semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s \u2014 and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title] : ["bad", (arg_12 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all \u2014 counterexample: %s"))(arg_12)), fm_3.Title];
+                if (exists2(containsModal, cons(rf_1, cited))) {
+                  const matchValue_1 = checkArgumentS5(cited, rf_1);
+                  patternInput = matchValue_1.tag === 1 ? ["bad", "it does not follow from the cited lines at all \u2014 some arrangement of possible worlds makes them true and this false", fm_3.Title] : matchValue_1.tag === 2 ? ["bad", tooLargeNote, fm_3.Title] : ["bad", toText(printf("it does follow from the cited lines (S5), but not by %s \u2014 and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title];
+                } else {
+                  const semantic = checkArgument(cited, rf_1);
+                  patternInput = semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s \u2014 and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title] : ["bad", (arg_13 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all \u2014 counterexample: %s"))(arg_13)), fm_3.Title];
+                }
               } else {
                 const actual = matchValue;
                 patternInput = ["bad", toText(printf("this step doesn't match %s \u2014 it is actually %s (%s)"))(fm_3.Title)(actual.Title)(actual.Note), fm_3.Title];
@@ -6515,10 +7090,9 @@ function proofBlock(defs, name, lines) {
   }
   const verdict = allOk ? "valid" : "invalid";
   const note = allOk ? "Every step checks out \u2014 the conclusion follows from the premises. \u220E" : "The first \u2717 step is where the chain breaks \u2014 repair it and the proof may go through.";
-  return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations);
+  return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations);
 }
 function relationInfo(defs, glosses, left, kind, right) {
-  let arg, arg_1, arg_2;
   const display = (_arg) => {
     if (_arg.tag === 1) {
       return "\u201C" + _arg.fields[0] + "\u201D";
@@ -6547,7 +7121,6 @@ function relationInfo(defs, glosses, left, kind, right) {
     }
   };
   const verb = kind.tag === 1 ? "presupposes" : kind.tag === 2 ? "contradicts" : kind.tag === 3 ? "entails" : kind.tag === 4 ? "equivalent-to" : "supports";
-  const tautology2 = (f) => equals(truthTable(f).Verdict, new Verdict(0, []));
   let patternInput;
   const matchValue = formulaOf(left);
   const matchValue_1 = formulaOf(right);
@@ -6577,23 +7150,44 @@ function relationInfo(defs, glosses, left, kind, right) {
       break;
     }
     case 1: {
-      switch (kind.tag) {
-        case 3: {
-          patternInput = tautology2(new Formula(6, [a, b])) ? ["holds", "verified: whenever the first holds, so does the second"] : ["fails", (arg = describeSituation(head(checkArgument(singleton3(a), b).Counterexamples)), toText(printf("does not hold \u2014 counterexample: %s"))(arg))];
-          break;
+      const modal = containsModal(a) ? true : containsModal(b);
+      const checkFormal = (f, holdsNote, failsNote) => {
+        const matchValue_3 = valid(f);
+        if (matchValue_3 == null) {
+          return ["asserted", tooLargeNote];
+        } else if (matchValue_3) {
+          return ["holds", holdsNote];
+        } else {
+          return ["fails", failsNote()];
         }
-        case 2: {
-          patternInput = tautology2(new Formula(2, [new Formula(3, [a, b])])) ? ["holds", "verified: they can never both be true"] : ["fails", (arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(3, [a, b])).Rows)[0]), toText(printf("they CAN both be true \u2014 for instance when %s"))(arg_1))];
-          break;
+      };
+      patternInput = kind.tag === 3 ? checkFormal(new Formula(6, [a, b]), "verified: whenever the first holds, so does the second", () => {
+        if (modal) {
+          return "does not hold \u2014 it fails in some arrangement of possible worlds";
+        } else {
+          const arg = describeSituation(head(checkArgument(singleton3(a), b).Counterexamples));
+          return toText(printf("does not hold \u2014 counterexample: %s"))(arg);
         }
-        default:
-          if (equivalent(a, b)) {
-            patternInput = ["holds", "verified: always the same truth value \u2014 two phrasings of one claim"];
+      }) : kind.tag === 2 ? checkFormal(new Formula(2, [new Formula(3, [a, b])]), "verified: they can never both be true", () => {
+        if (modal) {
+          return "they CAN both be true \u2014 in some arrangement of possible worlds";
+        } else {
+          const arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(3, [a, b])).Rows)[0]);
+          return toText(printf("they CAN both be true \u2014 for instance when %s"))(arg_1);
+        }
+      }) : checkFormal(new Formula(7, [a, b]), "verified: always the same truth value \u2014 two phrasings of one claim", () => {
+        if (modal) {
+          return "not equivalent \u2014 they come apart in some arrangement of possible worlds";
+        } else {
+          const matchValue_4 = distinguishing(a, b);
+          if (matchValue_4 == null) {
+            return "not equivalent";
           } else {
-            const matchValue_3 = distinguishing(a, b);
-            patternInput = matchValue_3 == null ? ["fails", "not equivalent"] : ["fails", (arg_2 = describeSituation(matchValue_3), toText(printf("not equivalent \u2014 they come apart when %s"))(arg_2))];
+            const arg_2 = describeSituation(matchValue_4);
+            return toText(printf("not equivalent \u2014 they come apart when %s"))(arg_2);
           }
-      }
+        }
+      });
       break;
     }
     default:
@@ -6620,7 +7214,7 @@ function relationWhy(_arg) {
   }
 }
 function relationsBlock(claims) {
-  return new BlockView("relations", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, Array.from(delay(() => collect((i) => map3((j) => {
+  return new BlockView("relations", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, Array.from(delay(() => collect((i) => map3((j) => {
     const patternInput = item2(i, claims);
     const nameA = patternInput[0];
     const patternInput_1 = item2(j, claims);
@@ -6635,37 +7229,40 @@ function relationsBlock(claims) {
   }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))));
 }
 function toBlock(defs, glosses, claims, relationRows, st) {
+  let matchValue_3, arg;
   switch (st.tag) {
     case 1:
-      return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     case 2:
-      return new BlockView("prop", empty5.level, empty5.title, st.fields[0], st.fields[1], empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("prop", empty5.level, empty5.title, st.fields[0], st.fields[1], empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     case 3:
-      return new BlockView("claim", empty5.level, empty5.title, st.fields[0], empty5.gloss, toUnicode(st.fields[1]), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, toEnglish((name) => tryFind2(name, glosses), resolve(defs, st.fields[1])), empty5.suggestion, empty5.proof, empty5.relations);
-    case 4:
-      return tableBlock(st.fields[0].tag === 0 ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]));
+      return new BlockView("claim", empty5.level, empty5.title, st.fields[0], empty5.gloss, toUnicode(st.fields[1]), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, toEnglish((name) => tryFind2(name, glosses), resolve(defs, st.fields[1])), empty5.suggestion, empty5.proof, empty5.relations);
+    case 4: {
+      const f_2 = st.fields[0].tag === 0 ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]);
+      if (containsModal(f_2)) {
+        return modalBlock("table", f_2);
+      } else {
+        return tableBlock(f_2);
+      }
+    }
     case 5:
       if (st.fields[0].tag === 1) {
         const matchValue = resolve(defs, st.fields[0].fields[0]);
         const rb = resolve(defs, st.fields[0].fields[1]);
         const ra = matchValue;
-        const same = equivalent(ra, rb);
-        let note_1;
-        if (same) {
-          note_1 = "In every possible situation the two sides carry the same truth value \u2014 two phrasings of one claim.";
-        } else {
-          const matchValue_2 = distinguishing(ra, rb);
-          if (matchValue_2 == null) {
-            note_1 = "";
-          } else {
-            const arg = describeSituation(matchValue_2);
-            note_1 = toText(printf("They come apart when %s: then one holds and the other doesn't."))(arg);
-          }
-        }
-        return new BlockView("check", empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), same ? "equivalent" : "not-equivalent", empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, note_1, empty5.suggestion, empty5.proof, empty5.relations);
+        const modal = containsModal(ra) ? true : containsModal(rb);
+        let patternInput_1;
+        const matchValue_2 = equivalent2(ra, rb);
+        patternInput_1 = matchValue_2 == null ? ["unknown", tooLargeNote] : matchValue_2 ? modal ? ["equivalent", "At every world of every arrangement the two sides carry the same truth value \u2014 two phrasings of one claim."] : ["equivalent", "In every possible situation the two sides carry the same truth value \u2014 two phrasings of one claim."] : modal ? ["not-equivalent", "They come apart in some arrangement of possible worlds: there, one holds and the other doesn't."] : ["not-equivalent", (matchValue_3 = distinguishing(ra, rb), matchValue_3 == null ? "" : (arg = describeSituation(matchValue_3), toText(printf("They come apart when %s: then one holds and the other doesn't."))(arg)))];
+        return new BlockView("check", empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), patternInput_1[0], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, patternInput_1[1], empty5.suggestion, empty5.proof, empty5.relations);
       } else {
-        const bind$0040 = tableBlock(resolve(defs, st.fields[0].fields[0]));
-        return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations);
+        const rf = resolve(defs, st.fields[0].fields[0]);
+        if (containsModal(rf)) {
+          return modalBlock("check", rf);
+        } else {
+          const bind$0040 = tableBlock(rf);
+          return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.actual, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations);
+        }
       }
     case 6:
       return argumentBlock(defs, st.fields[0], st.fields[1], st.fields[2]);
@@ -6674,13 +7271,13 @@ function toBlock(defs, glosses, claims, relationRows, st) {
     case 8:
       return relationsBlock(claims);
     case 9: {
-      const patternInput_1 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
-      return new BlockView("relation", empty5.level, patternInput_1[1], empty5.name, empty5.gloss, patternInput_1[0], patternInput_1[3], empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, patternInput_1[2], empty5.form, empty5.fallacy, patternInput_1[4], empty5.suggestion, empty5.proof, empty5.relations);
+      const patternInput_2 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
+      return new BlockView("relation", empty5.level, patternInput_2[1], empty5.name, empty5.gloss, patternInput_2[0], patternInput_2[3], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, patternInput_2[2], empty5.form, empty5.fallacy, patternInput_2[4], empty5.suggestion, empty5.proof, empty5.relations);
     }
     case 10:
-      return new BlockView("map", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, relationRows);
+      return new BlockView("map", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, relationRows);
     default:
-      return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
   }
 }
 function analyze(source) {
@@ -6729,7 +7326,7 @@ function analyze(source) {
   return toArray(choose2((tupledArg_1) => {
     const r_2 = tupledArg_1[1];
     if (r_2.tag === 1) {
-      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
     } else if (r_2.fields[0] != null) {
       return toBlock(defs, glosses, claims, relationRows, r_2.fields[0]);
     } else {
@@ -6917,7 +7514,8 @@ function verdictBadge(verdict) {
     equivalent: "equivalent",
     "not-equivalent": "not equivalent",
     valid: "valid",
-    invalid: "invalid"
+    invalid: "invalid",
+    unknown: "unknown"
   };
   const text = label[verdict] ?? verdict;
   return `<span class="badge badge-${verdict}">${escapeHtml(text)}</span>`;
@@ -6925,16 +7523,18 @@ function verdictBadge(verdict) {
 function tf(value2) {
   return `<td class="${value2 ? "t" : "f"}">${value2 ? "T" : "F"}</td>`;
 }
-function renderTruthTable(atoms2, rows, results, resultHeader) {
-  const head2 = atoms2.map((a) => `<th>${escapeHtml(a)}</th>`).join("") + `<th class="result">${escapeHtml(resultHeader)}</th>`;
+function renderTruthTable(atoms2, rows, results, resultHeader, actual = -1) {
+  const worldly = actual >= 0;
+  const head2 = (worldly ? `<th class="world-name">world</th>` : "") + atoms2.map((a) => `<th>${escapeHtml(a)}</th>`).join("") + `<th class="result">${escapeHtml(resultHeader)}</th>`;
   const body = rows.map((row, i) => {
-    const cells = row.map((v) => tf(v)).join("") + tf(results[i]);
+    const name = worldly ? `<td class="world-name${i === actual ? " actual" : ""}">${i === actual ? "\u2192 " : ""}w${i + 1}</td>` : "";
+    const cells = name + row.map((v) => tf(v)).join("") + tf(results[i]);
     return `<tr>${cells}</tr>`;
   }).join("");
   return `<table class="truth"><thead><tr>${head2}</tr></thead><tbody>${body}</tbody></table>`;
 }
 function renderTable(block) {
-  return renderTruthTable(block.atoms, block.rows, block.results, block.formula);
+  return renderTruthTable(block.atoms, block.rows, block.results, block.formula, block.actual);
 }
 function renderArgument(block) {
   const chips = [verdictBadge(block.verdict)];
@@ -6952,8 +7552,9 @@ function renderArgument(block) {
     parts.push(`<p class="note">${escapeHtml(block.note)}</p>`);
   }
   if (block.verdict === "invalid" && block.rows.length > 0) {
+    const label = block.actual >= 0 ? "countermodel \u2014 premises true at the actual world (\u2192), conclusion false there:" : "counterexample \u2014 premises true, conclusion false:";
     parts.push(
-      `<div class="counterexample"><span class="cx-label">counterexample \u2014 premises true, conclusion false:</span>` + renderTruthTable(block.atoms, block.rows, block.results, block.conclusion) + `</div>`
+      `<div class="counterexample"><span class="cx-label">${label}</span>` + renderTruthTable(block.atoms, block.rows, block.results, block.conclusion, block.actual) + `</div>`
     );
   }
   if (block.suggestion.length > 0) {
@@ -7559,6 +8160,9 @@ var STYLE = `
   .badge-contingent { background: var(--vscode-editorWarning-foreground, #cca700); color: #100c02; }
   .badge-valid { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
   .badge-invalid { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
+  .badge-unknown { background: var(--vscode-descriptionForeground, #8d96a0); color: #101214; }
+  table.truth td.world-name, table.truth th.world-name { font-style: italic; opacity: .75; text-align: right; }
+  table.truth td.world-name.actual { font-weight: 700; opacity: 1; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }

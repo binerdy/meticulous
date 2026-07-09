@@ -13,12 +13,12 @@ export class Token extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TLParen", "TRParen"];
+        return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TLParen", "TRParen"];
     }
 }
 
 export function Token_$reflection() {
-    return union_type("Meticulous.Tokenizer.Token", [], Token, () => [[["Item", string_type]], [], [], [], [], [], [], [], [], [], []]);
+    return union_type("Meticulous.Tokenizer.Token", [], Token, () => [[["Item", string_type]], [], [], [], [], [], [], [], [], [], [], [], []]);
 }
 
 function isIdentChar(c) {
@@ -44,6 +44,10 @@ function wordToToken(word) {
             return new Token(7, []);
         case "iff":
             return new Token(8, []);
+        case "necessarily":
+            return new Token(9, []);
+        case "possibly":
+            return new Token(10, []);
         case "true":
             return new Token(1, []);
         case "false":
@@ -117,38 +121,62 @@ export function tokenize(input) {
                         matchResult = 10;
                         break;
                     }
+                    case "□": {
+                        matchResult = 11;
+                        break;
+                    }
+                    case "◇": {
+                        matchResult = 12;
+                        break;
+                    }
                     case "-": {
                         if (((i + 1) < input.length) && (input[i + 1] === ">")) {
-                            matchResult = 11;
+                            matchResult = 14;
                         }
                         else if (isLetter(c)) {
-                            matchResult = 13;
+                            matchResult = 17;
                         }
                         else {
-                            matchResult = 14;
+                            matchResult = 18;
                             other = c;
                         }
                         break;
                     }
                     case "<": {
                         if ((((i + 2) < input.length) && (input[i + 1] === "-")) && (input[i + 2] === ">")) {
-                            matchResult = 12;
+                            matchResult = 15;
+                        }
+                        else if (((i + 1) < input.length) && (input[i + 1] === ">")) {
+                            matchResult = 16;
                         }
                         else if (isLetter(c)) {
-                            matchResult = 13;
+                            matchResult = 17;
                         }
                         else {
-                            matchResult = 14;
+                            matchResult = 18;
+                            other = c;
+                        }
+                        break;
+                    }
+                    case "[": {
+                        if (((i + 1) < input.length) && (input[i + 1] === "]")) {
+                            matchResult = 13;
+                        }
+                        else if (isLetter(c)) {
+                            matchResult = 17;
+                        }
+                        else {
+                            matchResult = 18;
                             other = c;
                         }
                         break;
                     }
                     default:
                         if (isLetter(c)) {
-                            matchResult = 13;
+                            matchResult = 17;
                         }
                         else {
-                            matchResult = 14;
+                            matchResult = 18;
                             other = c;
                         }
                 }
@@ -160,12 +188,12 @@ export function tokenize(input) {
                     }
                     case 1: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(9, []), acc);
+                        acc_mut = cons(new Token(11, []), acc);
                         continue loop;
                     }
                     case 2: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(10, []), acc);
+                        acc_mut = cons(new Token(12, []), acc);
                         continue loop;
                     }
                     case 3: {
@@ -209,16 +237,36 @@ export function tokenize(input) {
                         continue loop;
                     }
                     case 11: {
+                        i_mut = (i + 1);
+                        acc_mut = cons(new Token(9, []), acc);
+                        continue loop;
+                    }
+                    case 12: {
+                        i_mut = (i + 1);
+                        acc_mut = cons(new Token(10, []), acc);
+                        continue loop;
+                    }
+                    case 13: {
+                        i_mut = (i + 2);
+                        acc_mut = cons(new Token(9, []), acc);
+                        continue loop;
+                    }
+                    case 14: {
                         i_mut = (i + 2);
                         acc_mut = cons(new Token(7, []), acc);
                         continue loop;
                     }
-                    case 12: {
+                    case 15: {
                         i_mut = (i + 3);
                         acc_mut = cons(new Token(8, []), acc);
                         continue loop;
                     }
-                    case 13: {
+                    case 16: {
+                        i_mut = (i + 2);
+                        acc_mut = cons(new Token(10, []), acc);
+                        continue loop;
+                    }
+                    case 17: {
                         const start = i | 0;
                         let j = i;
                         while ((j < input.length) && (isIdentChar(input[j]) ? true : (((input[j] === "-") && ((j + 1) < input.length)) && isLetterOrDigit(input[j + 1])))) {

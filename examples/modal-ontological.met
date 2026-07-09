@@ -1,0 +1,53 @@
+# The modal ontological argument
+
+Anselm's argument in Hartshorne's modal reconstruction — the argument Gödel
+was formalizing. In S5, meticulous can check every step of it.
+
+prop god : A maximally great being exists
+
+claim Possibility : possibly god
+claim Stability : necessarily (god -> necessarily god)
+
+// Greatness is meant to include necessary existence — that is what
+// Stability encodes. Reading the claims back:
+// "It is possible that a maximally great being exists."
+// "It is necessary that if a maximally great being exists, then it is
+//  necessary that a maximally great being exists."
+
+argument anselm {
+  premise Possibility
+  premise Stability
+  ---
+  conclude god
+}
+
+// The load-bearing S5 principle, isolated:
+argument the-key-move {
+  premise possibly necessarily god
+  ---
+  conclude necessarily god
+}
+
+// And the same conclusion, derived by hand:
+proof hartshorne {
+  1. premise possibly necessarily god
+  2. necessarily god by s5-collapse from 1
+  3. god by axiom-t from 2
+}
+
+## What the argument does NOT show
+
+// Possibility alone actualizes nothing — the engine names the fallacy and
+// draws the arrangement of worlds where it fails:
+argument wishful-thinking {
+  premise possibly god
+  ---
+  conclude god
+}
+
+// So everything hangs on the premises: grant that a maximally great being
+// is possible AND that greatness entails necessary existence, and S5 does
+// the rest. Deny either, and nothing follows. The formalization doesn't
+// settle the debate — it shows exactly where the debate lives.
+
+check (possibly god) equivalent (not necessarily not god)

@@ -478,6 +478,97 @@ let ``relations keep props counted as used, and undeclared names warn`` () =
     Assert.Contains("ghost", w.message)
     Assert.Equal(4, w.line)
 
+// ---- Modal logic: S5 ------------------------------------------------------------
+
+[<Fact>]
+let ``modal operators parse in all three spellings and render to Unicode`` () =
+    Assert.Equal(parse "necessarily p", parse "[] p")
+    Assert.Equal(parse "necessarily p", parse "□p")
+    Assert.Equal(parse "possibly p", parse "<> p")
+    Assert.Equal(parse "possibly p", parse "◇p")
+    // <> must not break <-> lexing
+    Assert.Equal(Iff(Atom "p", Atom "q"), parse "p <-> q")
+    Assert.Equal("□p → ◇(p ∧ q)", Meticulous.Render.toUnicode (parse "[]p -> <>(p and q)"))
+
+[<Fact>]
+let ``the S5 axioms are valid and their converses are not`` () =
+    let isValid text = Engine.valid (parse text)
+    Assert.Equal(Some true, isValid "[]p -> p")            // T
+    Assert.Equal(Some true, isValid "p -> <>p")            // T dual
+    Assert.Equal(Some true, isValid "[]p -> [][]p")        // 4
+    Assert.Equal(Some true, isValid "<>p -> []<>p")        // 5
+    Assert.Equal(Some true, isValid "<>[]p -> []p")        // S5 collapse
+    Assert.Equal(Some true, isValid "([](p -> q) and []p) -> []q") // K
+    Assert.Equal(Some true, isValid "<>p <-> not [] not p")        // duality
+    Assert.Equal(Some false, isValid "p -> []p")           // truth is not necessity
+    Assert.Equal(Some false, isValid "<>p -> p")           // possibility is not actuality
+
+[<Fact>]
+let ``an invalid modal argument yields a countermodel with an actual world`` () =
+    // possibly p ⊬ p: needs a world where p holds that isn't the actual one.
+    match checkArgumentS5 [ parse "<>p" ] (parse "p") with
+    | Engine.Model(worlds, actual) ->
+        Assert.True(List.length worlds >= 2)
+        Assert.False(worlds.[actual].["p"])                   // p fails at the actual world
+        Assert.True(worlds |> List.exists (fun w -> w.["p"])) // but holds somewhere
+    | other -> failwithf "expected a countermodel, got %A" other
+
+[<Fact>]
+let ``the modal ontological argument is S5-valid`` () =
+    // Hartshorne: ◇g, □(g → □g) ⊢ g
+    let result = checkArgumentS5 [ parse "<>god"; parse "[](god -> []god)" ] (parse "god")
+    Assert.Equal(Engine.NoModel, result)
+
+// ---- Modal logic through the Api --------------------------------------------------
+
+[<Fact>]
+let ``a modal table becomes a world-arrangement card with an actual world`` () =
+    let block = analyze "table possibly p\n" |> Array.find (fun b -> b.kind = "table")
+    Assert.Equal("contingent", block.verdict)
+    Assert.True(block.actual >= 0)
+    Assert.True(block.rows.Length >= 1)
+    Assert.Contains("arrangement", block.note)
+
+[<Fact>]
+let ``modal forms and fallacies are recognized by name`` () =
+    let doc =
+        "argument hartshorne-core {\n  premise possibly necessarily god\n  ---\n  conclude necessarily god\n}\n\
+         argument wishful {\n  premise possibly rich\n  ---\n  conclude rich\n}\n"
+    let blocks = analyze doc
+    let collapse = blocks |> Array.find (fun b -> b.name = "hartshorne-core")
+    Assert.Equal("valid", collapse.verdict)
+    Assert.Equal("S5 collapse", collapse.form)
+    let wishful = blocks |> Array.find (fun b -> b.name = "wishful")
+    Assert.Equal("invalid", wishful.verdict)
+    Assert.Equal("actualizing the possible", wishful.fallacy)
+    Assert.True(wishful.actual >= 0)          // countermodel with a marked actual world
+    Assert.False(wishful.results.[wishful.actual]) // conclusion false at the actual world
+
+[<Fact>]
+let ``the full modal ontological argument is valid through the Api`` () =
+    let doc =
+        "argument anselm {\n  premise possibly god\n  premise necessarily (god -> necessarily god)\n  ---\n  conclude god\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+    Assert.Contains("S5", arg.note)
+
+[<Fact>]
+let ``modal claims read back in English`` () =
+    let doc = "prop god : a maximally great being exists\nclaim P : possibly god\n"
+    let claim = analyze doc |> Array.find (fun b -> b.kind = "claim")
+    Assert.Equal("It is possible that a maximally great being exists.", claim.note)
+
+[<Fact>]
+let ``a modal proof checks with the S5 rules`` () =
+    let proof =
+        findProof
+            "proof hartshorne {\n\
+               1. premise possibly necessarily god\n\
+               2. necessarily god by s5-collapse from 1\n\
+               3. god by axiom-t from 2\n\
+             }\n"
+    Assert.Equal("valid", proof.verdict)
+
 // ---- Editor extras: catalog and lint -------------------------------------------
 
 [<Fact>]

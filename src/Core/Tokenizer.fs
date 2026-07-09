@@ -22,6 +22,8 @@ module Tokenizer =
         | TXor                 // xor  ⊕
         | TImplies             // implies  ->  →
         | TIff                 // iff  <->  ↔
+        | TBox                 // necessarily  []  □
+        | TDiamond             // possibly  <>  ◇
         | TLParen              // (
         | TRParen              // )
 
@@ -38,6 +40,8 @@ module Tokenizer =
         | "xor" -> TXor
         | "implies" -> TImplies
         | "iff" -> TIff
+        | "necessarily" -> TBox
+        | "possibly" -> TDiamond
         | "true" -> TTrue
         | "false" -> TFalse
         | other -> TIdent other
@@ -62,10 +66,17 @@ module Tokenizer =
                 | '↔' -> loop (i + 1) (TIff :: acc)
                 | '⊤' -> loop (i + 1) (TTrue :: acc)
                 | '⊥' -> loop (i + 1) (TFalse :: acc)
+                | '□' -> loop (i + 1) (TBox :: acc)
+                | '◇' -> loop (i + 1) (TDiamond :: acc)
+                | '[' when i + 1 < input.Length && input.[i + 1] = ']' ->
+                    loop (i + 2) (TBox :: acc)
                 | '-' when i + 1 < input.Length && input.[i + 1] = '>' ->
                     loop (i + 2) (TImplies :: acc)
+                // '<->' must be tried before '<>', or iff would lex as ◇ + junk
                 | '<' when i + 2 < input.Length && input.[i + 1] = '-' && input.[i + 2] = '>' ->
                     loop (i + 3) (TIff :: acc)
+                | '<' when i + 1 < input.Length && input.[i + 1] = '>' ->
+                    loop (i + 2) (TDiamond :: acc)
                 | _ when System.Char.IsLetter c ->
                     // Read a whole word, then decide if it's a keyword.
                     // A '-' continues the word only when a letter or digit

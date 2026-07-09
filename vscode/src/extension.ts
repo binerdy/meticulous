@@ -41,6 +41,9 @@ const STYLE = `
   .badge-contingent { background: var(--vscode-editorWarning-foreground, #cca700); color: #100c02; }
   .badge-valid { background: var(--vscode-testing-iconPassed, #3fb950); color: #041006; }
   .badge-invalid { background: var(--vscode-testing-iconFailed, #f85149); color: #100404; }
+  .badge-unknown { background: var(--vscode-descriptionForeground, #8d96a0); color: #101214; }
+  table.truth td.world-name, table.truth th.world-name { font-style: italic; opacity: .75; text-align: right; }
+  table.truth td.world-name.actual { font-weight: 700; opacity: 1; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }

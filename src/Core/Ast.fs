@@ -20,6 +20,8 @@ module Ast =
         | Xor of Formula * Formula          // φ ⊕ ψ  (exclusive or)
         | Implies of Formula * Formula      // φ → ψ
         | Iff of Formula * Formula          // φ ↔ ψ  (if and only if)
+        | Box of Formula                    // □φ — necessarily φ (true in every possible world)
+        | Diamond of Formula                // ◇φ — possibly φ (true in some possible world)
 
     /// Where a `table` request points: either a named claim, or a formula
     /// written inline on the same line.

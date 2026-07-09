@@ -146,22 +146,38 @@ function parseAnd(tokens) {
 }
 
 function parseUnary(tokens) {
-    let matchResult, more;
+    let matchResult, more, more_1, more_2;
     if (!isEmpty(tokens)) {
-        if (head(tokens).tag === 3) {
-            matchResult = 0;
-            more = tail(tokens);
-        }
-        else {
-            matchResult = 1;
+        switch (head(tokens).tag) {
+            case 3: {
+                matchResult = 0;
+                more = tail(tokens);
+                break;
+            }
+            case 9: {
+                matchResult = 1;
+                more_1 = tail(tokens);
+                break;
+            }
+            case 10: {
+                matchResult = 2;
+                more_2 = tail(tokens);
+                break;
+            }
+            default:
+                matchResult = 3;
         }
     }
     else {
-        matchResult = 1;
+        matchResult = 3;
     }
     switch (matchResult) {
         case 0:
             return Result_Map((tupledArg) => [new Formula(2, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
+        case 1:
+            return Result_Map((tupledArg_1) => [new Formula(8, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
+        case 2:
+            return Result_Map((tupledArg_2) => [new Formula(9, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
         default:
             return parseAtom(tokens);
     }
@@ -179,12 +195,12 @@ function parseAtom(tokens) {
                 return new FSharpResult$2(0, [[new Formula(1, [true]), tail(tokens)]]);
             case 2:
                 return new FSharpResult$2(0, [[new Formula(1, [false]), tail(tokens)]]);
-            case 9:
+            case 11:
                 return Result_Bind((tupledArg) => {
                     const rest$0027 = tupledArg[1];
                     let matchResult, rest$0027$0027;
                     if (!isEmpty(rest$0027)) {
-                        if (head(rest$0027).tag === 10) {
+                        if (head(rest$0027).tag === 12) {
                             matchResult = 0;
                             rest$0027$0027 = tail(rest$0027);
                         }

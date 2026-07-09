@@ -14,12 +14,12 @@ export class Formula extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff"];
+        return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond"];
     }
 }
 
 export function Formula_$reflection() {
-    return union_type("Meticulous.Ast.Formula", [], Formula, () => [[["Item", string_type]], [["Item", bool_type]], [["Item", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]]]);
+    return union_type("Meticulous.Ast.Formula", [], Formula, () => [[["Item", string_type]], [["Item", bool_type]], [["Item", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item", Formula_$reflection()]], [["Item", Formula_$reflection()]]]);
 }
 
 /**

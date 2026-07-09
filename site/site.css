@@ -111,6 +111,9 @@ table.truth td.f { color: var(--red); opacity: .85; }
 .badge-tautology, .badge-equivalent, .badge-valid { background: var(--green); }
 .badge-contradiction, .badge-not-equivalent, .badge-invalid { background: var(--red); }
 .badge-contingent { background: var(--amber); }
+.badge-unknown { background: var(--muted); }
+table.truth td.world-name, table.truth th.world-name { font-style: italic; color: var(--muted); text-align: right; }
+table.truth td.world-name.actual { font-weight: 700; color: var(--fg); }
 
 figure.argument, figure.relations {
   margin: 1.2rem 0; padding: .7rem 1rem;

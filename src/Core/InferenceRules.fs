@@ -259,7 +259,104 @@ module InferenceRules =
             Kind = ValidForm
             Note = "No proposition both holds and fails at once." }
 
+          // ---- modal rules (S5): reasoning about necessity and possibility ----
+          { Name = "axiom-t"
+            Title = "axiom T"
+            Aka = "necessity elimination"
+            Premises = [ Box φ ]
+            Conclusion = φ
+            Kind = ValidForm
+            Note = "What is necessary is actually so." }
+
+          { Name = "possibility-intro"
+            Title = "possibility introduction"
+            Aka = ""
+            Premises = [ φ ]
+            Conclusion = Diamond φ
+            Kind = ValidForm
+            Note = "What is actually so is possible." }
+
+          { Name = "k-distribution"
+            Title = "K distribution"
+            Aka = ""
+            Premises = [ Box(Implies(φ, ψ)); Box φ ]
+            Conclusion = Box ψ
+            Kind = ValidForm
+            Note = "Necessity distributes over implication: a necessary if–then with a necessary if gives a necessary then." }
+
+          { Name = "axiom-4"
+            Title = "axiom 4"
+            Aka = ""
+            Premises = [ Box φ ]
+            Conclusion = Box(Box φ)
+            Kind = ValidForm
+            Note = "What is necessary is necessarily necessary." }
+
+          { Name = "axiom-5"
+            Title = "axiom 5"
+            Aka = ""
+            Premises = [ Diamond φ ]
+            Conclusion = Box(Diamond φ)
+            Kind = ValidForm
+            Note = "What is possible is necessarily possible — possibility doesn't vary between worlds (S5)." }
+
+          { Name = "axiom-b"
+            Title = "axiom B"
+            Aka = ""
+            Premises = [ φ ]
+            Conclusion = Box(Diamond φ)
+            Kind = ValidForm
+            Note = "What is so is necessarily possible." }
+
+          { Name = "s5-collapse"
+            Title = "S5 collapse"
+            Aka = ""
+            Premises = [ Diamond(Box φ) ]
+            Conclusion = Box φ
+            Kind = ValidForm
+            Note = "Possibly necessary is necessary — the load-bearing step of the modal ontological argument." }
+
+          { Name = "dual-box"
+            Title = "modal duality"
+            Aka = ""
+            Premises = [ Not(Diamond φ) ]
+            Conclusion = Box(Not φ)
+            Kind = ValidForm
+            Note = "Not possible means necessarily not — ◇ and □ are two sides of one coin." }
+
+          { Name = "dual-diamond"
+            Title = "modal duality"
+            Aka = ""
+            Premises = [ Not(Box φ) ]
+            Conclusion = Diamond(Not φ)
+            Kind = ValidForm
+            Note = "Not necessary means possibly not — □ and ◇ are two sides of one coin." }
+
           // ---- fallacies: invalid forms that *look* valid ----
+          { Name = "illicit-necessitation"
+            Title = "illicit necessitation"
+            Aka = ""
+            Premises = [ φ ]
+            Conclusion = Box φ
+            Kind = FallacyForm
+            Note = "True doesn't mean necessarily true — the world could have been otherwise." }
+
+          { Name = "actualizing-the-possible"
+            Title = "actualizing the possible"
+            Aka = ""
+            Premises = [ Diamond φ ]
+            Conclusion = φ
+            Kind = FallacyForm
+            Note = "Possible doesn't mean actual — some possibilities stay unrealized." }
+
+          { Name = "necessity-of-the-consequent"
+            Title = "necessity of the consequent"
+            Aka = "modal scope fallacy"
+            Premises = [ Box(Implies(φ, ψ)); φ ]
+            Conclusion = Box ψ
+            Kind = FallacyForm
+            Note = "The necessity governs the whole if–then, not its then: a contingent if only yields a contingent then." }
+
           { Name = "affirming-the-consequent"
             Title = "affirming the consequent"
             Aka = ""

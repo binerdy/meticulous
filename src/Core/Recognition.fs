@@ -25,7 +25,9 @@ module Recognition =
             | Some bound -> if bound = t then Some subst else None
             | None -> Some(Map.add v t subst)
         | Const a, Const b when a = b -> Some subst
-        | Not p, Not t -> matchPattern p t subst
+        | Not p, Not t
+        | Box p, Box t
+        | Diamond p, Diamond t -> matchPattern p t subst
         | And(p1, p2), And(t1, t2)
         | Or(p1, p2), Or(t1, t2)
         | Xor(p1, p2), Xor(t1, t2)
@@ -49,6 +51,8 @@ module Recognition =
         | Atom v -> Map.tryFind v subst |> Option.defaultValue pattern
         | Const _ -> pattern
         | Not a -> Not(instantiate subst a)
+        | Box a -> Box(instantiate subst a)
+        | Diamond a -> Diamond(instantiate subst a)
         | And(a, b) -> And(instantiate subst a, instantiate subst b)
         | Or(a, b) -> Or(instantiate subst a, instantiate subst b)
         | Xor(a, b) -> Xor(instantiate subst a, instantiate subst b)
@@ -107,7 +111,7 @@ module Recognition =
     let rec private size f =
         match f with
         | Atom _ | Const _ -> 1
-        | Not a -> 1 + size a
+        | Not a | Box a | Diamond a -> 1 + size a
         | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) -> 1 + size a + size b
 
     /// Every subformula of a formula, including itself.
@@ -115,7 +119,7 @@ module Recognition =
         f
         :: (match f with
             | Atom _ | Const _ -> []
-            | Not a -> subformulas a
+            | Not a | Box a | Diamond a -> subformulas a
             | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
                 subformulas a @ subformulas b)
 
@@ -148,7 +152,7 @@ module Recognition =
         let mutable found = known goal
         let mutable round = 0
 
-        while not found && round < 6 && steps.Count < 40 do
+        while not found && round < 6 && steps.Count < 120 do
             round <- round + 1
             let snapshot = steps.Count
 
@@ -165,7 +169,7 @@ module Recognition =
                     | _ -> []
 
                 for indices in candidates do
-                    if not found && steps.Count < 40 then
+                    if not found && steps.Count < 120 then
                         let targets = indices |> List.map (fun i -> let (f, _, _) = steps.[i] in f)
                         match matchAll rule.Premises targets with
                         | None -> ()
@@ -179,7 +183,7 @@ module Recognition =
                                 | [ v ] -> universe |> List.map (fun u -> Map.add v u subst)
                                 | _ -> [] // no rule in the catalog has 2+ free conclusion vars
                             for s in fillings do
-                                if not found && steps.Count < 40 then
+                                if not found && steps.Count < 120 then
                                     let derived = instantiate s rule.Conclusion
                                     if size derived <= sizeLimit && not (known derived) then
                                         steps.Add(derived, rule.Title, indices |> List.map (fun i -> i + 1))

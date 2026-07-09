@@ -13,7 +13,9 @@ module Render =
         match f with
         | Atom _
         | Const _ -> 100
-        | Not _ -> 90
+        | Not _
+        | Box _
+        | Diamond _ -> 90
         | And _ -> 80
         | Or _ -> 70
         | Xor _ -> 60
@@ -45,6 +47,8 @@ module Render =
             | Const true -> "⊤"
             | Const false -> "⊥"
             | Not a -> "¬" + wrap true a
+            | Box a -> "□" + wrap true a
+            | Diamond a -> "◇" + wrap true a
             | And(a, b) -> wrap true a + " ∧ " + wrap false b
             | Or(a, b) -> wrap true a + " ∨ " + wrap false b
             | Xor(a, b) -> wrap true a + " ⊕ " + wrap false b
@@ -75,6 +79,8 @@ module Render =
             | Const true -> "true"
             | Const false -> "false"
             | Not a -> "it is not the case that " + go a
+            | Box a -> "it is necessary that " + go a
+            | Diamond a -> "it is possible that " + go a
             | And(a, b) -> "both " + go a + ", and " + go b
             | Or(a, b) -> "either " + go a + ", or " + go b
             | Xor(a, b) -> "either " + go a + " or " + go b + ", but not both"

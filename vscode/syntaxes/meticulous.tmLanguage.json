@@ -48,7 +48,7 @@
       "name": "string.quoted.double.meticulous"
     },
     "operator": {
-      "match": "->|<->|→|↔|∧|∨|¬|⊕|&|\\||~|!|\\b(and|or|not|implies|iff|xor)\\b",
+      "match": "->|<->|<>|→|↔|∧|∨|¬|⊕|□|◇|\\[\\]|&|\\||~|!|\\b(and|or|not|implies|iff|xor|necessarily|possibly)\\b",
       "name": "keyword.operator.logical.meticulous"
     },
     "constant": {

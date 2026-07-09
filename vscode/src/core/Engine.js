@@ -3,12 +3,14 @@ import { Formula } from "./Ast.js";
 import { empty, add, contains } from "./fable_modules/fable-library-js.5.6.0/Set.js";
 import { ofList, tryFind } from "./fable_modules/fable-library-js.5.6.0/Map.js";
 import { equals, stringHash, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
-import { isEmpty, filter, collect, fold, tryFind as tryFind_1, forAll, map as map_1, mapIndexed, length, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { filter, collect, tryFind as tryFind_1, fold, cons, head, tail, isEmpty, reverse, toArray, exists, forAll, map as map_1, mapIndexed, length, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
 import { map, delay, toList } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.6.0/Types.js";
-import { record_type, tuple_type, class_type, bool_type, list_type, string_type, union_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
+import { int32_type, record_type, tuple_type, class_type, bool_type, list_type, string_type, union_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
+import { min, max } from "./fable_modules/fable-library-js.5.6.0/Double.js";
+import { item } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
 /**
  * Replace any atom that is actually a *claim name* with the claim's body,
@@ -39,6 +41,10 @@ export function resolve(defs, formula) {
                     return new Formula(6, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
                 case 7:
                     return new Formula(7, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+                case 8:
+                    return new Formula(8, [go(seen, f.fields[0])]);
+                case 9:
+                    return new Formula(9, [go(seen, f.fields[0])]);
                 default:
                     if (!contains(f.fields[0], seen)) {
                         const matchValue = tryFind(f.fields[0], defs);
@@ -73,7 +79,7 @@ export function atoms(f) {
         go:
         while (true) {
             const f_1 = f_1_mut, acc = acc_mut;
-            let matchResult, a_1, b;
+            let matchResult, a, a_1, b;
             switch (f_1.tag) {
                 case 1: {
                     matchResult = 1;
@@ -81,6 +87,17 @@ export function atoms(f) {
                 }
                 case 2: {
                     matchResult = 2;
+                    a = f_1.fields[0];
+                    break;
+                }
+                case 8: {
+                    matchResult = 2;
+                    a = f_1.fields[0];
+                    break;
+                }
+                case 9: {
+                    matchResult = 2;
+                    a = f_1.fields[0];
                     break;
                 }
                 case 3: {
@@ -132,7 +149,7 @@ export function atoms(f) {
                 case 1:
                     return acc;
                 case 2: {
-                    f_1_mut = f_1.fields[0];
+                    f_1_mut = a;
                     acc_mut = acc;
                     continue go;
                 }
@@ -150,12 +167,60 @@ export function atoms(f) {
 
 /**
  * Evaluate a formula under an assignment of truth values to its atoms.
+ * □ and ◇ are read over a *single-world* model here (where they both
+ * collapse to the formula itself) — genuine multi-world evaluation lives
+ * in `evalS5` below, and modal formulas should be routed there.
  */
 export function eval$(env_mut, f_mut) {
     eval$:
     while (true) {
         const env = env_mut, f = f_mut;
+        let matchResult, a_6;
         switch (f.tag) {
+            case 1: {
+                matchResult = 1;
+                break;
+            }
+            case 2: {
+                matchResult = 2;
+                break;
+            }
+            case 3: {
+                matchResult = 3;
+                break;
+            }
+            case 4: {
+                matchResult = 4;
+                break;
+            }
+            case 5: {
+                matchResult = 5;
+                break;
+            }
+            case 6: {
+                matchResult = 6;
+                break;
+            }
+            case 7: {
+                matchResult = 7;
+                break;
+            }
+            case 8: {
+                matchResult = 8;
+                a_6 = f.fields[0];
+                break;
+            }
+            case 9: {
+                matchResult = 8;
+                a_6 = f.fields[0];
+                break;
+            }
+            default:
+                matchResult = 0;
+        }
+        switch (matchResult) {
+            case 0:
+                return defaultArg(tryFind(f.fields[0], env), false);
             case 1:
                 return f.fields[0];
             case 2:
@@ -191,8 +256,11 @@ export function eval$(env_mut, f_mut) {
                 }
             case 7:
                 return eval$(env, f.fields[0]) === eval$(env, f.fields[1]);
-            default:
-                return defaultArg(tryFind(f.fields[0], env), false);
+            default: {
+                env_mut = env;
+                f_mut = a_6;
+                continue eval$;
+            }
         }
         break;
     }
@@ -254,11 +322,381 @@ export function truthTable(f) {
 }
 
 /**
- * Two formulas are logically equivalent when they agree on every possible
- * assignment — i.e. when `a <-> b` is a tautology.
+ * Does the formula mention □ or ◇ anywhere? Decides whether the classical
+ * truth-table machinery is enough or the S5 machinery must take over.
+ */
+export function containsModal(f_mut) {
+    containsModal:
+    while (true) {
+        const f = f_mut;
+        let matchResult, a_1, b;
+        switch (f.tag) {
+            case 8:
+            case 9: {
+                matchResult = 1;
+                break;
+            }
+            case 2: {
+                matchResult = 2;
+                break;
+            }
+            case 3: {
+                matchResult = 3;
+                a_1 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 4: {
+                matchResult = 3;
+                a_1 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 5: {
+                matchResult = 3;
+                a_1 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 6: {
+                matchResult = 3;
+                a_1 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 7: {
+                matchResult = 3;
+                a_1 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            default:
+                matchResult = 0;
+        }
+        switch (matchResult) {
+            case 0:
+                return false;
+            case 1:
+                return true;
+            case 2: {
+                f_mut = f.fields[0];
+                continue containsModal;
+            }
+            default:
+                if (containsModal(a_1)) {
+                    return true;
+                }
+                else {
+                    f_mut = b;
+                    continue containsModal;
+                }
+        }
+        break;
+    }
+}
+
+function modalOps(f_mut) {
+    modalOps:
+    while (true) {
+        const f = f_mut;
+        let matchResult, a, a_2, b;
+        switch (f.tag) {
+            case 8: {
+                matchResult = 1;
+                a = f.fields[0];
+                break;
+            }
+            case 9: {
+                matchResult = 1;
+                a = f.fields[0];
+                break;
+            }
+            case 2: {
+                matchResult = 2;
+                break;
+            }
+            case 3: {
+                matchResult = 3;
+                a_2 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 4: {
+                matchResult = 3;
+                a_2 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 5: {
+                matchResult = 3;
+                a_2 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 6: {
+                matchResult = 3;
+                a_2 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            case 7: {
+                matchResult = 3;
+                a_2 = f.fields[0];
+                b = f.fields[1];
+                break;
+            }
+            default:
+                matchResult = 0;
+        }
+        switch (matchResult) {
+            case 0:
+                return 0;
+            case 1:
+                return (1 + modalOps(a)) | 0;
+            case 2: {
+                f_mut = f.fields[0];
+                continue modalOps;
+            }
+            default:
+                return (modalOps(a_2) + modalOps(b)) | 0;
+        }
+        break;
+    }
+}
+
+/**
+ * Evaluate a formula at world `w` of an S5 model (the list of all worlds).
+ */
+export function evalS5(model_mut, w_mut, f_mut) {
+    evalS5:
+    while (true) {
+        const model = model_mut, w = w_mut, f = f_mut;
+        switch (f.tag) {
+            case 1:
+                return f.fields[0];
+            case 2:
+                return !evalS5(model, w, f.fields[0]);
+            case 3:
+                if (evalS5(model, w, f.fields[0])) {
+                    model_mut = model;
+                    w_mut = w;
+                    f_mut = f.fields[1];
+                    continue evalS5;
+                }
+                else {
+                    return false;
+                }
+            case 4:
+                if (evalS5(model, w, f.fields[0])) {
+                    return true;
+                }
+                else {
+                    model_mut = model;
+                    w_mut = w;
+                    f_mut = f.fields[1];
+                    continue evalS5;
+                }
+            case 5:
+                return evalS5(model, w, f.fields[0]) !== evalS5(model, w, f.fields[1]);
+            case 6:
+                if (!evalS5(model, w, f.fields[0])) {
+                    return true;
+                }
+                else {
+                    model_mut = model;
+                    w_mut = w;
+                    f_mut = f.fields[1];
+                    continue evalS5;
+                }
+            case 7:
+                return evalS5(model, w, f.fields[0]) === evalS5(model, w, f.fields[1]);
+            case 8:
+                return forAll((v) => evalS5(model, v, f.fields[0]), model);
+            case 9:
+                return exists((v_1) => evalS5(model, v_1, f.fields[0]), model);
+            default:
+                return defaultArg(tryFind(f.fields[0], w), false);
+        }
+        break;
+    }
+}
+
+/**
+ * The outcome of an S5 model search. `TooLarge` is the honest answer when
+ * a formula has too many atoms × modalities to check exhaustively.
+ */
+export class ModalSearch extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["NoModel", "Model", "TooLarge"];
+    }
+}
+
+export function ModalSearch_$reflection() {
+    return union_type("Meticulous.Engine.ModalSearch", [], ModalSearch, () => [[], [["worlds", list_type(class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, bool_type]))], ["actual", int32_type]], []]);
+}
+
+/**
+ * Find an S5 model and actual world making the formula TRUE, if any.
+ * The search is complete within its bound: worlds are drawn from all 2^n
+ * valuations, and models never need more worlds than modal operators + 1.
+ */
+export function s5Satisfy(f) {
+    const valuations = toArray(assignments(atoms(f)));
+    const neededWorlds = max(1, modalOps(f) + 1) | 0;
+    const maxWorlds = min(neededWorlds, 6) | 0;
+    let examined = 0;
+    const search = (k_mut) => {
+        search:
+        while (true) {
+            const k = k_mut;
+            if (k > maxWorlds) {
+                return new ModalSearch(0, []);
+            }
+            else {
+                const extend = (chosen, start) => {
+                    if (length(chosen) === k) {
+                        examined = ((examined + 1) | 0);
+                        if (examined > 200000) {
+                            return new ModalSearch(2, []);
+                        }
+                        else {
+                            const worlds = map_1((i) => item(i, valuations), reverse(chosen));
+                            const tryActual = (idx_mut, seen_mut, indices_mut) => {
+                                tryActual:
+                                while (true) {
+                                    const idx = idx_mut, seen = seen_mut, indices = indices_mut;
+                                    if (!isEmpty(indices)) {
+                                        const rest = tail(indices);
+                                        const i_1 = head(indices) | 0;
+                                        if (contains(i_1, seen)) {
+                                            idx_mut = (idx + 1);
+                                            seen_mut = seen;
+                                            indices_mut = rest;
+                                            continue tryActual;
+                                        }
+                                        else if (evalS5(worlds, item(i_1, valuations), f)) {
+                                            return new ModalSearch(1, [worlds, idx]);
+                                        }
+                                        else {
+                                            idx_mut = (idx + 1);
+                                            seen_mut = add(i_1, seen);
+                                            indices_mut = rest;
+                                            continue tryActual;
+                                        }
+                                    }
+                                    else {
+                                        return new ModalSearch(0, []);
+                                    }
+                                    break;
+                                }
+                            };
+                            return tryActual(0, empty({
+                                Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                            }), reverse(chosen));
+                        }
+                    }
+                    else {
+                        let result = new ModalSearch(0, []);
+                        let i_2 = start;
+                        while (equals(result, new ModalSearch(0, [])) && (i_2 < valuations.length)) {
+                            result = extend(cons(i_2, chosen), i_2);
+                            i_2 = ((i_2 + 1) | 0);
+                        }
+                        return result;
+                    }
+                };
+                const matchValue = extend(empty_1(), 0);
+                if (matchValue.tag === 0) {
+                    k_mut = (k + 1);
+                    continue search;
+                }
+                else {
+                    return matchValue;
+                }
+            }
+            break;
+        }
+    };
+    const matchValue_1 = search(1);
+    let matchResult, result_1;
+    if (matchValue_1.tag === 0) {
+        if (neededWorlds > maxWorlds) {
+            matchResult = 0;
+        }
+        else {
+            matchResult = 1;
+            result_1 = matchValue_1;
+        }
+    }
+    else {
+        matchResult = 1;
+        result_1 = matchValue_1;
+    }
+    switch (matchResult) {
+        case 0:
+            return new ModalSearch(2, []);
+        default:
+            return result_1;
+    }
+}
+
+/**
+ * Is the formula true at every world of every S5 model? (The modal
+ * analogue of a tautology.) `None` when the search is too large to settle.
+ */
+export function s5Valid(f) {
+    const matchValue = s5Satisfy(new Formula(2, [f]));
+    switch (matchValue.tag) {
+        case 1:
+            return false;
+        case 2:
+            return undefined;
+        default:
+            return true;
+    }
+}
+
+/**
+ * One validity door for both logics: classical truth tables when the
+ * formula is modal-free, the S5 model search when it isn't.
+ */
+export function valid(f) {
+    if (containsModal(f)) {
+        return s5Valid(f);
+    }
+    else {
+        return equals(truthTable(f).Verdict, new Verdict(0, []));
+    }
+}
+
+/**
+ * Two formulas are logically equivalent when they agree in every possible
+ * situation — every assignment classically, every world-arrangement
+ * modally. `None` when a modal search is too large to settle.
+ */
+export function equivalent2(a, b) {
+    return valid(new Formula(7, [a, b]));
+}
+
+/**
+ * Classical-only convenience kept for the propositional call sites.
  */
 export function equivalent(a, b) {
     return equals(truthTable(new Formula(7, [a, b])).Verdict, new Verdict(0, []));
+}
+
+/**
+ * Check a *modal* argument in S5: search for a countermodel — an
+ * arrangement of worlds where every premise holds at the actual world
+ * but the conclusion fails there.
+ */
+export function checkArgumentS5(premises, conclusion) {
+    return s5Satisfy(fold((acc, p) => (new Formula(3, [acc, p])), new Formula(2, [conclusion]), premises));
 }
 
 /**
@@ -338,22 +776,23 @@ export function Relation_$reflection() {
 }
 
 export function relate(a, b) {
-    if (tautology(new Formula(7, [a, b]))) {
+    const holds = (f) => equals(valid(f), true);
+    if (holds(new Formula(7, [a, b]))) {
         return new Relation(0, []);
     }
-    else if (tautology(new Formula(7, [a, new Formula(2, [b])]))) {
+    else if (holds(new Formula(7, [a, new Formula(2, [b])]))) {
         return new Relation(1, []);
     }
-    else if (tautology(new Formula(2, [new Formula(3, [a, b])]))) {
+    else if (holds(new Formula(2, [new Formula(3, [a, b])]))) {
         return new Relation(2, []);
     }
-    else if (tautology(new Formula(4, [a, b]))) {
+    else if (holds(new Formula(4, [a, b]))) {
         return new Relation(3, []);
     }
-    else if (tautology(new Formula(6, [a, b]))) {
+    else if (holds(new Formula(6, [a, b]))) {
         return new Relation(4, []);
     }
-    else if (tautology(new Formula(6, [b, a]))) {
+    else if (holds(new Formula(6, [b, a]))) {
         return new Relation(5, []);
     }
     else {
