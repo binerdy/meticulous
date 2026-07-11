@@ -66,6 +66,18 @@ let private printBlock (b: BlockView) =
             printfn "    %s %s. %s   (%s)" mark step.[0] step.[1] step.[2]
             if step.[4] <> "" then printfn "        ^ %s" step.[4])
         if b.note <> "" then printfn "    %s" b.note
+    | "venn" ->
+        printfn "  venn %s:   [%s]" b.name (b.verdict.ToUpper())
+        if b.vennCircles.Length > 0 then
+            printfn "    circles: %s" (String.concat ", " b.vennCircles)
+            let inout bits j = if j < String.length bits && bits.[j] = '1' then "in " + b.vennCircles.[j] else "out " + b.vennCircles.[j]
+            let describeCell (bits: string) =
+                String.concat ", " [ for j in 0 .. b.vennCircles.Length - 1 -> inout bits j ]
+            b.vennCells
+            |> Array.iter (fun c ->
+                if c.[1] <> "free" then printfn "    [%s] %s" (c.[1].ToUpper()) (describeCell c.[0]))
+            b.vennPoints |> Array.iter (fun p -> printfn "    • %s in cell(s) %s" p.[0] p.[1])
+        printfn "    %s" b.note
     | "relations" ->
         printfn "  claim relations:"
         if b.relations.Length = 0 then printfn "    (needs at least two claims)"

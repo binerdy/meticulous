@@ -387,6 +387,95 @@ module Engine =
         let together = List.fold (fun acc p -> And(acc, p)) (Not conclusion) premises
         foSatisfy together
 
+    /// The (predicate, arity) pairs a formula uses, sorted by name.
+    let predicateArities (f: Formula) : (string * int) list =
+        signatures f |> Set.toList |> List.sortBy fst
+
+    /// The individual constants a formula names.
+    let individuals (f: Formula) : string list = freeConstants f
+
+    // ---- Monadic (Venn) analysis --------------------------------------------
+    //
+    // When every predicate is one-place, a model is fully described by which
+    // "cells" of the Venn diagram are inhabited — a cell being one combination
+    // of in/out for each predicate. Equality-free monadic logic needs at most
+    // one witness per cell, so we can enumerate models exactly and read off,
+    // for each region, whether the premises force it empty, force it occupied,
+    // or leave it open — and where each named individual must sit.
+
+    type CellStatus =
+        | CellEmpty       // the premises rule this region out (shade it)
+        | CellOccupied    // the premises guarantee something here (mark it)
+        | CellFree        // undetermined
+
+    type VennAnalysis =
+        { Predicates: string list
+          Consistent: bool
+          /// cell index (bitmask over predicates, bit j = predicate j is "in") → status
+          Cells: Map<int, CellStatus>
+          /// individual name → the set of cells it may occupy across all models
+          Placement: Map<string, Set<int>> }
+
+    let analyzeMonadic (preds: string list) (consts: string list) (premise: Formula) : VennAnalysis =
+        let n = List.length preds
+        let cellCount = 1 <<< n
+        let cellHas cell j = (cell >>> j) &&& 1 = 1
+
+        // Build the finite model for a given set of occupied cells and an
+        // assignment of each constant to one of those cells' witnesses.
+        let modelFor (occupied: int list) (constCells: Map<string, int>) : FOModel =
+            let size = List.length occupied
+            let elementOfCell = occupied |> List.mapi (fun idx cell -> cell, idx) |> Map.ofList
+            let ext =
+                preds
+                |> List.mapi (fun j name ->
+                    name, occupied |> List.mapi (fun idx cell -> idx, cell) |> List.choose (fun (idx, cell) -> if cellHas cell j then Some [ idx ] else None) |> Set.ofList)
+                |> Map.ofList
+            { Size = size
+              Constants = constCells |> Map.map (fun _ cell -> Map.find cell elementOfCell)
+              Extensions = ext }
+
+        // Every non-empty set of occupied cells, paired with every placement of
+        // the constants into those cells; keep the ones that satisfy the premise.
+        let allOccupancies =
+            [ for mask in 1 .. (1 <<< cellCount) - 1 ->
+                  [ for c in 0 .. cellCount - 1 do if (mask >>> c) &&& 1 = 1 then yield c ] ]
+
+        let rec placements (occupied: int list) (remaining: string list) : Map<string, int> list =
+            match remaining with
+            | [] -> [ Map.empty ]
+            | c :: rest ->
+                [ for cell in occupied do
+                      for tail in placements occupied rest -> Map.add c cell tail ]
+
+        let satisfying =
+            [ for occupied in allOccupancies do
+                  for cmap in placements occupied consts do
+                      let model = modelFor occupied cmap
+                      if evalFO model Map.empty premise then yield occupied, cmap ]
+
+        let consistent = not (List.isEmpty satisfying)
+
+        let cells =
+            [ for cell in 0 .. cellCount - 1 ->
+                  let canOccupied = satisfying |> List.exists (fun (occ, _) -> List.contains cell occ)
+                  let canEmpty = satisfying |> List.exists (fun (occ, _) -> not (List.contains cell occ))
+                  let status =
+                      if not consistent then CellFree
+                      elif not canOccupied then CellEmpty
+                      elif not canEmpty then CellOccupied
+                      else CellFree
+                  cell, status ]
+            |> Map.ofList
+
+        let placement =
+            consts
+            |> List.map (fun c ->
+                c, satisfying |> List.choose (fun (_, cmap) -> Map.tryFind c cmap) |> Set.ofList)
+            |> Map.ofList
+
+        { Predicates = preds; Consistent = consistent; Cells = cells; Placement = placement }
+
     /// Describe a first-order model in plain lines: its domain, what each
     /// constant names, and the extension of each predicate. Elements are shown
     /// as a, b, c, … The formula tells us which constants and predicates to list.

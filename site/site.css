@@ -119,6 +119,15 @@ table.truth td.world-name.actual { font-weight: 700; color: var(--fg); }
 .model-line { padding: .08rem 0; }
 .model-lhs { color: var(--green); font-weight: 600; }
 .model-eq { color: var(--muted); margin: 0 .5em; }
+figure.venn-figure { margin: 1.2rem 0; }
+figure.venn-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .3rem; }
+svg.venn { max-width: 400px; width: 100%; height: auto; }
+svg.venn .venn-circle { fill: none; stroke: var(--fg); stroke-width: 1.5; opacity: .8; }
+svg.venn .venn-hatch { stroke: var(--muted); stroke-width: 1.2; }
+svg.venn .venn-label { fill: var(--fg); font-family: var(--mono); font-size: 13px; font-weight: 600; }
+svg.venn .venn-dot { fill: var(--fg); }
+svg.venn .venn-point circle { fill: var(--green); stroke: var(--bg); stroke-width: 1; }
+svg.venn .venn-point text { fill: var(--fg); font-family: var(--mono); font-size: 12px; }
 
 figure.argument, figure.relations {
   margin: 1.2rem 0; padding: .7rem 1rem;

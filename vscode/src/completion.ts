@@ -36,6 +36,7 @@ const KEYWORD_SNIPPETS: { label: string; detail: string; body: string }[] = [
   { label: "check equivalent", detail: "are two formulas the same claim?", body: "check ${1:A} equivalent ${2:B}" },
   { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
   { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
+  { label: "venn", detail: "a categorical Venn diagram of one-place predicates", body: "venn ${1:name} {\n  premise forall x. ${2:Man}(x) -> ${3:Mortal}(x)\n  premise ${2:Man}(${4:socrates})\n}" },
   { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
   { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
   { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },

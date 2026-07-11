@@ -10,3 +10,5 @@ argument absorption {
   ---
   conclude rain -> (rain and wet)
 }
+
+table C1

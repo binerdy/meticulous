@@ -648,6 +648,129 @@ function renderMap(block: BlockView): string {
   );
 }
 
+// Circle layouts and per-cell centroids for 1-, 2-, and 3-predicate diagrams.
+// A cell is identified by its membership bits (bit j = inside circle j).
+const VENN_W = 380;
+const VENN_H = 300;
+const VENN_R = 82;
+const VENN_LAYOUT: Record<number, { cx: number; cy: number }[]> = {
+  1: [{ cx: 190, cy: 155 }],
+  2: [
+    { cx: 150, cy: 155 },
+    { cx: 230, cy: 155 },
+  ],
+  3: [
+    { cx: 150, cy: 138 },
+    { cx: 240, cy: 138 },
+    { cx: 195, cy: 214 },
+  ],
+};
+const VENN_CENTROIDS: Record<number, Record<string, [number, number]>> = {
+  1: { "0": [190, 40], "1": [190, 155] },
+  2: {
+    "00": [190, 32],
+    "10": [112, 155],
+    "01": [268, 155],
+    "11": [190, 155],
+  },
+  3: {
+    "000": [195, 28],
+    "100": [108, 112],
+    "010": [282, 112],
+    "001": [195, 258],
+    "110": [195, 100],
+    "101": [138, 188],
+    "011": [252, 188],
+    "111": [195, 158],
+  },
+};
+
+let vennCounter = 0;
+
+/** A categorical Venn diagram. Regions the premises force empty are shaded;
+ *  regions they force occupied get a dot; named individuals are placed as
+ *  labeled points in the region they must occupy. Region fills use nested
+ *  clip paths (each circle contributes an inside- or outside-clip; nesting
+ *  intersects them). */
+function renderVenn(block: BlockView): string {
+  if (block.verdict === "not-drawable") {
+    return `<figure class="venn-figure"><figcaption>${escapeHtml(block.name)} — Venn diagram</figcaption><p class="empty">${escapeHtml(block.note)}</p></figure>`;
+  }
+
+  const n = block.vennCircles.length;
+  const layout = VENN_LAYOUT[n];
+  const centroids = VENN_CENTROIDS[n];
+  const id = `v${vennCounter++}`;
+
+  // clip paths: one "inside" and one "outside" per circle
+  const circlePath = (cx: number, cy: number) =>
+    `M ${cx - VENN_R} ${cy} a ${VENN_R} ${VENN_R} 0 1 0 ${2 * VENN_R} 0 a ${VENN_R} ${VENN_R} 0 1 0 ${-2 * VENN_R} 0 z`;
+  const defs =
+    `<pattern id="hatch-${id}" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="7" class="venn-hatch"/></pattern>` +
+    layout
+      .map(
+        (c, j) =>
+          `<clipPath id="in-${id}-${j}"><circle cx="${c.cx}" cy="${c.cy}" r="${VENN_R}"/></clipPath>` +
+          `<clipPath id="out-${id}-${j}" clip-rule="evenodd"><path clip-rule="evenodd" d="M0 0 H${VENN_W} V${VENN_H} H0 Z ${circlePath(c.cx, c.cy)}"/></clipPath>`
+      )
+      .join("");
+
+  // shade every empty cell by nesting one clip group per circle
+  const shaded = block.vennCells
+    .filter((c) => c[1] === "empty")
+    .map(([bits]) => {
+      let open = "";
+      let close = "";
+      for (let j = 0; j < n; j++) {
+        const which = bits[j] === "1" ? "in" : "out";
+        open += `<g clip-path="url(#${which}-${id}-${j})">`;
+        close += `</g>`;
+      }
+      return `${open}<rect x="0" y="0" width="${VENN_W}" height="${VENN_H}" fill="url(#hatch-${id})"/>${close}`;
+    })
+    .join("");
+
+  const circles = layout
+    .map((c) => `<circle class="venn-circle" cx="${c.cx}" cy="${c.cy}" r="${VENN_R}"/>`)
+    .join("");
+
+  // circle labels sit just outside the top of each circle
+  const labels = layout
+    .map((c, j) => {
+      const dx = n === 2 ? (j === 0 ? -VENN_R * 0.5 : VENN_R * 0.5) : 0;
+      return `<text class="venn-label" x="${c.cx + dx}" y="${c.cy - VENN_R - 6}" text-anchor="middle">${escapeHtml(block.vennCircles[j])}</text>`;
+    })
+    .join("");
+
+  const dots = block.vennCells
+    .filter((c) => c[1] === "occupied")
+    .map(([bits]) => {
+      const [x, y] = centroids[bits] ?? [VENN_W / 2, VENN_H / 2];
+      return `<circle class="venn-dot" cx="${x}" cy="${y}" r="4.5"/>`;
+    })
+    .join("");
+
+  const points = block.vennPoints
+    .map(([name, cellSpec]) => {
+      const cells = cellSpec ? cellSpec.split("|") : [];
+      if (cells.length === 0) return "";
+      // average the centroids of every cell the individual might occupy
+      const pts = cells.map((b) => centroids[b] ?? [VENN_W / 2, VENN_H / 2]);
+      const x = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+      const y = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      const ambiguous = cells.length > 1 ? "?" : "";
+      return `<g class="venn-point"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5"/><text x="${(x + 7).toFixed(1)}" y="${(y + 4).toFixed(1)}">${escapeHtml(name)}${ambiguous}</text></g>`;
+    })
+    .join("");
+
+  return (
+    `<figure class="venn-figure"><figcaption>${escapeHtml(block.name)} — Venn diagram</figcaption>` +
+    `<svg class="venn" viewBox="0 0 ${VENN_W} ${VENN_H}" role="img"><defs>${defs}</defs>` +
+    `${shaded}${circles}${labels}${dots}${points}</svg>` +
+    `<p class="note">${escapeHtml(block.note)}</p></figure>`
+  );
+}
+
 /** The `analyze` block: how every claim stands to every other claim.
  *  Each pair arrives as [left, relation, right, explanation]. */
 function renderRelations(block: BlockView): string {
@@ -710,6 +833,9 @@ function renderBlock(block: BlockView): string {
 
     case "proof":
       return renderProof(block);
+
+    case "venn":
+      return renderVenn(block);
 
     case "relations":
       return renderRelations(block);

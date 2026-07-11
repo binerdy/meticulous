@@ -17,6 +17,11 @@ argument socrates-is-mortal {
 
 // Valid over every domain the engine checks — the textbook syllogism.
 
+// Draw that argument as a Venn diagram — just name it. "All Man are Mortal"
+// shades the Man-but-not-Mortal region empty, and socrates (a Man) is forced
+// into the Man ∩ Mortal lens, so you can see the conclusion.
+venn socrates-is-mortal
+
 ## Where quantifiers trip people up
 
 // "Some are human, some are mortal" does NOT give "some are both". The
@@ -51,4 +56,4 @@ claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
 // And the drinker paradox: in any non-empty pub there's someone such that,
 // if they are drinking, everyone is.
 claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
-check C1
+table C1

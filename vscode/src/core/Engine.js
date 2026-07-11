@@ -1,9 +1,9 @@
 
 import { Formula } from "./Ast.js";
 import { toList as toList_1, ofList as ofList_1, union, singleton as singleton_1, empty, add, contains } from "./fable_modules/fable-library-js.5.6.0/Set.js";
-import { empty as empty_3, add as add_1, ofList, tryFind } from "./fable_modules/fable-library-js.5.6.0/Map.js";
-import { compare, compareArrays, equals, stringHash, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
-import { collect as collect_1, tryFind as tryFind_1, sortBy, fold, item as item_1, filter, cons, head, tail as tail_1, isEmpty, reverse, toArray, exists, forAll, map as map_1, mapIndexed, length, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { find, map as map_3, empty as empty_3, add as add_1, ofList, tryFind } from "./fable_modules/fable-library-js.5.6.0/Map.js";
+import { numberHash, compare, compareArrays, equals, stringHash, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { collect as collect_1, tryFind as tryFind_1, choose, sortBy, fold, item as item_1, filter, cons, head, tail as tail_1, isEmpty, reverse, toArray, exists, forAll, map as map_1, mapIndexed, length, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { map as map_2, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
 import { empty as empty_2, singleton as singleton_2, collect, map, delay, toList } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
@@ -1386,6 +1386,99 @@ export function valid(f) {
  */
 export function checkArgumentFO(premises, conclusion) {
     return foSatisfy(fold((acc, p) => (new Formula(4, [acc, p])), new Formula(3, [conclusion]), premises));
+}
+
+/**
+ * The (predicate, arity) pairs a formula uses, sorted by name.
+ */
+export function predicateArities(f) {
+    return sortBy((tuple) => tuple[0], toList_1(signatures(f)), {
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    });
+}
+
+/**
+ * The individual constants a formula names.
+ */
+export function individuals(f) {
+    return freeConstants(f);
+}
+
+export class CellStatus extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["CellEmpty", "CellOccupied", "CellFree"];
+    }
+}
+
+export function CellStatus_$reflection() {
+    return union_type("Meticulous.Engine.CellStatus", [], CellStatus, () => [[], [], []]);
+}
+
+export class VennAnalysis extends Record {
+    constructor(Predicates, Consistent, Cells, Placement) {
+        super();
+        this.Predicates = Predicates;
+        this.Consistent = Consistent;
+        this.Cells = Cells;
+        this.Placement = Placement;
+    }
+}
+
+export function VennAnalysis_$reflection() {
+    return record_type("Meticulous.Engine.VennAnalysis", [], VennAnalysis, () => [["Predicates", list_type(string_type)], ["Consistent", bool_type], ["Cells", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, CellStatus_$reflection()])], ["Placement", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, class_type("Microsoft.FSharp.Collections.FSharpSet`1", [int32_type])])]]);
+}
+
+export function analyzeMonadic(preds, consts, premise) {
+    const cellCount = (1 << length(preds)) | 0;
+    const allOccupancies = toList(delay(() => map((mask) => toList(delay(() => collect((c) => ((((mask >> c) & 1) === 1) ? singleton_2(c) : empty_2()), rangeDouble(0, 1, cellCount - 1)))), rangeDouble(1, 1, (1 << cellCount) - 1))));
+    const placements = (occupied_1, remaining) => {
+        if (!isEmpty(remaining)) {
+            return toList(delay(() => collect((cell_5) => map((tail) => add_1(head(remaining), cell_5, tail), placements(occupied_1, tail_1(remaining))), occupied_1)));
+        }
+        else {
+            return singleton(empty_3({
+                Compare: (x_3, y_3) => (comparePrimitives(x_3, y_3) | 0),
+            }));
+        }
+    };
+    const satisfying = toList(delay(() => collect((occupied_2) => collect((cmap) => {
+        let occupied, size, elementOfCell, ext;
+        return evalFO((occupied = occupied_2, (size = (length(occupied) | 0), (elementOfCell = ofList(mapIndexed((idx, cell_1) => [cell_1, idx], occupied), {
+            Compare: (x, y) => (comparePrimitives(x, y) | 0),
+        }), (ext = ofList(mapIndexed((j_1, name) => [name, ofList_1(choose((tupledArg) => {
+            if (((tupledArg[1] >> j_1) & 1) === 1) {
+                return singleton(tupledArg[0]);
+            }
+            else {
+                return undefined;
+            }
+        }, mapIndexed((idx_1, cell_2) => [idx_1, cell_2], occupied)), {
+            Compare: (x_1, y_1) => (compare(x_1, y_1) | 0),
+        })], preds), {
+            Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+        }), new FOModel(size, map_3((_arg, cell_4) => (find(cell_4, elementOfCell) | 0), cmap), ext))))), empty_3({
+            Compare: (x_4, y_4) => (comparePrimitives(x_4, y_4) | 0),
+        }), premise) ? singleton_2([occupied_2, cmap]) : empty_2();
+    }, placements(occupied_2, consts)), allOccupancies)));
+    const consistent = !isEmpty(satisfying);
+    return new VennAnalysis(preds, consistent, ofList(toList(delay(() => map((cell_6) => [cell_6, !consistent ? (new CellStatus(2, [])) : (!exists((tupledArg_1) => contains_1(cell_6, tupledArg_1[0], {
+        Equals: (x_5, y_5) => (x_5 === y_5),
+        GetHashCode: (x_5) => (numberHash(x_5) | 0),
+    }), satisfying) ? (new CellStatus(0, [])) : (!exists((tupledArg_2) => !contains_1(cell_6, tupledArg_2[0], {
+        Equals: (x_6, y_6) => (x_6 === y_6),
+        GetHashCode: (x_6) => (numberHash(x_6) | 0),
+    }), satisfying) ? (new CellStatus(1, [])) : (new CellStatus(2, []))))], rangeDouble(0, 1, cellCount - 1)))), {
+        Compare: (x_7, y_7) => (comparePrimitives(x_7, y_7) | 0),
+    }), ofList(map_1((c_2) => [c_2, ofList_1(choose((tupledArg_3) => tryFind(c_2, tupledArg_3[1]), satisfying), {
+        Compare: (x_8, y_8) => (comparePrimitives(x_8, y_8) | 0),
+    })], consts), {
+        Compare: (x_9, y_9) => (comparePrimitives(x_9, y_9) | 0),
+    }));
 }
 
 /**

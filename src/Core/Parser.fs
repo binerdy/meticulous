@@ -246,6 +246,20 @@ module Parser =
         elif line.StartsWith "proof" then
             Error "a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"
 
+        elif line.StartsWith "venn " then
+            // The single-line form `venn some-argument` draws an existing
+            // argument's diagram; the block form `venn x { … }` is handled above.
+            let target = line.Substring(5).Trim()
+            let isName (s: string) =
+                s.Length > 0
+                && System.Char.IsLetter s.[0]
+                && s |> Seq.forall (fun c -> System.Char.IsLetterOrDigit c || c = '_' || c = '-')
+            if isName target then Ok(Some(VennRef target))
+            else Error "write `venn <argument-name>` to draw an argument, or `venn name { … }` for a fresh diagram"
+
+        elif line = "venn" then
+            Error "`venn` needs an argument name (venn my-argument) or a block (venn name { … })"
+
         else
             // A relation assertion like `C1 supports C2`?
             // Anything else is plain prose.
@@ -348,6 +362,35 @@ module Parser =
         | [], _ -> Ok(Proof(name, steps))
         | errs, _ -> Error errs
 
+    /// Parse the interior of a `venn name { ... }` block — like an argument,
+    /// but the `conclude` line is optional (a Venn diagram of premises alone is
+    /// perfectly meaningful).
+    let private parseVennBlock name headerLine (body: (int * string) list) : Result<Statement, (int * string) list> =
+        let mutable premises = []
+        let mutable conclusion = None
+        let mutable errors = []
+
+        for (no, raw) in body do
+            let line = (stripComment raw).Trim()
+            if line = "" then ()
+            elif line.Length >= 3 && line |> Seq.forall (fun c -> c = '-') then ()
+            elif line.StartsWith "premise " then
+                match parseFormula (line.Substring 8) with
+                | Ok f -> premises <- premises @ [ f ]
+                | Error e -> errors <- errors @ [ no, e ]
+            elif line.StartsWith "conclude " then
+                match parseFormula (line.Substring 9), conclusion with
+                | Ok f, None -> conclusion <- Some f
+                | Ok _, Some _ -> errors <- errors @ [ no, "a venn block can only have one `conclude`" ]
+                | Error e, _ -> errors <- errors @ [ no, e ]
+            else
+                errors <- errors @ [ no, "expected `premise` or `conclude` inside a venn block" ]
+
+        match errors, premises with
+        | [], [] -> Error [ headerLine, "a venn block needs at least one `premise`" ]
+        | [], _ -> Ok(Venn(name, premises, conclusion))
+        | errs, _ -> Error errs
+
     /// Parse a whole source into (lineNumber, statement-or-error) entries,
     /// grouping multi-line `argument { }` blocks into single statements.
     /// This per-line shape lets callers be *resilient*: one bad line becomes
@@ -363,6 +406,8 @@ module Parser =
                 Some("argument", parseArgumentBlock)
             elif line.StartsWith "proof " && line.EndsWith "{" then
                 Some("proof", parseProofBlock)
+            elif line.StartsWith "venn " && line.EndsWith "{" then
+                Some("venn", parseVennBlock)
             else
                 None
 

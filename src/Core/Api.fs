@@ -48,7 +48,10 @@ module Api =
           suggestion: string[]
           proof: string[][]      // one step: [number; formula; justification]
           relations: string[][]  // one pair: [left; relation; right]
-          model: string[] }      // first-order (counter)model description, line by line
+          model: string[]        // first-order (counter)model description, line by line
+          vennCircles: string[]  // predicate names, one circle each
+          vennCells: string[][]  // one region: [membership-bits; "empty"|"occupied"|"free"]
+          vennPoints: string[][] } // one individual: [name; pipe-joined cell bit-strings]
 
     /// A blank block we copy-and-tweak, so each branch only sets what it needs.
     let private empty =
@@ -72,7 +75,10 @@ module Api =
           suggestion = [||]
           proof = [||]
           relations = [||]
-          model = [||] }
+          model = [||]
+          vennCircles = [||]
+          vennCells = [||]
+          vennPoints = [||] }
 
     let private verdictName =
         function
@@ -152,27 +158,97 @@ module Api =
                 results = worlds |> List.map (fun w -> evalS5 worlds w f) |> List.toArray
                 actual = actual }
 
+    /// A categorical Venn diagram: which regions the premises force empty or
+    /// occupied, and where each named individual must sit. Only one-place
+    /// predicates can be drawn (1–3 of them); anything else declines gracefully.
+    let private vennBlock (defs: Map<string, Formula>) (name: string) (premises: Formula list) (conclusion: Formula option) =
+        let rp = premises |> List.map (resolve defs)
+        let rc = conclusion |> Option.map (resolve defs)
+        let premiseConj = match rp with [] -> Const true | _ -> List.reduce (fun a b -> And(a, b)) rp
+        // circles and individuals are taken from premises AND conclusion
+        let scope = match rc with Some c -> And(premiseConj, c) | None -> premiseConj
+        let arities = predicateArities scope
+        let preds = arities |> List.map fst
+
+        let notDrawable why =
+            { empty with kind = "venn"; name = name; verdict = "not-drawable"; note = why }
+
+        let unaryCount = arities |> List.filter (fun (_, k) -> k = 1) |> List.length
+
+        if arities |> List.exists (fun (_, k) -> k >= 2) then
+            notDrawable "A Venn diagram needs one-place predicates (properties like Man(x)); this argument uses a relation (a two-or-more-place predicate), which a Venn diagram can't picture."
+        elif arities |> List.exists (fun (_, k) -> k = 0) then
+            notDrawable "A Venn diagram pictures categorical statements about one-place predicates like Man(x). This argument is propositional (or modal) — try a truth table or a proof instead."
+        elif unaryCount = 0 then
+            notDrawable "A Venn diagram needs at least one one-place predicate, e.g. Man(x)."
+        elif unaryCount > 3 then
+            notDrawable (sprintf "Venn diagrams are drawn for up to 3 one-place predicates; this uses %d." unaryCount)
+        else
+            let consts = individuals scope
+            let a = analyzeMonadic preds consts premiseConj
+            let bits cell = System.String(Array.init (List.length preds) (fun j -> if (cell >>> j) &&& 1 = 1 then '1' else '0'))
+            let statusName = function CellEmpty -> "empty" | CellOccupied -> "occupied" | CellFree -> "free"
+
+            let cells =
+                a.Cells
+                |> Map.toList
+                |> List.map (fun (cell, status) -> [| bits cell; statusName status |])
+
+            let points =
+                consts
+                |> List.map (fun c ->
+                    let cellsFor = Map.tryFind c a.Placement |> Option.defaultValue Set.empty |> Set.toList
+                    [| c; cellsFor |> List.map bits |> String.concat "|" |])
+
+            // optional conclusion check reuses the first-order engine
+            let conclusionNote =
+                match rc with
+                | None -> ""
+                | Some c ->
+                    match checkArgumentFO rp c with
+                    | FONoModel -> sprintf "  The conclusion (%s) is already forced by the premises — the argument is valid." (toUnicode c)
+                    | FOModelFound _ -> sprintf "  The conclusion (%s) is NOT forced — there is a model of the premises where it fails." (toUnicode c)
+                    | FOTooLarge -> ""
+
+            let baseNote =
+                if not a.Consistent then "These premises can't all hold at once — no diagram satisfies them."
+                else "Shaded regions are empty; a dot marks a region the premises guarantee is occupied."
+
+            { empty with
+                kind = "venn"
+                name = name
+                verdict = if a.Consistent then "consistent" else "contradiction"
+                note = baseNote + conclusionNote
+                vennCircles = List.toArray preds
+                vennCells = List.toArray cells
+                vennPoints = List.toArray points }
+
     /// The verdict card for a *first-order* formula. No truth table can capture
     /// quantifiers, so the verdict comes from the finite-model search, and a
     /// contingent formula shows a small model where it fails.
     let private foFormulaBlock (kindName: string) (f: Formula) =
         let base' = { empty with kind = kindName; formula = toUnicode f }
+        let card search = match search with FOModelFound m -> Engine.describeModel m f |> List.toArray | _ -> [||]
+        // A quantified statement has no finite truth table, so instead of a grid
+        // we always show a concrete model: a witnessing one when it holds, or a
+        // falsifying one when it can fail.
         match foSatisfy (Not f), foSatisfy f with
-        | FONoModel, _ ->
+        | FONoModel, witness ->
             { base' with
                 verdict = "tautology"
-                note = "Valid: true in every model checked (domains up to size 4). First-order validity is undecidable, so this is a bounded check, not a full guarantee." }
+                note = "A quantified statement has no truth table. It is valid — true in every model checked (a bounded check, domains up to size 4). Here is one such model, where it holds as it does everywhere:"
+                model = card witness }
         | _, FONoModel ->
             { base' with
                 verdict = "contradiction"
-                note = "Unsatisfiable: false in every model checked (domains up to size 4)." }
+                note = "A quantified statement has no truth table. It is unsatisfiable: false in every model checked (domains up to size 4)." }
         | FOTooLarge, _ | _, FOTooLarge ->
             { base' with verdict = "unknown"; note = tooLargeNote }
-        | FOModelFound m, _ ->
+        | FOModelFound falsifying, _ ->
             { base' with
                 verdict = "contingent"
-                note = "Contingent: its truth depends on the domain and interpretation — here is a model where it is false."
-                model = Engine.describeModel m (Not f) |> List.toArray }
+                note = "A quantified statement has no truth table. Its truth depends on the domain and interpretation — here is a model where it is false:"
+                model = card (FOModelFound falsifying) }
 
     /// Describe an assignment in words: "policy is true and growth is false".
     let private describeSituation (env: Map<string, bool>) =
@@ -515,6 +591,7 @@ module Api =
         (glosses: Map<string, string>)
         (claims: (string * Formula) list)
         (relationRows: string[][])
+        (arguments: Map<string, Formula list * Formula>)
         (st: Statement)
         : BlockView =
         // Reading a formula out loud uses the props' glosses where they exist.
@@ -569,6 +646,16 @@ module Api =
                 note = note }
         | Argument(name, premises, conclusion) -> argumentBlock defs name premises conclusion
         | Proof(name, lines) -> proofBlock defs name lines
+        | Venn(name, premises, conclusion) -> vennBlock defs name premises conclusion
+        | VennRef argName ->
+            match Map.tryFind argName arguments with
+            | Some(premises, conclusion) -> vennBlock defs argName premises (Some conclusion)
+            | None ->
+                { empty with
+                    kind = "venn"
+                    name = argName
+                    verdict = "not-drawable"
+                    note = sprintf "No argument named '%s' to draw — `venn` needs the name of an `argument` defined in this document." argName }
         | Analyze -> relationsBlock claims
         | Relates(left, kind, right) ->
             let l, verb, r, status, note = relationInfo defs glosses left kind right
@@ -610,6 +697,12 @@ module Api =
             statements
             |> List.choose (function Claim(n, f) -> Some(n, resolve defs f) | _ -> None)
 
+        // Arguments by name, so `venn <name>` can draw an existing one.
+        let arguments =
+            statements
+            |> List.choose (function Argument(n, p, c) -> Some(n, (p, c)) | _ -> None)
+            |> Map.ofList
+
         // Every asserted relation in the document, checked where checkable —
         // this is what a `map` statement draws.
         let relationRows =
@@ -625,7 +718,7 @@ module Api =
         |> List.choose (fun (lineNo, r) ->
             match r with
             | Ok None -> None
-            | Ok(Some st) -> Some(toBlock defs glosses claims relationRows st)
+            | Ok(Some st) -> Some(toBlock defs glosses claims relationRows arguments st)
             | Error msg -> Some { empty with kind = "error"; line = lineNo; title = msg })
         |> List.toArray
 
@@ -677,6 +770,8 @@ module Api =
             | Argument(_, ps, c) -> ps @ [ c ]
             | Proof(_, lines) ->
                 lines |> List.map (function ProofPremise(_, f) | ProofDerived(_, f, _, _) -> f)
+            | Venn(_, premises, conclusion) -> premises @ (Option.toList conclusion)
+            | VennRef _ -> []   // refers to an argument whose formulas are already counted
             | Relates(l, _, r) ->
                 // A prop that only appears in a relation still counts as used.
                 [ l; r ] |> List.choose (function Named n -> Some(Atom n) | Quoted _ -> None)

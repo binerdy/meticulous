@@ -1,0 +1,70 @@
+# Epicurus's Paradox
+
+The oldest argument against a God who is both all-powerful and all-good,
+as handed down by Lactantius. "Is God willing to prevent evil, but not able?
+Then he is not omnipotent. Is he able, but not willing? Then he is malevolent.
+Is he both able and willing? Then whence cometh evil? Is he neither able nor
+willing? Then why call him God?"
+
+prop omnipotent : God is able to prevent evil
+prop omnibenevolent : God is willing to prevent evil
+prop evil : Evil exists
+prop god : God — both omnipotent and omnibenevolent — exists
+
+# The two hinges
+
+claim Definition : god -> (omnipotent and omnibenevolent)
+claim Prevention : (omnipotent and omnibenevolent) -> not evil
+claim Reality : evil
+
+# The argument
+
+argument problem-of-evil {
+  premise Definition
+  premise Prevention
+  premise Reality
+  ---
+  conclude not god
+}
+
+// Valid. And here is the derivation, step by step:
+
+proof epicurus {
+  1. premise god -> (omnipotent and omnibenevolent)
+  2. premise (omnipotent and omnibenevolent) -> not evil
+  3. premise evil
+  4. not not evil by double-negation-intro from 3
+  5. not (omnipotent and omnibenevolent) by modus-tollens from 2, 4
+  6. not god by modus-tollens from 1, 5
+}
+
+# The escape routes
+
+Because the argument is valid, the only way to keep God is to deny a premise —
+and each denial is a classic response to the problem of evil. Drop a premise
+and the engine shows the countermodel: a world where God and evil coexist.
+
+// Free-will / soul-making defense: deny Prevention. Perhaps a world with
+// free creatures — and so the possibility of evil — is better than one without,
+// so an able and willing God might permit evil for a greater good.
+argument free-will-defense {
+  premise Definition
+  premise Reality
+  ---
+  conclude not god
+}
+
+// Finite-God theology: deny Definition. Perhaps God is good but not all-powerful,
+// or all-powerful but not perfectly good — then evil no longer refutes God.
+argument finite-god {
+  premise Prevention
+  premise Reality
+  ---
+  conclude not god
+}
+
+// Denying Reality (evil is an illusion) blocks it too, but few will pay that price.
+
+// The paradox, then, is not a proof that God does not exist — it is a proof that
+// these four claims cannot all be true. Where you break the set is where your
+// theology lives.

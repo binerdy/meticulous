@@ -22,6 +22,7 @@ export interface BlockView {
     | "check"
     | "argument"
     | "proof"
+    | "venn"
     | "relations"
     | "relation"
     | "map"
@@ -46,6 +47,9 @@ export interface BlockView {
   proof: string[][];    // derivation steps: [number, formula, justification]
   relations: string[][]; // from `analyze`: [left, relation, right]
   model: string[];      // first-order (counter)model description, line by line
+  vennCircles: string[];   // predicate names, one circle each
+  vennCells: string[][];   // one region: [membership-bits, "empty"|"occupied"|"free"]
+  vennPoints: string[][];  // one individual: [name, pipe-joined cell bit-strings]
 }
 
 export const analyze = fableAnalyze as unknown as (source: string) => BlockView[];

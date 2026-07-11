@@ -491,7 +491,7 @@ function tryParseRelation(line) {
             if (rest_1.startsWith(verb + " ")) {
                 return bind((tupledArg_2) => {
                     if (tupledArg_2[1].trim() === "") {
-                        return new Statement(9, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
+                        return new Statement(11, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
                     }
                     else {
                         return undefined;
@@ -510,6 +510,7 @@ function tryParseRelation(line) {
  * Blank/whitespace-only lines return `Ok None`.
  */
 export function parseLine(raw) {
+    let s;
     const line = stripComment(raw).trim();
     if (line === "") {
         return new FSharpResult$2(0, [undefined]);
@@ -563,15 +564,34 @@ export function parseLine(raw) {
     else {
         switch (line) {
             case "analyze":
-                return new FSharpResult$2(0, [new Statement(8, [])]);
-            case "map":
                 return new FSharpResult$2(0, [new Statement(10, [])]);
+            case "map":
+                return new FSharpResult$2(0, [new Statement(12, [])]);
             default:
                 if (line.startsWith("argument")) {
                     return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
                 }
                 else if (line.startsWith("proof")) {
                     return new FSharpResult$2(1, ["a `proof` needs `{` at the end of its first line — e.g.  proof my-derivation {"]);
+                }
+                else if (line.startsWith("venn ")) {
+                    const target_1 = substring(line, 5).trim();
+                    if ((s = target_1, ((s.length > 0) && isLetter(s[0])) && forAll((c) => {
+                        if (isLetterOrDigit(c) ? true : (c === "_")) {
+                            return true;
+                        }
+                        else {
+                            return c === "-";
+                        }
+                    }, s.split("")))) {
+                        return new FSharpResult$2(0, [new Statement(9, [target_1])]);
+                    }
+                    else {
+                        return new FSharpResult$2(1, ["write `venn <argument-name>` to draw an argument, or `venn name { … }` for a fresh diagram"]);
+                    }
+                }
+                else if (line === "venn") {
+                    return new FSharpResult$2(1, ["`venn` needs an argument name (venn my-argument) or a block (venn name { … })"]);
                 }
                 else {
                     const matchValue_3 = tryParseRelation(line);
@@ -739,6 +759,66 @@ function parseProofBlock(name, headerLine, body) {
     }
 }
 
+function parseVennBlock(name, headerLine, body) {
+    let premises = empty();
+    let conclusion = undefined;
+    let errors = empty();
+    const enumerator = getEnumerator(body);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const no = forLoopVar[0] | 0;
+            const line = stripComment(forLoopVar[1]).trim();
+            if (line === "") {
+            }
+            else if ((line.length >= 3) && forAll((c) => (c === "-"), line.split(""))) {
+            }
+            else if (line.startsWith("premise ")) {
+                const matchValue = parseFormula(substring(line, 8));
+                if (matchValue.tag === 1) {
+                    errors = append(errors, singleton([no, matchValue.fields[0]]));
+                }
+                else {
+                    premises = append(premises, singleton(matchValue.fields[0]));
+                }
+            }
+            else if (line.startsWith("conclude ")) {
+                const matchValue_1 = parseFormula(substring(line, 9));
+                const conclusion_1 = conclusion;
+                const copyOfStruct = matchValue_1;
+                if (copyOfStruct.tag === 1) {
+                    errors = append(errors, singleton([no, copyOfStruct.fields[0]]));
+                }
+                else if (conclusion_1 != null) {
+                    errors = append(errors, singleton([no, "a venn block can only have one `conclude`"]));
+                }
+                else {
+                    conclusion = copyOfStruct.fields[0];
+                }
+            }
+            else {
+                errors = append(errors, singleton([no, "expected `premise` or `conclude` inside a venn block"]));
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    const errors_1 = errors;
+    const premises_1 = premises;
+    if (isEmpty(errors_1)) {
+        if (isEmpty(premises_1)) {
+            return new FSharpResult$2(1, [singleton([headerLine, "a venn block needs at least one `premise`"])]);
+        }
+        else {
+            return new FSharpResult$2(0, [new Statement(8, [name, premises, conclusion])]);
+        }
+    }
+    else {
+        return new FSharpResult$2(1, [errors_1]);
+    }
+}
+
 /**
  * Parse a whole source into (lineNumber, statement-or-error) entries,
  * grouping multi-line `argument { }` blocks into single statements.
@@ -754,7 +834,7 @@ export function parseLines(source) {
         const line_1 = stripComment(item(i, lines)).trim();
         let matchValue;
         const line = line_1;
-        matchValue = ((line.startsWith("argument ") && line.endsWith("{")) ? ["argument", (name) => ((headerLine) => ((body) => parseArgumentBlock(name, headerLine, body)))] : ((line.startsWith("proof ") && line.endsWith("{")) ? ["proof", (name_1) => ((headerLine_1) => ((body_1) => parseProofBlock(name_1, headerLine_1, body_1)))] : undefined));
+        matchValue = ((line.startsWith("argument ") && line.endsWith("{")) ? ["argument", (name) => ((headerLine) => ((body) => parseArgumentBlock(name, headerLine, body)))] : ((line.startsWith("proof ") && line.endsWith("{")) ? ["proof", (name_1) => ((headerLine_1) => ((body_1) => parseProofBlock(name_1, headerLine_1, body_1)))] : ((line.startsWith("venn ") && line.endsWith("{")) ? ["venn", (name_2) => ((headerLine_2) => ((body_2) => parseVennBlock(name_2, headerLine_2, body_2)))] : undefined)));
         if (matchValue == null) {
             void (results.push([no, parseLine(item(i, lines))]));
             i = ((i + 1) | 0);
@@ -762,8 +842,8 @@ export function parseLines(source) {
         else {
             const parseBlock = matchValue[1];
             const keyword = matchValue[0];
-            const name_2 = substring(line_1, keyword.length, (line_1.length - keyword.length) - 1).trim();
-            const body_2 = [];
+            const name_3 = substring(line_1, keyword.length, (line_1.length - keyword.length) - 1).trim();
+            const body_3 = [];
             let j = i + 1;
             let closed = false;
             while (!closed && (j < lines.length)) {
@@ -771,7 +851,7 @@ export function parseLines(source) {
                     closed = true;
                 }
                 else {
-                    void (body_2.push([j + 1, item(j, lines)]));
+                    void (body_3.push([j + 1, item(j, lines)]));
                     j = ((j + 1) | 0);
                 }
             }
@@ -780,7 +860,7 @@ export function parseLines(source) {
                 i = (lines.length | 0);
             }
             else {
-                const matchValue_1 = parseBlock(name_2)(no)(ofSeq(body_2));
+                const matchValue_1 = parseBlock(name_3)(no)(ofSeq(body_3));
                 if (matchValue_1.tag === 1) {
                     const enumerator = getEnumerator(matchValue_1.fields[0]);
                     try {

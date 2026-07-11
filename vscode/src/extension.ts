@@ -49,6 +49,15 @@ const STYLE = `
   .model-line { padding: .08rem 0; }
   .model-lhs { color: var(--vscode-symbolIcon-variableForeground, #4ec9b0); font-weight: 600; }
   .model-eq { opacity: .5; margin: 0 .5em; }
+  figure.venn-figure { margin: 1rem 0; }
+  figure.venn-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .3rem; }
+  svg.venn { max-width: 400px; width: 100%; height: auto; }
+  svg.venn .venn-circle { fill: none; stroke: var(--vscode-foreground); stroke-width: 1.5; opacity: .8; }
+  svg.venn .venn-hatch { stroke: var(--vscode-descriptionForeground, #8d96a0); stroke-width: 1.2; }
+  svg.venn .venn-label { fill: var(--vscode-foreground); font-family: var(--vscode-editor-font-family); font-size: 13px; font-weight: 600; }
+  svg.venn .venn-dot { fill: var(--vscode-foreground); }
+  svg.venn .venn-point circle { fill: var(--vscode-symbolIcon-variableForeground, #4ec9b0); stroke: var(--vscode-editor-background, #000); stroke-width: 1; }
+  svg.venn .venn-point text { fill: var(--vscode-foreground); font-family: var(--vscode-editor-font-family); font-size: 12px; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }

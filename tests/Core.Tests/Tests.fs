@@ -263,6 +263,23 @@ let ``analyze handles argument blocks and names forms and fallacies`` () =
     Assert.Contains("q → p", oops.suggestion)  // the hidden assumption
 
 [<Fact>]
+let ``the problem of evil is valid and denying a premise makes it invalid`` () =
+    let core =
+        "claim Def : god -> (omnipotent and omnibenevolent)\n\
+         claim Prev : (omnipotent and omnibenevolent) -> not evil\n\
+         claim Real : evil\n"
+    let valid =
+        analyze (core + "argument poe {\npremise Def\npremise Prev\npremise Real\n---\nconclude not god\n}\n")
+        |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", valid.verdict)
+    // drop Prevention: God and evil can now coexist, so it no longer follows
+    let escaped =
+        analyze (core + "argument poe {\npremise Def\npremise Real\n---\nconclude not god\n}\n")
+        |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("invalid", escaped.verdict)
+    Assert.Equal(1, escaped.rows.Length)
+
+[<Fact>]
 let ``an unclosed argument block is one error, not a cascade`` () =
     let blocks = analyze "argument broken {\n  premise p\n"
     let errors = blocks |> Array.filter (fun b -> b.kind = "error")
@@ -478,6 +495,63 @@ let ``relations keep props counted as used, and undeclared names warn`` () =
     Assert.Contains("ghost", w.message)
     Assert.Equal(4, w.line)
 
+// ---- Venn diagrams: monadic analysis ----------------------------------------------
+
+[<Fact>]
+let ``the syllogism Venn shades Man-not-Mortal and marks Man-and-Mortal`` () =
+    // All Man are Mortal; socrates is a Man.
+    let doc =
+        "venn socrates {\n\
+           premise forall x. Man(x) -> Mortal(x)\n\
+           premise Man(socrates)\n\
+         }\n"
+    let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("consistent", v.verdict)
+    Assert.Equal<string[]>([| "Man"; "Mortal" |], v.vennCircles)
+    let cell bits = v.vennCells |> Array.find (fun c -> c.[0] = bits)
+    // bit 0 = Man, bit 1 = Mortal
+    Assert.Equal("empty", (cell "10").[1])      // Man ∧ ¬Mortal — ruled out
+    Assert.Equal("occupied", (cell "11").[1])   // Man ∧ Mortal — socrates forces it
+    // socrates must sit in the Man∩Mortal cell
+    let socrates = v.vennPoints |> Array.find (fun p -> p.[0] = "socrates")
+    Assert.Equal("11", socrates.[1])
+
+[<Fact>]
+let ``venn can reference an argument by name`` () =
+    let doc =
+        "argument s {\n\
+           premise forall x. Man(x) -> Mortal(x)\n\
+           premise Man(socrates)\n\
+           ---\n\
+           conclude Mortal(socrates)\n\
+         }\n\
+         venn s\n"
+    let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("consistent", v.verdict)
+    Assert.Equal<string[]>([| "Man"; "Mortal" |], v.vennCircles)
+    Assert.Contains("valid", v.note)   // conclusion forced
+
+[<Fact>]
+let ``venn of a propositional argument declines with guidance`` () =
+    let doc =
+        "argument mp {\n  premise p -> q\n  premise p\n  ---\n  conclude q\n}\nvenn mp\n"
+    let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("not-drawable", v.verdict)
+    Assert.Contains("propositional", v.note)
+
+[<Fact>]
+let ``venn of an unknown argument name is reported`` () =
+    let v = analyze "venn nope\n" |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("not-drawable", v.verdict)
+    Assert.Contains("No argument named", v.note)
+
+[<Fact>]
+let ``a venn declines relations and reports contradictions`` () =
+    let rel = analyze "venn r {\n  premise Loves(a, b)\n}\n" |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("not-drawable", rel.verdict)
+    let bad = analyze "venn c {\n  premise forall x. P(x)\n  premise exists x. not P(x)\n}\n" |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("contradiction", bad.verdict)
+
 // ---- Modal logic: S5 ------------------------------------------------------------
 
 [<Fact>]
@@ -628,10 +702,20 @@ let ``an invalid FO argument shows a model card`` () =
     Assert.Contains(arg.model, fun line -> line.StartsWith "domain =")
 
 [<Fact>]
-let ``a FO table reports bounded validity`` () =
+let ``a FO table reports bounded validity with a sample model`` () =
     let block = analyze "table forall x. P(x) -> P(x)\n" |> Array.find (fun b -> b.kind = "table")
     Assert.Equal("tautology", block.verdict)
     Assert.Contains("bounded", block.note)
+    // even a valid quantified statement now shows a concrete model
+    Assert.NotEmpty block.model
+    Assert.Contains(block.model, fun (line: string) -> line.StartsWith "domain =")
+
+[<Fact>]
+let ``the drinker paradox table shows a witnessing model`` () =
+    let doc = "claim C1 : exists x. (Drinks(x) -> forall y. Drinks(y))\ntable C1\n"
+    let block = analyze doc |> Array.find (fun b -> b.kind = "table")
+    Assert.Equal("tautology", block.verdict)
+    Assert.NotEmpty block.model
 
 [<Fact>]
 let ``FO claims read back in English with the unary shorthand`` () =
