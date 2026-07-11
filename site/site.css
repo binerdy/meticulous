@@ -114,6 +114,11 @@ table.truth td.f { color: var(--red); opacity: .85; }
 .badge-unknown { background: var(--muted); }
 table.truth td.world-name, table.truth th.world-name { font-style: italic; color: var(--muted); text-align: right; }
 table.truth td.world-name.actual { font-weight: 700; color: var(--fg); }
+.fo-formula { font-family: var(--mono); margin: .2rem 0 .4rem; }
+.model-card { font-family: var(--mono); border: 1px solid var(--border); border-radius: 6px; padding: .4rem .7rem; display: inline-block; margin: .2rem 0; background: var(--bg); }
+.model-line { padding: .08rem 0; }
+.model-lhs { color: var(--green); font-weight: 600; }
+.model-eq { color: var(--muted); margin: 0 .5em; }
 
 figure.argument, figure.relations {
   margin: 1.2rem 0; padding: .7rem 1rem;

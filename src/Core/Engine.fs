@@ -22,6 +22,7 @@ module Engine =
                 | Some body -> go (Set.add n seen) body
                 | None -> Atom n
             | Atom n -> Atom n
+            | Pred _ -> f      // predicates aren't claim abbreviations
             | Const _ -> f
             | Not a -> Not(go seen a)
             | And(a, b) -> And(go seen a, go seen b)
@@ -31,6 +32,8 @@ module Engine =
             | Iff(a, b) -> Iff(go seen a, go seen b)
             | Box a -> Box(go seen a)
             | Diamond a -> Diamond(go seen a)
+            | Forall(x, a) -> Forall(x, go seen a)
+            | Exists(x, a) -> Exists(x, go seen a)
         go Set.empty formula
 
     /// All distinct atom names in a formula, in order of first appearance.
@@ -39,10 +42,13 @@ module Engine =
         let rec go f acc =
             match f with
             | Atom name -> if List.contains name acc then acc else acc @ [ name ]
+            | Pred _ -> acc      // predicate atoms are the first-order engine's business
             | Const _ -> acc
             | Not a
             | Box a
-            | Diamond a -> go a acc
+            | Diamond a
+            | Forall(_, a)
+            | Exists(_, a) -> go a acc
             | And(a, b)
             | Or(a, b)
             | Xor(a, b)
@@ -66,6 +72,10 @@ module Engine =
         | Iff(a, b) -> eval env a = eval env b             // true when they match
         | Box a
         | Diamond a -> eval env a
+        // First-order formulas are routed to `evalFO`; these cases keep `eval`
+        // total and never fire for a purely propositional formula.
+        | Pred _ -> false
+        | Forall(_, a) | Exists(_, a) -> eval env a
 
     /// Every combination of truth values for the given atoms.
     /// For n atoms this produces 2^n assignments. We read row index `i` as a
@@ -114,20 +124,30 @@ module Engine =
     /// truth-table machinery is enough or the S5 machinery must take over.
     let rec containsModal (f: Formula) : bool =
         match f with
-        | Atom _ | Const _ -> false
+        | Atom _ | Pred _ | Const _ -> false
         | Box _ | Diamond _ -> true
-        | Not a -> containsModal a
+        | Not a | Forall(_, a) | Exists(_, a) -> containsModal a
         | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
             containsModal a || containsModal b
+
+    /// Does the formula use predicates or quantifiers? Decides whether the
+    /// first-order model checker must take over from the propositional engine.
+    let rec containsFO (f: Formula) : bool =
+        match f with
+        | Pred _ | Forall _ | Exists _ -> true
+        | Atom _ | Const _ -> false
+        | Not a | Box a | Diamond a -> containsFO a
+        | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
+            containsFO a || containsFO b
 
     /// How many modal operators a formula contains — used to bound the model
     /// search: a satisfiable S5 formula has a model with at most one world per
     /// modal operator, plus the actual world.
     let rec private modalOps (f: Formula) : int =
         match f with
-        | Atom _ | Const _ -> 0
+        | Atom _ | Pred _ | Const _ -> 0
         | Box a | Diamond a -> 1 + modalOps a
-        | Not a -> modalOps a
+        | Not a | Forall(_, a) | Exists(_, a) -> modalOps a
         | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
             modalOps a + modalOps b
 
@@ -144,6 +164,10 @@ module Engine =
         | Iff(a, b) -> evalS5 model w a = evalS5 model w b
         | Box a -> model |> List.forall (fun v -> evalS5 model v a)
         | Diamond a -> model |> List.exists (fun v -> evalS5 model v a)
+        // Quantified modal logic is a later storey; a bare predicate/quantifier
+        // here is treated propositionally so `evalS5` stays total.
+        | Pred _ -> false
+        | Forall(_, a) | Exists(_, a) -> evalS5 model w a
 
     /// The outcome of an S5 model search. `TooLarge` is the honest answer when
     /// a formula has too many atoms × modalities to check exhaustively.
@@ -208,11 +232,188 @@ module Engine =
         | Model _ -> Some false
         | TooLarge -> None
 
-    /// One validity door for both logics: classical truth tables when the
-    /// formula is modal-free, the S5 model search when it isn't.
+    // ---- First-order logic over finite domains -------------------------------
+    //
+    // A first-order model is a finite domain {0 … size-1}, an assignment of
+    // each constant to a domain element, and for each predicate the set of
+    // argument-tuples at which it holds. Propositional atoms are just 0-ary
+    // predicates whose "tuple" is the empty list.
+    //
+    // Full first-order validity is undecidable, so — exactly as with S5 — we
+    // check *bounded* models (domains up to a small size). A refuting model
+    // proves invalidity outright; finding none up to the bound is reported
+    // honestly as "valid up to domain size N", never as plain "valid".
+
+    type FOModel =
+        { Size: int
+          Constants: Map<string, int>
+          Extensions: Map<string, Set<int list>> }
+
+    /// (predicate name, arity) pairs used in a formula; atoms count as arity 0.
+    let rec private signatures (f: Formula) : Set<string * int> =
+        match f with
+        | Atom name -> Set.singleton (name, 0)
+        | Pred(name, args) -> Set.singleton (name, List.length args)
+        | Const _ -> Set.empty
+        | Not a | Box a | Diamond a | Forall(_, a) | Exists(_, a) -> signatures a
+        | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
+            Set.union (signatures a) (signatures b)
+
+    /// The individual constants a formula names — term positions not bound by
+    /// an enclosing quantifier. (A bound variable is not a constant.)
+    let private freeConstants (f: Formula) : string list =
+        let rec go bound f =
+            match f with
+            | Pred(_, args) -> args |> List.filter (fun t -> not (Set.contains t bound)) |> Set.ofList
+            | Atom _ | Const _ -> Set.empty
+            | Not a | Box a | Diamond a -> go bound a
+            | Forall(x, a) | Exists(x, a) -> go (Set.add x bound) a
+            | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
+                Set.union (go bound a) (go bound b)
+        go Set.empty f |> Set.toList
+
+    /// Evaluate a formula at a first-order model under a variable assignment.
+    let rec evalFO (m: FOModel) (env: Map<string, int>) (f: Formula) : bool =
+        let holds name tuple =
+            m.Extensions |> Map.tryFind name |> Option.map (Set.contains tuple) |> Option.defaultValue false
+        match f with
+        | Const b -> b
+        | Atom name -> holds name []
+        | Pred(name, args) ->
+            let tuple =
+                args |> List.map (fun t ->
+                    match Map.tryFind t env with
+                    | Some e -> e
+                    | None -> Map.tryFind t m.Constants |> Option.defaultValue 0)
+            holds name tuple
+        | Not a -> not (evalFO m env a)
+        | And(a, b) -> evalFO m env a && evalFO m env b
+        | Or(a, b) -> evalFO m env a || evalFO m env b
+        | Xor(a, b) -> evalFO m env a <> evalFO m env b
+        | Implies(a, b) -> (not (evalFO m env a)) || evalFO m env b
+        | Iff(a, b) -> evalFO m env a = evalFO m env b
+        | Forall(x, a) -> [ 0 .. m.Size - 1 ] |> List.forall (fun e -> evalFO m (Map.add x e env) a)
+        | Exists(x, a) -> [ 0 .. m.Size - 1 ] |> List.exists (fun e -> evalFO m (Map.add x e env) a)
+        // Modality inside a first-order formula is out of scope for now; treated
+        // transparently so the evaluator stays total.
+        | Box a | Diamond a -> evalFO m env a
+
+    type FOSearch =
+        | FONoModel                    // no refuting model up to the bound
+        | FOModelFound of FOModel
+        | FOTooLarge                   // search space exceeded the budget
+
+    /// Search for a first-order model (domain size 1 … maxSize) that makes the
+    /// formula TRUE. Complete within the bound unless the budget is exhausted.
+    let foSatisfy (f: Formula) : FOSearch =
+        let sigs = signatures f |> Set.toList
+        let consts = freeConstants f
+        let maxSize = 4
+        let mutable budget = 300_000
+        let mutable truncated = false
+
+        // every length-k tuple of domain elements
+        let allTuples size k =
+            let rec go k = if k = 0 then [ [] ] else [ for tail in go (k - 1) do for e in 0 .. size - 1 -> e :: tail ]
+            go k
+
+        let trySize size =
+            let predTuples = sigs |> List.map (fun (n, k) -> n, allTuples size k)
+
+            // choose an extension (subset of tuples) for each predicate, then an
+            // element for each constant, then evaluate.
+            let rec chooseExt remaining ext =
+                match remaining with
+                | [] -> chooseConsts consts Map.empty ext
+                | (name, tuples) :: rest ->
+                    let n = List.length tuples
+                    let count = pown 2 n
+                    let rec loop mask =
+                        if mask >= count then FONoModel
+                        else
+                            let subset =
+                                [ for i in 0 .. n - 1 do if (mask >>> i) &&& 1 = 1 then yield tuples.[i] ]
+                                |> Set.ofList
+                            match chooseExt rest (Map.add name subset ext) with
+                            | FONoModel -> loop (mask + 1)
+                            | found -> found
+                    loop 0
+
+            and chooseConsts remaining assigned ext =
+                match remaining with
+                | [] ->
+                    budget <- budget - 1
+                    if budget <= 0 then
+                        truncated <- true
+                        FOTooLarge
+                    else
+                        let model = { Size = size; Constants = assigned; Extensions = ext }
+                        if evalFO model Map.empty f then FOModelFound model else FONoModel
+                | c :: rest ->
+                    let rec loop e =
+                        if e >= size then FONoModel
+                        else
+                            match chooseConsts rest (Map.add c e assigned) ext with
+                            | FONoModel -> loop (e + 1)
+                            | found -> found
+                    loop 0
+
+            chooseExt predTuples Map.empty
+
+        let rec search size =
+            if size > maxSize then (if truncated then FOTooLarge else FONoModel)
+            else
+                match trySize size with
+                | FONoModel -> search (size + 1)
+                | found -> found
+
+        search 1
+
+    /// One validity door for all three logics: classical truth tables when the
+    /// formula is plain, the S5 search when it is modal, and the finite-model
+    /// search when it is first-order. `None` = the search was too large.
     let valid (f: Formula) : bool option =
-        if containsModal f then s5Valid f
+        if containsFO f then
+            match foSatisfy (Not f) with
+            | FONoModel -> Some true       // no finite countermodel up to the bound
+            | FOModelFound _ -> Some false
+            | FOTooLarge -> None
+        elif containsModal f then s5Valid f
         else Some((truthTable f).Verdict = Tautology)
+
+    /// Search for a first-order countermodel to an argument: a model where all
+    /// premises hold but the conclusion fails.
+    let checkArgumentFO (premises: Formula list) (conclusion: Formula) : FOSearch =
+        let together = List.fold (fun acc p -> And(acc, p)) (Not conclusion) premises
+        foSatisfy together
+
+    /// Describe a first-order model in plain lines: its domain, what each
+    /// constant names, and the extension of each predicate. Elements are shown
+    /// as a, b, c, … The formula tells us which constants and predicates to list.
+    let describeModel (m: FOModel) (f: Formula) : string list =
+        let elem i = string (char (int 'a' + i))
+        let domain = "domain = { " + String.concat ", " [ for i in 0 .. m.Size - 1 -> elem i ] + " }"
+        let constLines =
+            freeConstants f
+            |> List.map (fun c -> c + " = " + elem (Map.tryFind c m.Constants |> Option.defaultValue 0))
+        let predLines =
+            signatures f
+            |> Set.toList
+            |> List.sortBy fst
+            |> List.map (fun (name, arity) ->
+                let ext = Map.tryFind name m.Extensions |> Option.defaultValue Set.empty
+                if arity = 0 then
+                    name + " = " + (if Set.contains [] ext then "true" else "false")
+                else
+                    let tuples =
+                        ext
+                        |> Set.toList
+                        |> List.map (fun t ->
+                            match t with
+                            | [ x ] -> elem x
+                            | _ -> "(" + String.concat ", " (List.map elem t) + ")")
+                    name + " = { " + String.concat ", " tuples + " }")
+        [ domain ] @ constLines @ predLines
 
     /// Two formulas are logically equivalent when they agree in every possible
     /// situation — every assignment classically, every world-arrangement

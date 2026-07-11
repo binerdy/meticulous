@@ -27,11 +27,14 @@ let private printBlock (b: BlockView) =
         printfn "  %s := %s" b.name b.formula
         if b.note <> "" then printfn "      \"%s\"" b.note
     | "table" ->
-        printTable "    " b.atoms b.rows b.results b.formula
+        if b.atoms.Length > 0 then printTable "    " b.atoms b.rows b.results b.formula
+        else printfn "    %s" b.formula
         printfn "    => %s — %s" (b.verdict.ToUpper()) b.note
+        b.model |> Array.iter (printfn "      %s")
     | "check" ->
         printfn "  check: %s => %s" b.formula (b.verdict.ToUpper())
         if b.note <> "" then printfn "      %s" b.note
+        b.model |> Array.iter (printfn "      %s")
     | "argument" ->
         printfn "  argument %s:" b.name
         b.premises |> Array.iter (printfn "    premise  %s")
@@ -43,6 +46,9 @@ let private printBlock (b: BlockView) =
         if b.rows.Length > 0 then
             printfn "    counterexample(s): premises true, conclusion false:"
             printTable "      " b.atoms b.rows b.results b.conclusion
+        if b.model.Length > 0 then
+            printfn "    countermodel: premises true, conclusion false:"
+            b.model |> Array.iter (printfn "      %s")
         if b.suggestion.Length > 0 then
             printfn "    becomes valid if you add: %s" (String.concat "   or   " b.suggestion)
         if b.proof.Length > 0 then

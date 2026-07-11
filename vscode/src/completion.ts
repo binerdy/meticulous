@@ -41,6 +41,10 @@ const KEYWORD_SNIPPETS: { label: string; detail: string; body: string }[] = [
   { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
   { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" },
+  { label: "necessarily", detail: "modal □ — true in every possible world", body: "necessarily ${1:p}" },
+  { label: "possibly", detail: "modal ◇ — true in some possible world", body: "possibly ${1:p}" },
+  { label: "forall", detail: "∀ — holds for every individual", body: "forall ${1:x}. ${2:P(x)}" },
+  { label: "exists", detail: "∃ — holds for some individual", body: "exists ${1:x}. ${2:P(x)}" },
 ];
 
 export function registerCompletions(context: vscode.ExtensionContext) {

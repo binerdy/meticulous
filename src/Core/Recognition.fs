@@ -25,6 +25,9 @@ module Recognition =
             | Some bound -> if bound = t then Some subst else None
             | None -> Some(Map.add v t subst)
         | Const a, Const b when a = b -> Some subst
+        | Pred(n1, a1), Pred(n2, a2) when n1 = n2 && a1 = a2 -> Some subst
+        | Forall(x1, p), Forall(x2, t) when x1 = x2 -> matchPattern p t subst
+        | Exists(x1, p), Exists(x2, t) when x1 = x2 -> matchPattern p t subst
         | Not p, Not t
         | Box p, Box t
         | Diamond p, Diamond t -> matchPattern p t subst
@@ -49,10 +52,12 @@ module Recognition =
     let rec private instantiate (subst: Map<string, Formula>) (pattern: Formula) : Formula =
         match pattern with
         | Atom v -> Map.tryFind v subst |> Option.defaultValue pattern
-        | Const _ -> pattern
+        | Pred _ | Const _ -> pattern
         | Not a -> Not(instantiate subst a)
         | Box a -> Box(instantiate subst a)
         | Diamond a -> Diamond(instantiate subst a)
+        | Forall(x, a) -> Forall(x, instantiate subst a)
+        | Exists(x, a) -> Exists(x, instantiate subst a)
         | And(a, b) -> And(instantiate subst a, instantiate subst b)
         | Or(a, b) -> Or(instantiate subst a, instantiate subst b)
         | Xor(a, b) -> Xor(instantiate subst a, instantiate subst b)
@@ -110,16 +115,16 @@ module Recognition =
     /// ever-larger formulas that lead nowhere.
     let rec private size f =
         match f with
-        | Atom _ | Const _ -> 1
-        | Not a | Box a | Diamond a -> 1 + size a
+        | Atom _ | Pred _ | Const _ -> 1
+        | Not a | Box a | Diamond a | Forall(_, a) | Exists(_, a) -> 1 + size a
         | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) -> 1 + size a + size b
 
     /// Every subformula of a formula, including itself.
     let rec private subformulas f =
         f
         :: (match f with
-            | Atom _ | Const _ -> []
-            | Not a | Box a | Diamond a -> subformulas a
+            | Atom _ | Pred _ | Const _ -> []
+            | Not a | Box a | Diamond a | Forall(_, a) | Exists(_, a) -> subformulas a
             | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
                 subformulas a @ subformulas b)
 

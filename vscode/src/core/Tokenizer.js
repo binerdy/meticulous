@@ -13,12 +13,12 @@ export class Token extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TLParen", "TRParen"];
+        return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TForall", "TExists", "TDot", "TComma", "TLParen", "TRParen"];
     }
 }
 
 export function Token_$reflection() {
-    return union_type("Meticulous.Tokenizer.Token", [], Token, () => [[["Item", string_type]], [], [], [], [], [], [], [], [], [], [], [], []]);
+    return union_type("Meticulous.Tokenizer.Token", [], Token, () => [[["Item", string_type]], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]);
 }
 
 function isIdentChar(c) {
@@ -48,6 +48,10 @@ function wordToToken(word) {
             return new Token(9, []);
         case "possibly":
             return new Token(10, []);
+        case "forall":
+            return new Token(11, []);
+        case "exists":
+            return new Token(12, []);
         case "true":
             return new Token(1, []);
         case "false":
@@ -80,12 +84,12 @@ export function tokenize(input) {
                     case "!":
                     case "~":
                     case "¬": {
-                        matchResult = 5;
+                        matchResult = 9;
                         break;
                     }
                     case "&":
                     case "∧": {
-                        matchResult = 3;
+                        matchResult = 7;
                         break;
                     }
                     case "(": {
@@ -96,87 +100,103 @@ export function tokenize(input) {
                         matchResult = 2;
                         break;
                     }
-                    case "|":
-                    case "∨": {
+                    case ",": {
+                        matchResult = 3;
+                        break;
+                    }
+                    case ".": {
                         matchResult = 4;
                         break;
                     }
-                    case "→": {
-                        matchResult = 7;
-                        break;
-                    }
-                    case "↔": {
+                    case "|":
+                    case "∨": {
                         matchResult = 8;
                         break;
                     }
-                    case "⊕": {
-                        matchResult = 6;
-                        break;
-                    }
-                    case "⊤": {
-                        matchResult = 9;
-                        break;
-                    }
-                    case "⊥": {
-                        matchResult = 10;
-                        break;
-                    }
-                    case "□": {
+                    case "→": {
                         matchResult = 11;
                         break;
                     }
-                    case "◇": {
+                    case "↔": {
                         matchResult = 12;
+                        break;
+                    }
+                    case "∀": {
+                        matchResult = 5;
+                        break;
+                    }
+                    case "∃": {
+                        matchResult = 6;
+                        break;
+                    }
+                    case "⊕": {
+                        matchResult = 10;
+                        break;
+                    }
+                    case "⊤": {
+                        matchResult = 13;
+                        break;
+                    }
+                    case "⊥": {
+                        matchResult = 14;
+                        break;
+                    }
+                    case "□": {
+                        matchResult = 15;
+                        break;
+                    }
+                    case "◇": {
+                        matchResult = 16;
                         break;
                     }
                     case "-": {
                         if (((i + 1) < input.length) && (input[i + 1] === ">")) {
-                            matchResult = 14;
+                            matchResult = 18;
                         }
                         else if (isLetter(c)) {
-                            matchResult = 17;
+                            matchResult = 21;
                         }
                         else {
-                            matchResult = 18;
+                            matchResult = 22;
                             other = c;
                         }
                         break;
                     }
                     case "<": {
                         if ((((i + 2) < input.length) && (input[i + 1] === "-")) && (input[i + 2] === ">")) {
-                            matchResult = 15;
+                            matchResult = 19;
                         }
                         else if (((i + 1) < input.length) && (input[i + 1] === ">")) {
-                            matchResult = 16;
+                            matchResult = 20;
                         }
                         else if (isLetter(c)) {
-                            matchResult = 17;
+                            matchResult = 21;
                         }
                         else {
-                            matchResult = 18;
+                            matchResult = 22;
                             other = c;
                         }
                         break;
                     }
                     case "[": {
                         if (((i + 1) < input.length) && (input[i + 1] === "]")) {
-                            matchResult = 13;
-                        }
-                        else if (isLetter(c)) {
                             matchResult = 17;
                         }
+                        else if (isLetter(c)) {
+                            matchResult = 21;
+                        }
                         else {
-                            matchResult = 18;
+                            matchResult = 22;
                             other = c;
                         }
                         break;
                     }
                     default:
                         if (isLetter(c)) {
-                            matchResult = 17;
+                            matchResult = 21;
                         }
                         else {
-                            matchResult = 18;
+                            matchResult = 22;
                             other = c;
                         }
                 }
@@ -188,85 +208,105 @@ export function tokenize(input) {
                     }
                     case 1: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(11, []), acc);
+                        acc_mut = cons(new Token(15, []), acc);
                         continue loop;
                     }
                     case 2: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(12, []), acc);
+                        acc_mut = cons(new Token(16, []), acc);
                         continue loop;
                     }
                     case 3: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(4, []), acc);
+                        acc_mut = cons(new Token(14, []), acc);
                         continue loop;
                     }
                     case 4: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(5, []), acc);
+                        acc_mut = cons(new Token(13, []), acc);
                         continue loop;
                     }
                     case 5: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(3, []), acc);
+                        acc_mut = cons(new Token(11, []), acc);
                         continue loop;
                     }
                     case 6: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(6, []), acc);
+                        acc_mut = cons(new Token(12, []), acc);
                         continue loop;
                     }
                     case 7: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(7, []), acc);
+                        acc_mut = cons(new Token(4, []), acc);
                         continue loop;
                     }
                     case 8: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(8, []), acc);
+                        acc_mut = cons(new Token(5, []), acc);
                         continue loop;
                     }
                     case 9: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(1, []), acc);
+                        acc_mut = cons(new Token(3, []), acc);
                         continue loop;
                     }
                     case 10: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(2, []), acc);
+                        acc_mut = cons(new Token(6, []), acc);
                         continue loop;
                     }
                     case 11: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(9, []), acc);
+                        acc_mut = cons(new Token(7, []), acc);
                         continue loop;
                     }
                     case 12: {
                         i_mut = (i + 1);
-                        acc_mut = cons(new Token(10, []), acc);
-                        continue loop;
-                    }
-                    case 13: {
-                        i_mut = (i + 2);
-                        acc_mut = cons(new Token(9, []), acc);
-                        continue loop;
-                    }
-                    case 14: {
-                        i_mut = (i + 2);
-                        acc_mut = cons(new Token(7, []), acc);
-                        continue loop;
-                    }
-                    case 15: {
-                        i_mut = (i + 3);
                         acc_mut = cons(new Token(8, []), acc);
                         continue loop;
                     }
+                    case 13: {
+                        i_mut = (i + 1);
+                        acc_mut = cons(new Token(1, []), acc);
+                        continue loop;
+                    }
+                    case 14: {
+                        i_mut = (i + 1);
+                        acc_mut = cons(new Token(2, []), acc);
+                        continue loop;
+                    }
+                    case 15: {
+                        i_mut = (i + 1);
+                        acc_mut = cons(new Token(9, []), acc);
+                        continue loop;
+                    }
                     case 16: {
-                        i_mut = (i + 2);
+                        i_mut = (i + 1);
                         acc_mut = cons(new Token(10, []), acc);
                         continue loop;
                     }
                     case 17: {
+                        i_mut = (i + 2);
+                        acc_mut = cons(new Token(9, []), acc);
+                        continue loop;
+                    }
+                    case 18: {
+                        i_mut = (i + 2);
+                        acc_mut = cons(new Token(7, []), acc);
+                        continue loop;
+                    }
+                    case 19: {
+                        i_mut = (i + 3);
+                        acc_mut = cons(new Token(8, []), acc);
+                        continue loop;
+                    }
+                    case 20: {
+                        i_mut = (i + 2);
+                        acc_mut = cons(new Token(10, []), acc);
+                        continue loop;
+                    }
+                    case 21: {
                         const start = i | 0;
                         let j = i;
                         while ((j < input.length) && (isIdentChar(input[j]) ? true : (((input[j] === "-") && ((j + 1) < input.length)) && isLetterOrDigit(input[j + 1])))) {

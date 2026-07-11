@@ -63,6 +63,21 @@ function renderTable(block: BlockView): string {
   return renderTruthTable(block.atoms, block.rows, block.results, block.formula, block.actual);
 }
 
+/** A first-order (counter)model: the domain, constant assignments, and each
+ *  predicate's extension, one line each. `domain = …` heads the block. */
+function renderModelCard(lines: string[]): string {
+  const rows = lines
+    .map((line) => {
+      const eq = line.indexOf("=");
+      if (eq === -1) return `<div class="model-line">${escapeHtml(line)}</div>`;
+      const lhs = line.slice(0, eq).trim();
+      const rhs = line.slice(eq + 1).trim();
+      return `<div class="model-line"><span class="model-lhs">${escapeHtml(lhs)}</span><span class="model-eq">=</span><span class="model-rhs">${escapeHtml(rhs)}</span></div>`;
+    })
+    .join("");
+  return `<div class="model-card">${rows}</div>`;
+}
+
 /** The boxed rendering of an `argument { }` block: premises over an inference
  *  line, the conclusion, and everything the engine worked out about it. */
 function renderArgument(block: BlockView): string {
@@ -94,6 +109,14 @@ function renderArgument(block: BlockView): string {
     parts.push(
       `<div class="counterexample"><span class="cx-label">${label}</span>` +
         renderTruthTable(block.atoms, block.rows, block.results, block.conclusion, block.actual) +
+        `</div>`
+    );
+  }
+
+  if (block.verdict === "invalid" && block.model.length > 0) {
+    parts.push(
+      `<div class="counterexample"><span class="cx-label">countermodel — premises true, conclusion false:</span>` +
+        renderModelCard(block.model) +
         `</div>`
     );
   }
@@ -663,14 +686,21 @@ function renderBlock(block: BlockView): string {
 
     case "table": {
       const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
-      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
+      const card = block.model.length > 0 ? renderModelCard(block.model) : "";
+      // A first-order table has no truth table — just the formula, verdict, and
+      // (when contingent) a model where it fails.
+      const body = block.atoms.length > 0 ? renderTable(block) : card;
+      const head = block.atoms.length > 0 ? "" : `<div class="fo-formula">${escapeHtml(block.formula)}</div>`;
+      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}${note}</figcaption>${head}${body}</figure>`;
     }
 
     case "check": {
       const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
-      // Equivalence checks carry no table (empty atoms); verdict checks do.
+      const card = block.model.length > 0 ? renderModelCard(block.model) : "";
+      // Truth-table checks show their table; equivalence and first-order checks
+      // show the formula, the verdict, and any model.
       if (block.atoms.length === 0) {
-        return `<div class="check"><div><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>${note}</div>`;
+        return `<div class="check"><div><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>${note}${card}</div>`;
       }
       return `<figure class="statement"><figcaption><span class="check-label">check</span> ${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
     }

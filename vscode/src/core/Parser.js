@@ -1,7 +1,7 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
 import { ProofLine, CheckKind, TableTarget, Statement, RelationKind, RelRef, Formula } from "./Ast.js";
-import { choose, ofSeq, map as map_1, filter, singleton, append, empty, tryPick, ofArray, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { choose, ofSeq, map as map_1, filter, tryPick, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
 import { replace, printf, toText, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
@@ -29,7 +29,7 @@ function parseIff(tokens) {
             }
             switch (matchResult) {
                 case 0:
-                    return Result_Bind((tupledArg_1) => loop(new Formula(7, [l, tupledArg_1[0]]), tupledArg_1[1]), parseImplies(more));
+                    return Result_Bind((tupledArg_1) => loop(new Formula(8, [l, tupledArg_1[0]]), tupledArg_1[1]), parseImplies(more));
                 default:
                     return new FSharpResult$2(0, [[l, toks]]);
             }
@@ -57,7 +57,7 @@ function parseImplies(tokens) {
         }
         switch (matchResult) {
             case 0:
-                return Result_Map((tupledArg_1) => [new Formula(6, [left, tupledArg_1[0]]), tupledArg_1[1]], parseImplies(more));
+                return Result_Map((tupledArg_1) => [new Formula(7, [left, tupledArg_1[0]]), tupledArg_1[1]], parseImplies(more));
             default:
                 return new FSharpResult$2(0, [[left, rest]]);
         }
@@ -82,7 +82,7 @@ function parseXor(tokens) {
             }
             switch (matchResult) {
                 case 0:
-                    return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr(more));
+                    return Result_Bind((tupledArg_1) => loop(new Formula(6, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr(more));
                 default:
                     return new FSharpResult$2(0, [[l, toks]]);
             }
@@ -109,7 +109,7 @@ function parseOr(tokens) {
             }
             switch (matchResult) {
                 case 0:
-                    return Result_Bind((tupledArg_1) => loop(new Formula(4, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more));
+                    return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more));
                 default:
                     return new FSharpResult$2(0, [[l, toks]]);
             }
@@ -136,7 +136,7 @@ function parseAnd(tokens) {
             }
             switch (matchResult) {
                 case 0:
-                    return Result_Bind((tupledArg_1) => loop(new Formula(3, [l, tupledArg_1[0]]), tupledArg_1[1]), parseUnary(more));
+                    return Result_Bind((tupledArg_1) => loop(new Formula(4, [l, tupledArg_1[0]]), tupledArg_1[1]), parseUnary(more));
                 default:
                     return new FSharpResult$2(0, [[l, toks]]);
             }
@@ -146,7 +146,7 @@ function parseAnd(tokens) {
 }
 
 function parseUnary(tokens) {
-    let matchResult, more, more_1, more_2;
+    let matchResult, more, more_1, more_2, more_3, x, more_4, x_1;
     if (!isEmpty(tokens)) {
         switch (head(tokens).tag) {
             case 3: {
@@ -164,63 +164,238 @@ function parseUnary(tokens) {
                 more_2 = tail(tokens);
                 break;
             }
+            case 11: {
+                if (!isEmpty(tail(tokens))) {
+                    if (head(tail(tokens)).tag === 0) {
+                        if (!isEmpty(tail(tail(tokens)))) {
+                            if (head(tail(tail(tokens))).tag === 13) {
+                                matchResult = 3;
+                                more_3 = tail(tail(tail(tokens)));
+                                x = head(tail(tokens)).fields[0];
+                            }
+                            else {
+                                matchResult = 5;
+                            }
+                        }
+                        else {
+                            matchResult = 5;
+                        }
+                    }
+                    else {
+                        matchResult = 5;
+                    }
+                }
+                else {
+                    matchResult = 5;
+                }
+                break;
+            }
+            case 12: {
+                if (!isEmpty(tail(tokens))) {
+                    if (head(tail(tokens)).tag === 0) {
+                        if (!isEmpty(tail(tail(tokens)))) {
+                            if (head(tail(tail(tokens))).tag === 13) {
+                                matchResult = 4;
+                                more_4 = tail(tail(tail(tokens)));
+                                x_1 = head(tail(tokens)).fields[0];
+                            }
+                            else {
+                                matchResult = 5;
+                            }
+                        }
+                        else {
+                            matchResult = 5;
+                        }
+                    }
+                    else {
+                        matchResult = 5;
+                    }
+                }
+                else {
+                    matchResult = 5;
+                }
+                break;
+            }
             default:
-                matchResult = 3;
+                matchResult = 6;
         }
     }
     else {
-        matchResult = 3;
+        matchResult = 6;
     }
     switch (matchResult) {
         case 0:
-            return Result_Map((tupledArg) => [new Formula(2, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
+            return Result_Map((tupledArg) => [new Formula(3, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
         case 1:
-            return Result_Map((tupledArg_1) => [new Formula(8, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
+            return Result_Map((tupledArg_1) => [new Formula(9, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
         case 2:
-            return Result_Map((tupledArg_2) => [new Formula(9, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
+            return Result_Map((tupledArg_2) => [new Formula(10, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
+        case 3:
+            return Result_Map((tupledArg_3) => [new Formula(11, [x, tupledArg_3[0]]), tupledArg_3[1]], parseIff(more_3));
+        case 4:
+            return Result_Map((tupledArg_4) => [new Formula(12, [x_1, tupledArg_4[0]]), tupledArg_4[1]], parseIff(more_4));
+        case 5:
+            return new FSharpResult$2(1, ["a quantifier needs a variable then \'.\', e.g.  forall x. Human(x)"]);
         default:
             return parseAtom(tokens);
     }
 }
 
-function parseAtom(tokens) {
-    if (isEmpty(tokens)) {
-        return new FSharpResult$2(1, ["Unexpected end of formula"]);
+function parseTermList(tokens) {
+    let matchResult, rest;
+    if (!isEmpty(tokens)) {
+        if (head(tokens).tag === 16) {
+            matchResult = 0;
+            rest = tail(tokens);
+        }
+        else {
+            matchResult = 1;
+        }
     }
     else {
-        switch (head(tokens).tag) {
-            case 0:
-                return new FSharpResult$2(0, [[new Formula(0, [head(tokens).fields[0]]), tail(tokens)]]);
-            case 1:
-                return new FSharpResult$2(0, [[new Formula(1, [true]), tail(tokens)]]);
-            case 2:
-                return new FSharpResult$2(0, [[new Formula(1, [false]), tail(tokens)]]);
-            case 11:
-                return Result_Bind((tupledArg) => {
-                    const rest$0027 = tupledArg[1];
-                    let matchResult, rest$0027$0027;
-                    if (!isEmpty(rest$0027)) {
-                        if (head(rest$0027).tag === 12) {
-                            matchResult = 0;
-                            rest$0027$0027 = tail(rest$0027);
+        matchResult = 1;
+    }
+    switch (matchResult) {
+        case 0:
+            return new FSharpResult$2(0, [[empty(), rest]]);
+        default: {
+            const loop = (acc_mut, toks_mut) => {
+                loop:
+                while (true) {
+                    const acc = acc_mut, toks = toks_mut;
+                    let matchResult_1, more, t, more_1, t_1;
+                    if (!isEmpty(toks)) {
+                        if (head(toks).tag === 0) {
+                            if (!isEmpty(tail(toks))) {
+                                switch (head(tail(toks)).tag) {
+                                    case 14: {
+                                        matchResult_1 = 0;
+                                        more = tail(tail(toks));
+                                        t = head(toks).fields[0];
+                                        break;
+                                    }
+                                    case 16: {
+                                        matchResult_1 = 1;
+                                        more_1 = tail(tail(toks));
+                                        t_1 = head(toks).fields[0];
+                                        break;
+                                    }
+                                    default:
+                                        matchResult_1 = 2;
+                                }
+                            }
+                            else {
+                                matchResult_1 = 2;
+                            }
                         }
                         else {
-                            matchResult = 1;
+                            matchResult_1 = 2;
                         }
                     }
                     else {
-                        matchResult = 1;
+                        matchResult_1 = 2;
                     }
-                    switch (matchResult) {
-                        case 0:
-                            return new FSharpResult$2(0, [[tupledArg[0], rest$0027$0027]]);
+                    switch (matchResult_1) {
+                        case 0: {
+                            acc_mut = append(acc, singleton(t));
+                            toks_mut = more;
+                            continue loop;
+                        }
+                        case 1:
+                            return new FSharpResult$2(0, [[append(acc, singleton(t_1)), more_1]]);
                         default:
-                            return new FSharpResult$2(1, ["Expected a closing \')\'"]);
+                            return new FSharpResult$2(1, ["expected a term (a name), \',\' or \')\' in the predicate\'s arguments"]);
                     }
-                }, parseIff(tail(tokens)));
-            default:
-                return new FSharpResult$2(1, ["Expected a proposition, a constant, or \'(\'"]);
+                    break;
+                }
+            };
+            return loop(empty(), tokens);
         }
+    }
+}
+
+function parseAtom(tokens) {
+    let matchResult, name, rest, name_1, rest_1, rest_2, rest_3, rest_4;
+    if (isEmpty(tokens)) {
+        matchResult = 5;
+    }
+    else {
+        switch (head(tokens).tag) {
+            case 0: {
+                if (!isEmpty(tail(tokens))) {
+                    if (head(tail(tokens)).tag === 15) {
+                        matchResult = 0;
+                        name = head(tokens).fields[0];
+                        rest = tail(tail(tokens));
+                    }
+                    else {
+                        matchResult = 1;
+                        name_1 = head(tokens).fields[0];
+                        rest_1 = tail(tokens);
+                    }
+                }
+                else {
+                    matchResult = 1;
+                    name_1 = head(tokens).fields[0];
+                    rest_1 = tail(tokens);
+                }
+                break;
+            }
+            case 1: {
+                matchResult = 2;
+                rest_2 = tail(tokens);
+                break;
+            }
+            case 2: {
+                matchResult = 3;
+                rest_3 = tail(tokens);
+                break;
+            }
+            case 15: {
+                matchResult = 4;
+                rest_4 = tail(tokens);
+                break;
+            }
+            default:
+                matchResult = 6;
+        }
+    }
+    switch (matchResult) {
+        case 0:
+            return Result_Map((tupledArg) => [new Formula(1, [name, tupledArg[0]]), tupledArg[1]], parseTermList(rest));
+        case 1:
+            return new FSharpResult$2(0, [[new Formula(0, [name_1]), rest_1]]);
+        case 2:
+            return new FSharpResult$2(0, [[new Formula(2, [true]), rest_2]]);
+        case 3:
+            return new FSharpResult$2(0, [[new Formula(2, [false]), rest_3]]);
+        case 4:
+            return Result_Bind((tupledArg_1) => {
+                const rest$0027_1 = tupledArg_1[1];
+                let matchResult_1, rest$0027$0027;
+                if (!isEmpty(rest$0027_1)) {
+                    if (head(rest$0027_1).tag === 16) {
+                        matchResult_1 = 0;
+                        rest$0027$0027 = tail(rest$0027_1);
+                    }
+                    else {
+                        matchResult_1 = 1;
+                    }
+                }
+                else {
+                    matchResult_1 = 1;
+                }
+                switch (matchResult_1) {
+                    case 0:
+                        return new FSharpResult$2(0, [[tupledArg_1[0], rest$0027$0027]]);
+                    default:
+                        return new FSharpResult$2(1, ["Expected a closing \')\'"]);
+                }
+            }, parseIff(rest_4));
+        case 5:
+            return new FSharpResult$2(1, ["Unexpected end of formula"]);
+        default:
+            return new FSharpResult$2(1, ["Expected a proposition, a constant, or \'(\'"]);
     }
 }
 

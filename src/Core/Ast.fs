@@ -13,6 +13,7 @@ module Ast =
     /// tree — e.g. `p -> (q and r)` becomes `Implies(Atom "p", And(Atom "q", Atom "r"))`.
     type Formula =
         | Atom of string                    // a proposition variable, e.g. p
+        | Pred of string * string list      // a predicate applied to terms, e.g. Man(socrates), Loves(x, y)
         | Const of bool                     // the constants ⊤ (true) and ⊥ (false)
         | Not of Formula                    // ¬φ
         | And of Formula * Formula          // φ ∧ ψ
@@ -22,6 +23,8 @@ module Ast =
         | Iff of Formula * Formula          // φ ↔ ψ  (if and only if)
         | Box of Formula                    // □φ — necessarily φ (true in every possible world)
         | Diamond of Formula                // ◇φ — possibly φ (true in some possible world)
+        | Forall of string * Formula        // ∀x. φ — φ holds for every individual x
+        | Exists of string * Formula        // ∃x. φ — φ holds for some individual x
 
     /// Where a `table` request points: either a named claim, or a formula
     /// written inline on the same line.

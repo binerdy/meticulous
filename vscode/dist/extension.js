@@ -2700,7 +2700,7 @@ var Formula = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond"];
+    return ["Atom", "Pred", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond", "Forall", "Exists"];
   }
 };
 var TableTarget = class extends Union {
@@ -3143,6 +3143,64 @@ function SetTreeModule_add(comparer, k, t) {
     return SetTreeLeaf$1_$ctor_2B595(k);
   }
 }
+function SetTreeModule_balance(comparer, t1, k, t2) {
+  if (t1 != null) {
+    const t1$0027 = value(t1);
+    if (t2 != null) {
+      const t2$0027 = value(t2);
+      if (t1$0027 instanceof SetTreeNode$1) {
+        const t1n = t1$0027;
+        if (t2$0027 instanceof SetTreeNode$1) {
+          const t2n = t2$0027;
+          if (SetTreeNode$1__get_Height(t1n) + 2 < SetTreeNode$1__get_Height(t2n)) {
+            return SetTreeModule_rebalance(SetTreeModule_balance(comparer, t1, k, SetTreeNode$1__get_Left(t2n)), SetTreeLeaf$1__get_Key(t2n), SetTreeNode$1__get_Right(t2n));
+          } else if (SetTreeNode$1__get_Height(t2n) + 2 < SetTreeNode$1__get_Height(t1n)) {
+            return SetTreeModule_rebalance(SetTreeNode$1__get_Left(t1n), SetTreeLeaf$1__get_Key(t1n), SetTreeModule_balance(comparer, SetTreeNode$1__get_Right(t1n), k, t2));
+          } else {
+            return SetTreeModule_mk(t1, k, t2);
+          }
+        } else {
+          return SetTreeModule_add(comparer, k, SetTreeModule_add(comparer, SetTreeLeaf$1__get_Key(t2$0027), t1));
+        }
+      } else {
+        return SetTreeModule_add(comparer, k, SetTreeModule_add(comparer, SetTreeLeaf$1__get_Key(t1$0027), t2));
+      }
+    } else {
+      return SetTreeModule_add(comparer, k, t1);
+    }
+  } else {
+    return SetTreeModule_add(comparer, k, t2);
+  }
+}
+function SetTreeModule_split(comparer, pivot, t) {
+  if (t != null) {
+    const t2 = value(t);
+    if (t2 instanceof SetTreeNode$1) {
+      const tn = t2;
+      const c = comparer.Compare(pivot, SetTreeLeaf$1__get_Key(tn)) | 0;
+      if (c < 0) {
+        const patternInput = SetTreeModule_split(comparer, pivot, SetTreeNode$1__get_Left(tn));
+        return [patternInput[0], patternInput[1], SetTreeModule_balance(comparer, patternInput[2], SetTreeLeaf$1__get_Key(tn), SetTreeNode$1__get_Right(tn))];
+      } else if (c === 0) {
+        return [SetTreeNode$1__get_Left(tn), true, SetTreeNode$1__get_Right(tn)];
+      } else {
+        const patternInput_1 = SetTreeModule_split(comparer, pivot, SetTreeNode$1__get_Right(tn));
+        return [SetTreeModule_balance(comparer, SetTreeNode$1__get_Left(tn), SetTreeLeaf$1__get_Key(tn), patternInput_1[0]), patternInput_1[1], patternInput_1[2]];
+      }
+    } else {
+      const c_1 = comparer.Compare(SetTreeLeaf$1__get_Key(t2), pivot) | 0;
+      if (c_1 < 0) {
+        return [t, false, SetTreeModule_empty()];
+      } else if (c_1 === 0) {
+        return [SetTreeModule_empty(), true, SetTreeModule_empty()];
+      } else {
+        return [SetTreeModule_empty(), false, t];
+      }
+    }
+  } else {
+    return [SetTreeModule_empty(), false, SetTreeModule_empty()];
+  }
+}
 function SetTreeModule_mem(comparer_mut, k_mut, t_mut) {
   SetTreeModule_mem: while (true) {
     const comparer = comparer_mut, k = k_mut, t = t_mut;
@@ -3190,6 +3248,35 @@ function SetTreeModule_iter(f_mut, t_mut) {
       }
     }
     break;
+  }
+}
+function SetTreeModule_union(comparer, t1, t2) {
+  if (t1 != null) {
+    const t1$0027 = value(t1);
+    if (t2 != null) {
+      const t2$0027 = value(t2);
+      if (t1$0027 instanceof SetTreeNode$1) {
+        const t1n = t1$0027;
+        if (t2$0027 instanceof SetTreeNode$1) {
+          const t2n = t2$0027;
+          if (SetTreeNode$1__get_Height(t1n) > SetTreeNode$1__get_Height(t2n)) {
+            const patternInput = SetTreeModule_split(comparer, SetTreeLeaf$1__get_Key(t1n), t2);
+            return SetTreeModule_balance(comparer, SetTreeModule_union(comparer, SetTreeNode$1__get_Left(t1n), patternInput[0]), SetTreeLeaf$1__get_Key(t1n), SetTreeModule_union(comparer, SetTreeNode$1__get_Right(t1n), patternInput[2]));
+          } else {
+            const patternInput_1 = SetTreeModule_split(comparer, SetTreeLeaf$1__get_Key(t2n), t1);
+            return SetTreeModule_balance(comparer, SetTreeModule_union(comparer, SetTreeNode$1__get_Left(t2n), patternInput_1[0]), SetTreeLeaf$1__get_Key(t2n), SetTreeModule_union(comparer, SetTreeNode$1__get_Right(t2n), patternInput_1[2]));
+          }
+        } else {
+          return SetTreeModule_add(comparer, SetTreeLeaf$1__get_Key(t2$0027), t1);
+        }
+      } else {
+        return SetTreeModule_add(comparer, SetTreeLeaf$1__get_Key(t1$0027), t2);
+      }
+    } else {
+      return t1;
+    }
+  } else {
+    return t2;
   }
 }
 var SetTreeModule_SetIterator$1 = class extends Record {
@@ -3871,6 +3958,15 @@ function FSharpSet__get_Count(s) {
 function FSharpSet__Contains(s, value2) {
   return SetTreeModule_mem(FSharpSet__get_Comparer(s), value2, FSharpSet__get_Tree(s));
 }
+function FSharpSet_op_Addition(set1, set2) {
+  if (FSharpSet__get_Tree(set2) == null) {
+    return set1;
+  } else if (FSharpSet__get_Tree(set1) == null) {
+    return set2;
+  } else {
+    return FSharpSet_$ctor(FSharpSet__get_Comparer(set1), SetTreeModule_union(FSharpSet__get_Comparer(set1), FSharpSet__get_Tree(set1), FSharpSet__get_Tree(set2)));
+  }
+}
 function FSharpSet__ToList(x) {
   return SetTreeModule_toList(FSharpSet__get_Tree(x));
 }
@@ -3892,6 +3988,12 @@ function contains2(element, set$) {
 }
 function add(value2, set$) {
   return FSharpSet__Add(set$, value2);
+}
+function singleton4(value2, comparer) {
+  return FSharpSet__Add(FSharpSet_Empty(comparer), value2);
+}
+function union(set1, set2) {
+  return FSharpSet_op_Addition(set1, set2);
 }
 function empty3(comparer) {
   return FSharpSet_Empty(comparer);
@@ -4562,9 +4664,9 @@ function resolve(defs, formula) {
           case 1:
             return f;
           case 2:
-            return new Formula(2, [go(seen, f.fields[0])]);
+            return f;
           case 3:
-            return new Formula(3, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
+            return new Formula(3, [go(seen, f.fields[0])]);
           case 4:
             return new Formula(4, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
           case 5:
@@ -4574,9 +4676,15 @@ function resolve(defs, formula) {
           case 7:
             return new Formula(7, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
           case 8:
-            return new Formula(8, [go(seen, f.fields[0])]);
+            return new Formula(8, [go(seen, f.fields[0]), go(seen, f.fields[1])]);
           case 9:
             return new Formula(9, [go(seen, f.fields[0])]);
+          case 10:
+            return new Formula(10, [go(seen, f.fields[0])]);
+          case 11:
+            return new Formula(11, [f.fields[0], go(seen, f.fields[1])]);
+          case 12:
+            return new Formula(12, [f.fields[0], go(seen, f.fields[1])]);
           default:
             if (!contains2(f.fields[0], seen)) {
               const matchValue = tryFind2(f.fields[0], defs);
@@ -4596,7 +4704,7 @@ function resolve(defs, formula) {
       }
   };
   return go(empty3({
-    Compare: (x, y) => comparePrimitives(x, y) | 0
+    Compare: (x_2, y) => comparePrimitives(x_2, y) | 0
   }), formula);
 }
 function atoms(f) {
@@ -4612,45 +4720,59 @@ function atoms(f) {
           }
           case 2: {
             matchResult = 2;
-            a = f_1.fields[0];
-            break;
-          }
-          case 8: {
-            matchResult = 2;
-            a = f_1.fields[0];
-            break;
-          }
-          case 9: {
-            matchResult = 2;
-            a = f_1.fields[0];
             break;
           }
           case 3: {
             matchResult = 3;
-            a_1 = f_1.fields[0];
-            b = f_1.fields[1];
+            a = f_1.fields[0];
+            break;
+          }
+          case 9: {
+            matchResult = 3;
+            a = f_1.fields[0];
+            break;
+          }
+          case 10: {
+            matchResult = 3;
+            a = f_1.fields[0];
+            break;
+          }
+          case 11: {
+            matchResult = 3;
+            a = f_1.fields[1];
+            break;
+          }
+          case 12: {
+            matchResult = 3;
+            a = f_1.fields[1];
             break;
           }
           case 4: {
-            matchResult = 3;
+            matchResult = 4;
             a_1 = f_1.fields[0];
             b = f_1.fields[1];
             break;
           }
           case 5: {
-            matchResult = 3;
+            matchResult = 4;
             a_1 = f_1.fields[0];
             b = f_1.fields[1];
             break;
           }
           case 6: {
-            matchResult = 3;
+            matchResult = 4;
             a_1 = f_1.fields[0];
             b = f_1.fields[1];
             break;
           }
           case 7: {
-            matchResult = 3;
+            matchResult = 4;
+            a_1 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          case 8: {
+            matchResult = 4;
             a_1 = f_1.fields[0];
             b = f_1.fields[1];
             break;
@@ -4672,7 +4794,9 @@ function atoms(f) {
           }
           case 1:
             return acc;
-          case 2: {
+          case 2:
+            return acc;
+          case 3: {
             f_1_mut = a;
             acc_mut = acc;
             continue go;
@@ -4692,44 +4816,58 @@ function eval$(env_mut, f_mut) {
   eval$:
     while (true) {
       const env = env_mut, f = f_mut;
-      let matchResult, a_6;
+      let matchResult, a_6, a_7;
       switch (f.tag) {
-        case 1: {
+        case 2: {
           matchResult = 1;
           break;
         }
-        case 2: {
+        case 3: {
           matchResult = 2;
           break;
         }
-        case 3: {
+        case 4: {
           matchResult = 3;
           break;
         }
-        case 4: {
+        case 5: {
           matchResult = 4;
           break;
         }
-        case 5: {
+        case 6: {
           matchResult = 5;
           break;
         }
-        case 6: {
+        case 7: {
           matchResult = 6;
           break;
         }
-        case 7: {
-          matchResult = 7;
-          break;
-        }
         case 8: {
-          matchResult = 8;
-          a_6 = f.fields[0];
+          matchResult = 7;
           break;
         }
         case 9: {
           matchResult = 8;
           a_6 = f.fields[0];
+          break;
+        }
+        case 10: {
+          matchResult = 8;
+          a_6 = f.fields[0];
+          break;
+        }
+        case 1: {
+          matchResult = 9;
+          break;
+        }
+        case 11: {
+          matchResult = 10;
+          a_7 = f.fields[1];
+          break;
+        }
+        case 12: {
+          matchResult = 10;
+          a_7 = f.fields[1];
           break;
         }
         default:
@@ -4770,9 +4908,16 @@ function eval$(env_mut, f_mut) {
           }
         case 7:
           return eval$(env, f.fields[0]) === eval$(env, f.fields[1]);
-        default: {
+        case 8: {
           env_mut = env;
           f_mut = a_6;
+          continue eval$;
+        }
+        case 9:
+          return false;
+        default: {
+          env_mut = env;
+          f_mut = a_7;
           continue eval$;
         }
       }
@@ -4813,21 +4958,26 @@ function containsModal(f_mut) {
   containsModal:
     while (true) {
       const f = f_mut;
-      let matchResult, a_1, b;
+      let matchResult, a, a_1, b;
       switch (f.tag) {
-        case 8:
-        case 9: {
+        case 9:
+        case 10: {
           matchResult = 1;
           break;
         }
-        case 2: {
+        case 3: {
           matchResult = 2;
+          a = f.fields[0];
           break;
         }
-        case 3: {
-          matchResult = 3;
-          a_1 = f.fields[0];
-          b = f.fields[1];
+        case 11: {
+          matchResult = 2;
+          a = f.fields[1];
+          break;
+        }
+        case 12: {
+          matchResult = 2;
+          a = f.fields[1];
           break;
         }
         case 4: {
@@ -4849,6 +4999,12 @@ function containsModal(f_mut) {
           break;
         }
         case 7: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 8: {
           matchResult = 3;
           a_1 = f.fields[0];
           b = f.fields[1];
@@ -4863,7 +5019,7 @@ function containsModal(f_mut) {
         case 1:
           return true;
         case 2: {
-          f_mut = f.fields[0];
+          f_mut = a;
           continue containsModal;
         }
         default:
@@ -4877,30 +5033,114 @@ function containsModal(f_mut) {
       break;
     }
 }
+function containsFO(f_mut) {
+  containsFO:
+    while (true) {
+      const f = f_mut;
+      let matchResult, a, a_1, b;
+      switch (f.tag) {
+        case 0:
+        case 2: {
+          matchResult = 1;
+          break;
+        }
+        case 3: {
+          matchResult = 2;
+          a = f.fields[0];
+          break;
+        }
+        case 9: {
+          matchResult = 2;
+          a = f.fields[0];
+          break;
+        }
+        case 10: {
+          matchResult = 2;
+          a = f.fields[0];
+          break;
+        }
+        case 4: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 5: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 6: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 7: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 8: {
+          matchResult = 3;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return true;
+        case 1:
+          return false;
+        case 2: {
+          f_mut = a;
+          continue containsFO;
+        }
+        default:
+          if (containsFO(a_1)) {
+            return true;
+          } else {
+            f_mut = b;
+            continue containsFO;
+          }
+      }
+      break;
+    }
+}
 function modalOps(f_mut) {
   modalOps:
     while (true) {
       const f = f_mut;
-      let matchResult, a, a_2, b;
+      let matchResult, a, a_1, a_2, b;
       switch (f.tag) {
-        case 8: {
-          matchResult = 1;
-          a = f.fields[0];
-          break;
-        }
         case 9: {
           matchResult = 1;
           a = f.fields[0];
           break;
         }
-        case 2: {
-          matchResult = 2;
+        case 10: {
+          matchResult = 1;
+          a = f.fields[0];
           break;
         }
         case 3: {
-          matchResult = 3;
-          a_2 = f.fields[0];
-          b = f.fields[1];
+          matchResult = 2;
+          a_1 = f.fields[0];
+          break;
+        }
+        case 11: {
+          matchResult = 2;
+          a_1 = f.fields[1];
+          break;
+        }
+        case 12: {
+          matchResult = 2;
+          a_1 = f.fields[1];
           break;
         }
         case 4: {
@@ -4927,6 +5167,12 @@ function modalOps(f_mut) {
           b = f.fields[1];
           break;
         }
+        case 8: {
+          matchResult = 3;
+          a_2 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
         default:
           matchResult = 0;
       }
@@ -4936,7 +5182,7 @@ function modalOps(f_mut) {
         case 1:
           return 1 + modalOps(a) | 0;
         case 2: {
-          f_mut = f.fields[0];
+          f_mut = a_1;
           continue modalOps;
         }
         default:
@@ -4949,7 +5195,64 @@ function evalS5(model_mut, w_mut, f_mut) {
   evalS5:
     while (true) {
       const model = model_mut, w = w_mut, f = f_mut;
+      let matchResult, a_8;
       switch (f.tag) {
+        case 2: {
+          matchResult = 1;
+          break;
+        }
+        case 3: {
+          matchResult = 2;
+          break;
+        }
+        case 4: {
+          matchResult = 3;
+          break;
+        }
+        case 5: {
+          matchResult = 4;
+          break;
+        }
+        case 6: {
+          matchResult = 5;
+          break;
+        }
+        case 7: {
+          matchResult = 6;
+          break;
+        }
+        case 8: {
+          matchResult = 7;
+          break;
+        }
+        case 9: {
+          matchResult = 8;
+          break;
+        }
+        case 10: {
+          matchResult = 9;
+          break;
+        }
+        case 1: {
+          matchResult = 10;
+          break;
+        }
+        case 11: {
+          matchResult = 11;
+          a_8 = f.fields[1];
+          break;
+        }
+        case 12: {
+          matchResult = 11;
+          a_8 = f.fields[1];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return defaultArg(tryFind2(f.fields[0], w), false);
         case 1:
           return f.fields[0];
         case 2:
@@ -4989,8 +5292,14 @@ function evalS5(model_mut, w_mut, f_mut) {
           return forAll2((v) => evalS5(model, v, f.fields[0]), model);
         case 9:
           return exists2((v_1) => evalS5(model, v_1, f.fields[0]), model);
-        default:
-          return defaultArg(tryFind2(f.fields[0], w), false);
+        case 10:
+          return false;
+        default: {
+          model_mut = model;
+          w_mut = w;
+          f_mut = a_8;
+          continue evalS5;
+        }
       }
       break;
     }
@@ -5096,7 +5405,7 @@ function s5Satisfy(f) {
   }
 }
 function s5Valid(f) {
-  const matchValue = s5Satisfy(new Formula(2, [f]));
+  const matchValue = s5Satisfy(new Formula(3, [f]));
   switch (matchValue.tag) {
     case 1:
       return false;
@@ -5106,24 +5415,515 @@ function s5Valid(f) {
       return true;
   }
 }
+var FOModel = class extends Record {
+  constructor(Size, Constants, Extensions) {
+    super();
+    this.Size = Size | 0;
+    this.Constants = Constants;
+    this.Extensions = Extensions;
+  }
+};
+function signatures(f_mut) {
+  signatures:
+    while (true) {
+      const f = f_mut;
+      let matchResult, a, a_1, b;
+      switch (f.tag) {
+        case 1: {
+          matchResult = 1;
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        case 3: {
+          matchResult = 3;
+          a = f.fields[0];
+          break;
+        }
+        case 9: {
+          matchResult = 3;
+          a = f.fields[0];
+          break;
+        }
+        case 10: {
+          matchResult = 3;
+          a = f.fields[0];
+          break;
+        }
+        case 11: {
+          matchResult = 3;
+          a = f.fields[1];
+          break;
+        }
+        case 12: {
+          matchResult = 3;
+          a = f.fields[1];
+          break;
+        }
+        case 4: {
+          matchResult = 4;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 5: {
+          matchResult = 4;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 6: {
+          matchResult = 4;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 7: {
+          matchResult = 4;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        case 8: {
+          matchResult = 4;
+          a_1 = f.fields[0];
+          b = f.fields[1];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return singleton4([f.fields[0], 0], {
+            Compare: (x, y) => compareArrays(x, y) | 0
+          });
+        case 1:
+          return singleton4([f.fields[0], length(f.fields[1])], {
+            Compare: (x_1, y_1) => compareArrays(x_1, y_1) | 0
+          });
+        case 2:
+          return empty3({
+            Compare: (x_2, y_2) => compareArrays(x_2, y_2) | 0
+          });
+        case 3: {
+          f_mut = a;
+          continue signatures;
+        }
+        default:
+          return union(signatures(a_1), signatures(b));
+      }
+      break;
+    }
+}
+function freeConstants(f) {
+  const go = (bound_mut, f_1_mut) => {
+    go:
+      while (true) {
+        const bound = bound_mut, f_1 = f_1_mut;
+        let matchResult, a, a_1, x_2, a_2, b;
+        switch (f_1.tag) {
+          case 0:
+          case 2: {
+            matchResult = 1;
+            break;
+          }
+          case 3: {
+            matchResult = 2;
+            a = f_1.fields[0];
+            break;
+          }
+          case 9: {
+            matchResult = 2;
+            a = f_1.fields[0];
+            break;
+          }
+          case 10: {
+            matchResult = 2;
+            a = f_1.fields[0];
+            break;
+          }
+          case 11: {
+            matchResult = 3;
+            a_1 = f_1.fields[1];
+            x_2 = f_1.fields[0];
+            break;
+          }
+          case 12: {
+            matchResult = 3;
+            a_1 = f_1.fields[1];
+            x_2 = f_1.fields[0];
+            break;
+          }
+          case 4: {
+            matchResult = 4;
+            a_2 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          case 5: {
+            matchResult = 4;
+            a_2 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          case 6: {
+            matchResult = 4;
+            a_2 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          case 7: {
+            matchResult = 4;
+            a_2 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          case 8: {
+            matchResult = 4;
+            a_2 = f_1.fields[0];
+            b = f_1.fields[1];
+            break;
+          }
+          default:
+            matchResult = 0;
+        }
+        switch (matchResult) {
+          case 0:
+            return ofList(filter2((t) => !contains2(t, bound), f_1.fields[1]), {
+              Compare: (x, y) => comparePrimitives(x, y) | 0
+            });
+          case 1:
+            return empty3({
+              Compare: (x_1, y_1) => comparePrimitives(x_1, y_1) | 0
+            });
+          case 2: {
+            bound_mut = bound;
+            f_1_mut = a;
+            continue go;
+          }
+          case 3: {
+            bound_mut = add(x_2, bound);
+            f_1_mut = a_1;
+            continue go;
+          }
+          default:
+            return union(go(bound, a_2), go(bound, b));
+        }
+        break;
+      }
+  };
+  return toList2(go(empty3({
+    Compare: (x_3, y_2) => comparePrimitives(x_3, y_2) | 0
+  }), f));
+}
+function evalFO(m_mut, env_mut, f_mut) {
+  evalFO:
+    while (true) {
+      const m = m_mut, env = env_mut, f = f_mut;
+      const holds = (name, tuple) => defaultArg(map((set$) => contains2(tuple, set$), tryFind2(name, m.Extensions)), false);
+      let matchResult, a_8;
+      switch (f.tag) {
+        case 0: {
+          matchResult = 1;
+          break;
+        }
+        case 1: {
+          matchResult = 2;
+          break;
+        }
+        case 3: {
+          matchResult = 3;
+          break;
+        }
+        case 4: {
+          matchResult = 4;
+          break;
+        }
+        case 5: {
+          matchResult = 5;
+          break;
+        }
+        case 6: {
+          matchResult = 6;
+          break;
+        }
+        case 7: {
+          matchResult = 7;
+          break;
+        }
+        case 8: {
+          matchResult = 8;
+          break;
+        }
+        case 11: {
+          matchResult = 9;
+          break;
+        }
+        case 12: {
+          matchResult = 10;
+          break;
+        }
+        case 9: {
+          matchResult = 11;
+          a_8 = f.fields[0];
+          break;
+        }
+        case 10: {
+          matchResult = 11;
+          a_8 = f.fields[0];
+          break;
+        }
+        default:
+          matchResult = 0;
+      }
+      switch (matchResult) {
+        case 0:
+          return f.fields[0];
+        case 1:
+          return holds(f.fields[0], empty2());
+        case 2:
+          return holds(f.fields[0], map4((t) => {
+            const matchValue = tryFind2(t, env);
+            if (matchValue == null) {
+              return defaultArg(tryFind2(t, m.Constants), 0) | 0;
+            } else {
+              return matchValue | 0;
+            }
+          }, f.fields[1]));
+        case 3:
+          return !evalFO(m, env, f.fields[0]);
+        case 4:
+          if (evalFO(m, env, f.fields[0])) {
+            m_mut = m;
+            env_mut = env;
+            f_mut = f.fields[1];
+            continue evalFO;
+          } else {
+            return false;
+          }
+        case 5:
+          if (evalFO(m, env, f.fields[0])) {
+            return true;
+          } else {
+            m_mut = m;
+            env_mut = env;
+            f_mut = f.fields[1];
+            continue evalFO;
+          }
+        case 6:
+          return evalFO(m, env, f.fields[0]) !== evalFO(m, env, f.fields[1]);
+        case 7:
+          if (!evalFO(m, env, f.fields[0])) {
+            return true;
+          } else {
+            m_mut = m;
+            env_mut = env;
+            f_mut = f.fields[1];
+            continue evalFO;
+          }
+        case 8:
+          return evalFO(m, env, f.fields[0]) === evalFO(m, env, f.fields[1]);
+        case 9:
+          return forAll2((e_1) => evalFO(m, add2(f.fields[0], e_1, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
+        case 10:
+          return exists2((e_2) => evalFO(m, add2(f.fields[0], e_2, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
+        default: {
+          m_mut = m;
+          env_mut = env;
+          f_mut = a_8;
+          continue evalFO;
+        }
+      }
+      break;
+    }
+}
+var FOSearch = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["FONoModel", "FOModelFound", "FOTooLarge"];
+  }
+};
+function foSatisfy(f) {
+  const sigs = toList2(signatures(f));
+  const consts = freeConstants(f);
+  let budget = 3e5;
+  let truncated = false;
+  const search = (size_2_mut) => {
+    search:
+      while (true) {
+        const size_2 = size_2_mut;
+        if (size_2 > 4) {
+          if (truncated) {
+            return new FOSearch(2, []);
+          } else {
+            return new FOSearch(0, []);
+          }
+        } else {
+          let matchValue_2;
+          const size_1 = size_2 | 0;
+          const predTuples = map4((tupledArg) => {
+            let go;
+            return [tupledArg[0], (go = (k_1) => {
+              if (k_1 === 0) {
+                return singleton3(empty2());
+              } else {
+                return toList(delay(() => collect((tail2) => map3((e) => cons(e, tail2), rangeDouble(0, 1, size_1 - 1)), go(k_1 - 1))));
+              }
+            }, go(tupledArg[1]))];
+          }, sigs);
+          const chooseExt = (remaining) => (ext) => {
+            if (!isEmpty(remaining)) {
+              const tuples = head(remaining)[1];
+              const n_1 = length(tuples) | 0;
+              const count = Math.pow(2, n_1) | 0;
+              const loop = (mask_mut) => {
+                loop:
+                  while (true) {
+                    const mask = mask_mut;
+                    if (mask >= count) {
+                      return new FOSearch(0, []);
+                    } else {
+                      const matchValue = chooseExt(tail(remaining))(add2(head(remaining)[0], ofList(toList(delay(() => collect((i) => (mask >> i & 1) === 1 ? singleton2(item2(i, tuples)) : empty(), rangeDouble(0, 1, n_1 - 1)))), {
+                        Compare: (x_1, y_1) => compare(x_1, y_1) | 0
+                      }), ext));
+                      if (matchValue.tag === 0) {
+                        mask_mut = mask + 1;
+                        continue loop;
+                      } else {
+                        return matchValue;
+                      }
+                    }
+                    break;
+                  }
+              };
+              return loop(0);
+            } else {
+              return chooseConsts(consts)(empty4({
+                Compare: (x, y) => comparePrimitives(x, y) | 0
+              }))(ext);
+            }
+          };
+          const chooseConsts = (remaining_1) => (assigned) => (ext_1) => {
+            if (!isEmpty(remaining_1)) {
+              const loop_1 = (e_1_mut) => {
+                loop_1:
+                  while (true) {
+                    const e_1 = e_1_mut;
+                    if (e_1 >= size_1) {
+                      return new FOSearch(0, []);
+                    } else {
+                      const matchValue_1 = chooseConsts(tail(remaining_1))(add2(head(remaining_1), e_1, assigned))(ext_1);
+                      if (matchValue_1.tag === 0) {
+                        e_1_mut = e_1 + 1;
+                        continue loop_1;
+                      } else {
+                        return matchValue_1;
+                      }
+                    }
+                    break;
+                  }
+              };
+              return loop_1(0);
+            } else {
+              budget = budget - 1 | 0;
+              if (budget <= 0) {
+                truncated = true;
+                return new FOSearch(2, []);
+              } else {
+                const model = new FOModel(size_1, assigned, ext_1);
+                return evalFO(model, empty4({
+                  Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
+                }), f) ? new FOSearch(1, [model]) : new FOSearch(0, []);
+              }
+            }
+          };
+          matchValue_2 = chooseExt(predTuples)(empty4({
+            Compare: (x_3, y_3) => comparePrimitives(x_3, y_3) | 0
+          }));
+          if (matchValue_2.tag === 0) {
+            size_2_mut = size_2 + 1;
+            continue search;
+          } else {
+            return matchValue_2;
+          }
+        }
+        break;
+      }
+  };
+  return search(1);
+}
 function valid(f) {
-  if (containsModal(f)) {
+  if (containsFO(f)) {
+    const matchValue = foSatisfy(new Formula(3, [f]));
+    switch (matchValue.tag) {
+      case 1:
+        return false;
+      case 2:
+        return void 0;
+      default:
+        return true;
+    }
+  } else if (containsModal(f)) {
     return s5Valid(f);
   } else {
     return equals(truthTable(f).Verdict, new Verdict(0, []));
   }
 }
+function checkArgumentFO(premises, conclusion) {
+  return foSatisfy(fold3((acc, p) => new Formula(4, [acc, p]), new Formula(3, [conclusion]), premises));
+}
+function describeModel(m, f) {
+  const elem = (i) => String.fromCharCode(~~"a".charCodeAt(0) + i & 65535);
+  return append(singleton3("domain = { " + join(", ", toList(delay(() => map3(elem, rangeDouble(0, 1, m.Size - 1))))) + " }"), append(map4((c) => c + " = " + elem(defaultArg(tryFind2(c, m.Constants), 0)), freeConstants(f)), map4((tupledArg) => {
+    const name = tupledArg[0];
+    const ext = defaultArg(tryFind2(name, m.Extensions), empty3({
+      Compare: (x_1, y_1) => compare(x_1, y_1) | 0
+    }));
+    if (tupledArg[1] === 0) {
+      return name + " = " + (contains2(empty2(), ext) ? "true" : "false");
+    } else {
+      return name + " = { " + join(", ", map4((t) => {
+        let matchResult, x_2;
+        if (!isEmpty(t)) {
+          if (isEmpty(tail(t))) {
+            matchResult = 0;
+            x_2 = head(t);
+          } else {
+            matchResult = 1;
+          }
+        } else {
+          matchResult = 1;
+        }
+        switch (matchResult) {
+          case 0:
+            return elem(x_2);
+          default:
+            return "(" + join(", ", map4(elem, t)) + ")";
+        }
+      }, toList2(ext))) + " }";
+    }
+  }, sortBy((tuple) => tuple[0], toList2(signatures(f)), {
+    Compare: (x, y) => comparePrimitives(x, y) | 0
+  }))));
+}
 function equivalent2(a, b) {
-  return valid(new Formula(7, [a, b]));
+  return valid(new Formula(8, [a, b]));
 }
 function equivalent(a, b) {
-  return equals(truthTable(new Formula(7, [a, b])).Verdict, new Verdict(0, []));
+  return equals(truthTable(new Formula(8, [a, b])).Verdict, new Verdict(0, []));
 }
 function checkArgumentS5(premises, conclusion) {
-  return s5Satisfy(fold3((acc, p) => new Formula(3, [acc, p]), new Formula(2, [conclusion]), premises));
+  return s5Satisfy(fold3((acc, p) => new Formula(4, [acc, p]), new Formula(3, [conclusion]), premises));
 }
 function distinguishing(a, b) {
-  return tryFind((env) => eval$(env, a) !== eval$(env, b), assignments(atoms(new Formula(7, [a, b]))));
+  return tryFind((env) => eval$(env, a) !== eval$(env, b), assignments(atoms(new Formula(8, [a, b]))));
 }
 var ArgumentCheck = class extends Record {
   constructor(Atoms, Counterexamples, IsValid) {
@@ -5165,17 +5965,17 @@ var Relation = class extends Union {
 };
 function relate(a, b) {
   const holds = (f) => equals(valid(f), true);
-  if (holds(new Formula(7, [a, b]))) {
+  if (holds(new Formula(8, [a, b]))) {
     return new Relation(0, []);
-  } else if (holds(new Formula(7, [a, new Formula(2, [b])]))) {
+  } else if (holds(new Formula(8, [a, new Formula(3, [b])]))) {
     return new Relation(1, []);
-  } else if (holds(new Formula(2, [new Formula(3, [a, b])]))) {
+  } else if (holds(new Formula(3, [new Formula(4, [a, b])]))) {
     return new Relation(2, []);
-  } else if (holds(new Formula(4, [a, b]))) {
+  } else if (holds(new Formula(5, [a, b]))) {
     return new Relation(3, []);
-  } else if (holds(new Formula(6, [a, b]))) {
+  } else if (holds(new Formula(7, [a, b]))) {
     return new Relation(4, []);
-  } else if (holds(new Formula(6, [b, a]))) {
+  } else if (holds(new Formula(7, [b, a]))) {
     return new Relation(5, []);
   } else {
     return new Relation(6, []);
@@ -5298,20 +6098,23 @@ function isLower2(s, index) {
 // src/core/Render.js
 function precedence(f) {
   switch (f.tag) {
-    case 2:
-    case 8:
-    case 9:
-      return 90;
     case 3:
-      return 80;
+    case 9:
+    case 10:
+      return 90;
     case 4:
-      return 70;
+      return 80;
     case 5:
-      return 60;
+      return 70;
     case 6:
-      return 50;
+      return 60;
     case 7:
+      return 50;
+    case 8:
       return 40;
+    case 11:
+    case 12:
+      return 20;
     default:
       return 100;
   }
@@ -5321,7 +6124,7 @@ function toUnicode(formula) {
     const parentPrec = precedence(f) | 0;
     const wrap = (onLeft, child) => {
       const childPrec = precedence(child) | 0;
-      if (childPrec < parentPrec ? true : childPrec === parentPrec && (f.tag === 6 ? onLeft : !onLeft)) {
+      if (childPrec < parentPrec ? true : childPrec === parentPrec && (f.tag === 7 ? onLeft : !onLeft)) {
         return "(" + go(child) + ")";
       } else {
         return go(child);
@@ -5329,26 +6132,36 @@ function toUnicode(formula) {
     };
     switch (f.tag) {
       case 1:
+        if (isEmpty(f.fields[1])) {
+          return f.fields[0];
+        } else {
+          return f.fields[0] + "(" + join(", ", f.fields[1]) + ")";
+        }
+      case 2:
         if (f.fields[0]) {
           return "\u22A4";
         } else {
           return "\u22A5";
         }
-      case 2:
-        return "\xAC" + wrap(true, f.fields[0]);
-      case 8:
-        return "\u25A1" + wrap(true, f.fields[0]);
-      case 9:
-        return "\u25C7" + wrap(true, f.fields[0]);
       case 3:
-        return wrap(true, f.fields[0]) + " \u2227 " + wrap(false, f.fields[1]);
+        return "\xAC" + wrap(true, f.fields[0]);
+      case 9:
+        return "\u25A1" + wrap(true, f.fields[0]);
+      case 10:
+        return "\u25C7" + wrap(true, f.fields[0]);
+      case 11:
+        return "\u2200" + f.fields[0] + ". " + wrap(false, f.fields[1]);
+      case 12:
+        return "\u2203" + f.fields[0] + ". " + wrap(false, f.fields[1]);
       case 4:
-        return wrap(true, f.fields[0]) + " \u2228 " + wrap(false, f.fields[1]);
+        return wrap(true, f.fields[0]) + " \u2227 " + wrap(false, f.fields[1]);
       case 5:
-        return wrap(true, f.fields[0]) + " \u2295 " + wrap(false, f.fields[1]);
+        return wrap(true, f.fields[0]) + " \u2228 " + wrap(false, f.fields[1]);
       case 6:
-        return wrap(true, f.fields[0]) + " \u2192 " + wrap(false, f.fields[1]);
+        return wrap(true, f.fields[0]) + " \u2295 " + wrap(false, f.fields[1]);
       case 7:
+        return wrap(true, f.fields[0]) + " \u2192 " + wrap(false, f.fields[1]);
+      case 8:
         return wrap(true, f.fields[0]) + " \u2194 " + wrap(false, f.fields[1]);
       default:
         return f.fields[0];
@@ -5357,38 +6170,51 @@ function toUnicode(formula) {
   return go(formula);
 }
 function toEnglish(glossOf, formula) {
+  const soften = (s) => {
+    if (s.length >= 2 && isUpper(s[0]) && isLower(s[1])) {
+      return s[0].toLocaleLowerCase() + substring(s, 1);
+    } else {
+      return s;
+    }
+  };
   const go = (f) => {
     switch (f.tag) {
       case 1:
+        if (isEmpty(f.fields[1])) {
+          return defaultArg(map(soften, glossOf(f.fields[0])), f.fields[0]);
+        } else if (isEmpty(tail(f.fields[1]))) {
+          return head(f.fields[1]) + " is " + f.fields[0];
+        } else {
+          return f.fields[0] + " holds of " + join(", ", f.fields[1]);
+        }
+      case 2:
         if (f.fields[0]) {
           return "true";
         } else {
           return "false";
         }
-      case 2:
-        return "it is not the case that " + go(f.fields[0]);
-      case 8:
-        return "it is necessary that " + go(f.fields[0]);
-      case 9:
-        return "it is possible that " + go(f.fields[0]);
       case 3:
-        return "both " + go(f.fields[0]) + ", and " + go(f.fields[1]);
+        return "it is not the case that " + go(f.fields[0]);
+      case 9:
+        return "it is necessary that " + go(f.fields[0]);
+      case 10:
+        return "it is possible that " + go(f.fields[0]);
+      case 11:
+        return "for every " + f.fields[0] + ", " + go(f.fields[1]);
+      case 12:
+        return "for some " + f.fields[0] + ", " + go(f.fields[1]);
       case 4:
-        return "either " + go(f.fields[0]) + ", or " + go(f.fields[1]);
+        return "both " + go(f.fields[0]) + ", and " + go(f.fields[1]);
       case 5:
-        return "either " + go(f.fields[0]) + " or " + go(f.fields[1]) + ", but not both";
+        return "either " + go(f.fields[0]) + ", or " + go(f.fields[1]);
       case 6:
-        return "if " + go(f.fields[0]) + ", then " + go(f.fields[1]);
+        return "either " + go(f.fields[0]) + " or " + go(f.fields[1]) + ", but not both";
       case 7:
+        return "if " + go(f.fields[0]) + ", then " + go(f.fields[1]);
+      case 8:
         return go(f.fields[0]) + " exactly when " + go(f.fields[1]);
       default:
-        return defaultArg(map((s) => {
-          if (s.length >= 2 && isUpper(s[0]) && isLower(s[1])) {
-            return s[0].toLocaleLowerCase() + substring(s, 1);
-          } else {
-            return s;
-          }
-        }, glossOf(f.fields[0])), f.fields[0]);
+        return defaultArg(map(soften, glossOf(f.fields[0])), f.fields[0]);
     }
   };
   const sentence = go(formula);
@@ -5437,7 +6263,7 @@ var \u03C6 = new Formula(0, ["\u03C6"]);
 var \u03C8 = new Formula(0, ["\u03C8"]);
 var \u03C7 = new Formula(0, ["\u03C7"]);
 var \u03C9 = new Formula(0, ["\u03C9"]);
-var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C8])]), new Formula(2, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C8, \u03C7])]), new Formula(6, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [\u03C6, \u03C7])]), new Formula(4, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(4, [\u03C6, \u03C8]), new Formula(6, [\u03C6, \u03C7]), new Formula(6, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(6, [\u03C7, \u03C9]), new Formula(4, [new Formula(2, [\u03C8]), new Formula(2, [\u03C9])])]), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(6, [\u03C6, new Formula(3, [\u03C6, \u03C8])])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(3, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(3, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(2, [new Formula(2, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(2, [new Formula(2, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(3, [\u03C6, \u03C8])])), new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(2, [new Formula(4, [\u03C6, \u03C8])])), new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(3, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(2, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [new Formula(2, [\u03C8]), new Formula(2, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(6, [new Formula(2, [\u03C6]), new Formula(2, [\u03C8])])), new Formula(6, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(4, [new Formula(2, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(4, [new Formula(2, [\u03C6]), \u03C8])), new Formula(6, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7])), new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(6, [\u03C6, new Formula(6, [\u03C8, \u03C7])])), new Formula(6, [new Formula(3, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(4, [\u03C6, new Formula(2, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(2, [new Formula(3, [\u03C6, new Formula(2, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("axiom-t", "axiom T", "necessity elimination", singleton3(new Formula(8, [\u03C6])), \u03C6, new FormKind(0, []), "What is necessary is actually so."), new ArgumentForm("possibility-intro", "possibility introduction", "", singleton3(\u03C6), new Formula(9, [\u03C6]), new FormKind(0, []), "What is actually so is possible."), new ArgumentForm("k-distribution", "K distribution", "", ofArray([new Formula(8, [new Formula(6, [\u03C6, \u03C8])]), new Formula(8, [\u03C6])]), new Formula(8, [\u03C8]), new FormKind(0, []), "Necessity distributes over implication: a necessary if\u2013then with a necessary if gives a necessary then."), new ArgumentForm("axiom-4", "axiom 4", "", singleton3(new Formula(8, [\u03C6])), new Formula(8, [new Formula(8, [\u03C6])]), new FormKind(0, []), "What is necessary is necessarily necessary."), new ArgumentForm("axiom-5", "axiom 5", "", singleton3(new Formula(9, [\u03C6])), new Formula(8, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is possible is necessarily possible \u2014 possibility doesn't vary between worlds (S5)."), new ArgumentForm("axiom-b", "axiom B", "", singleton3(\u03C6), new Formula(8, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is so is necessarily possible."), new ArgumentForm("s5-collapse", "S5 collapse", "", singleton3(new Formula(9, [new Formula(8, [\u03C6])])), new Formula(8, [\u03C6]), new FormKind(0, []), "Possibly necessary is necessary \u2014 the load-bearing step of the modal ontological argument."), new ArgumentForm("dual-box", "modal duality", "", singleton3(new Formula(2, [new Formula(9, [\u03C6])])), new Formula(8, [new Formula(2, [\u03C6])]), new FormKind(0, []), "Not possible means necessarily not \u2014 \u25C7 and \u25A1 are two sides of one coin."), new ArgumentForm("dual-diamond", "modal duality", "", singleton3(new Formula(2, [new Formula(8, [\u03C6])])), new Formula(9, [new Formula(2, [\u03C6])]), new FormKind(0, []), "Not necessary means possibly not \u2014 \u25A1 and \u25C7 are two sides of one coin."), new ArgumentForm("illicit-necessitation", "illicit necessitation", "", singleton3(\u03C6), new Formula(8, [\u03C6]), new FormKind(1, []), "True doesn't mean necessarily true \u2014 the world could have been otherwise."), new ArgumentForm("actualizing-the-possible", "actualizing the possible", "", singleton3(new Formula(9, [\u03C6])), \u03C6, new FormKind(1, []), "Possible doesn't mean actual \u2014 some possibilities stay unrealized."), new ArgumentForm("necessity-of-the-consequent", "necessity of the consequent", "modal scope fallacy", ofArray([new Formula(8, [new Formula(6, [\u03C6, \u03C8])]), \u03C6]), new Formula(8, [\u03C8]), new FormKind(1, []), "The necessity governs the whole if\u2013then, not its then: a contingent if only yields a contingent then."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(6, [\u03C6, \u03C8]), new Formula(2, [\u03C6])]), new Formula(2, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(4, [\u03C6, \u03C8]), \u03C6]), new Formula(2, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(6, [\u03C6, \u03C8])), new Formula(6, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
+var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C8])]), new Formula(3, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C8, \u03C7])]), new Formula(7, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [\u03C6, \u03C7])]), new Formula(5, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(7, [\u03C6, \u03C7]), new Formula(7, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [new Formula(3, [\u03C8]), new Formula(3, [\u03C9])])]), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(4, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(5, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(3, [new Formula(3, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(3, [new Formula(3, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(4, [\u03C6, \u03C8])])), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(5, [\u03C6, \u03C8])])), new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(5, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [new Formula(3, [\u03C8]), new Formula(3, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(7, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(7, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(5, [new Formula(3, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), \u03C8])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7])), new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])])), new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(5, [\u03C6, new Formula(3, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(3, [new Formula(4, [\u03C6, new Formula(3, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("axiom-t", "axiom T", "necessity elimination", singleton3(new Formula(9, [\u03C6])), \u03C6, new FormKind(0, []), "What is necessary is actually so."), new ArgumentForm("possibility-intro", "possibility introduction", "", singleton3(\u03C6), new Formula(10, [\u03C6]), new FormKind(0, []), "What is actually so is possible."), new ArgumentForm("k-distribution", "K distribution", "", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), new Formula(9, [\u03C6])]), new Formula(9, [\u03C8]), new FormKind(0, []), "Necessity distributes over implication: a necessary if\u2013then with a necessary if gives a necessary then."), new ArgumentForm("axiom-4", "axiom 4", "", singleton3(new Formula(9, [\u03C6])), new Formula(9, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is necessary is necessarily necessary."), new ArgumentForm("axiom-5", "axiom 5", "", singleton3(new Formula(10, [\u03C6])), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is possible is necessarily possible \u2014 possibility doesn't vary between worlds (S5)."), new ArgumentForm("axiom-b", "axiom B", "", singleton3(\u03C6), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is so is necessarily possible."), new ArgumentForm("s5-collapse", "S5 collapse", "", singleton3(new Formula(10, [new Formula(9, [\u03C6])])), new Formula(9, [\u03C6]), new FormKind(0, []), "Possibly necessary is necessary \u2014 the load-bearing step of the modal ontological argument."), new ArgumentForm("dual-box", "modal duality", "", singleton3(new Formula(3, [new Formula(10, [\u03C6])])), new Formula(9, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not possible means necessarily not \u2014 \u25C7 and \u25A1 are two sides of one coin."), new ArgumentForm("dual-diamond", "modal duality", "", singleton3(new Formula(3, [new Formula(9, [\u03C6])])), new Formula(10, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not necessary means possibly not \u2014 \u25A1 and \u25C7 are two sides of one coin."), new ArgumentForm("illicit-necessitation", "illicit necessitation", "", singleton3(\u03C6), new Formula(9, [\u03C6]), new FormKind(1, []), "True doesn't mean necessarily true \u2014 the world could have been otherwise."), new ArgumentForm("actualizing-the-possible", "actualizing the possible", "", singleton3(new Formula(10, [\u03C6])), \u03C6, new FormKind(1, []), "Possible doesn't mean actual \u2014 some possibilities stay unrealized."), new ArgumentForm("necessity-of-the-consequent", "necessity of the consequent", "modal scope fallacy", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), \u03C6]), new Formula(9, [\u03C8]), new FormKind(1, []), "The necessity governs the whole if\u2013then, not its then: a contingent if only yields a contingent then."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), new Formula(3, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(5, [\u03C6, \u03C8]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
 var validForms = filter2((f) => equals(f.Kind, new FormKind(0, [])), forms);
 var fallacies = filter2((f) => equals(f.Kind, new FormKind(1, [])), forms);
 
@@ -5446,115 +6272,163 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
   matchPattern:
     while (true) {
       const pattern = pattern_mut, target = target_mut, subst = subst_mut;
-      let matchResult, t, v, a_1, b_1, p, t_1, p1, p2, t1, t2;
+      let matchResult, t_2, v, a_1, b_1, a1_1, a2_1, n1_1, n2_1, p_2, t_3, x1_2, x2_2, p_3, t_4, x1_3, x2_3, p_4, t_5, p1, p2, t1, t2;
       switch (pattern.tag) {
-        case 1: {
-          if (target.tag === 1) {
+        case 2: {
+          if (target.tag === 2) {
             if (pattern.fields[0] === target.fields[0]) {
               matchResult = 1;
               a_1 = pattern.fields[0];
               b_1 = target.fields[0];
             } else {
-              matchResult = 4;
+              matchResult = 7;
             }
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
-        case 2: {
-          if (target.tag === 2) {
-            matchResult = 2;
-            p = pattern.fields[0];
-            t_1 = target.fields[0];
+        case 1: {
+          if (target.tag === 1) {
+            if (pattern.fields[0] === target.fields[0] && equals(pattern.fields[1], target.fields[1])) {
+              matchResult = 2;
+              a1_1 = pattern.fields[1];
+              a2_1 = target.fields[1];
+              n1_1 = pattern.fields[0];
+              n2_1 = target.fields[0];
+            } else {
+              matchResult = 7;
+            }
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
-        case 8: {
-          if (target.tag === 8) {
-            matchResult = 2;
-            p = pattern.fields[0];
-            t_1 = target.fields[0];
+        case 11: {
+          if (target.tag === 11) {
+            if (pattern.fields[0] === target.fields[0]) {
+              matchResult = 3;
+              p_2 = pattern.fields[1];
+              t_3 = target.fields[1];
+              x1_2 = pattern.fields[0];
+              x2_2 = target.fields[0];
+            } else {
+              matchResult = 7;
+            }
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
-        case 9: {
-          if (target.tag === 9) {
-            matchResult = 2;
-            p = pattern.fields[0];
-            t_1 = target.fields[0];
+        case 12: {
+          if (target.tag === 12) {
+            if (pattern.fields[0] === target.fields[0]) {
+              matchResult = 4;
+              p_3 = pattern.fields[1];
+              t_4 = target.fields[1];
+              x1_3 = pattern.fields[0];
+              x2_3 = target.fields[0];
+            } else {
+              matchResult = 7;
+            }
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
         case 3: {
           if (target.tag === 3) {
-            matchResult = 3;
-            p1 = pattern.fields[0];
-            p2 = pattern.fields[1];
-            t1 = target.fields[0];
-            t2 = target.fields[1];
+            matchResult = 5;
+            p_4 = pattern.fields[0];
+            t_5 = target.fields[0];
           } else {
-            matchResult = 4;
+            matchResult = 7;
+          }
+          break;
+        }
+        case 9: {
+          if (target.tag === 9) {
+            matchResult = 5;
+            p_4 = pattern.fields[0];
+            t_5 = target.fields[0];
+          } else {
+            matchResult = 7;
+          }
+          break;
+        }
+        case 10: {
+          if (target.tag === 10) {
+            matchResult = 5;
+            p_4 = pattern.fields[0];
+            t_5 = target.fields[0];
+          } else {
+            matchResult = 7;
           }
           break;
         }
         case 4: {
           if (target.tag === 4) {
-            matchResult = 3;
+            matchResult = 6;
             p1 = pattern.fields[0];
             p2 = pattern.fields[1];
             t1 = target.fields[0];
             t2 = target.fields[1];
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
         case 5: {
           if (target.tag === 5) {
-            matchResult = 3;
+            matchResult = 6;
             p1 = pattern.fields[0];
             p2 = pattern.fields[1];
             t1 = target.fields[0];
             t2 = target.fields[1];
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
         case 6: {
           if (target.tag === 6) {
-            matchResult = 3;
+            matchResult = 6;
             p1 = pattern.fields[0];
             p2 = pattern.fields[1];
             t1 = target.fields[0];
             t2 = target.fields[1];
           } else {
-            matchResult = 4;
+            matchResult = 7;
           }
           break;
         }
         case 7: {
           if (target.tag === 7) {
-            matchResult = 3;
+            matchResult = 6;
             p1 = pattern.fields[0];
             p2 = pattern.fields[1];
             t1 = target.fields[0];
             t2 = target.fields[1];
           } else {
-            matchResult = 4;
+            matchResult = 7;
+          }
+          break;
+        }
+        case 8: {
+          if (target.tag === 8) {
+            matchResult = 6;
+            p1 = pattern.fields[0];
+            p2 = pattern.fields[1];
+            t1 = target.fields[0];
+            t2 = target.fields[1];
+          } else {
+            matchResult = 7;
           }
           break;
         }
         default: {
           matchResult = 0;
-          t = target;
+          t_2 = target;
           v = pattern.fields[0];
         }
       }
@@ -5562,8 +6436,8 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
         case 0: {
           const matchValue_1 = tryFind2(v, subst);
           if (matchValue_1 == null) {
-            return add2(v, t, subst);
-          } else if (equals(matchValue_1, t)) {
+            return add2(v, t_2, subst);
+          } else if (equals(matchValue_1, t_2)) {
             return subst;
           } else {
             return void 0;
@@ -5571,13 +6445,27 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
         }
         case 1:
           return subst;
-        case 2: {
-          pattern_mut = p;
-          target_mut = t_1;
+        case 2:
+          return subst;
+        case 3: {
+          pattern_mut = p_2;
+          target_mut = t_3;
           subst_mut = subst;
           continue matchPattern;
         }
-        case 3:
+        case 4: {
+          pattern_mut = p_3;
+          target_mut = t_4;
+          subst_mut = subst;
+          continue matchPattern;
+        }
+        case 5: {
+          pattern_mut = p_4;
+          target_mut = t_5;
+          subst_mut = subst;
+          continue matchPattern;
+        }
+        case 6:
           return bind((subst_1) => matchPattern(p2, t2, subst_1), matchPattern(p1, t1, subst));
         default:
           return void 0;
@@ -5594,15 +6482,18 @@ function matchAll(patterns, targets) {
 function instantiate(subst, pattern) {
   switch (pattern.tag) {
     case 1:
-      return pattern;
     case 2:
-      return new Formula(2, [instantiate(subst, pattern.fields[0])]);
-    case 8:
-      return new Formula(8, [instantiate(subst, pattern.fields[0])]);
+      return pattern;
+    case 3:
+      return new Formula(3, [instantiate(subst, pattern.fields[0])]);
     case 9:
       return new Formula(9, [instantiate(subst, pattern.fields[0])]);
-    case 3:
-      return new Formula(3, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 10:
+      return new Formula(10, [instantiate(subst, pattern.fields[0])]);
+    case 11:
+      return new Formula(11, [pattern.fields[0], instantiate(subst, pattern.fields[1])]);
+    case 12:
+      return new Formula(12, [pattern.fields[0], instantiate(subst, pattern.fields[1])]);
     case 4:
       return new Formula(4, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
     case 5:
@@ -5611,6 +6502,8 @@ function instantiate(subst, pattern) {
       return new Formula(6, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
     case 7:
       return new Formula(7, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
+    case 8:
+      return new Formula(8, [instantiate(subst, pattern.fields[0]), instantiate(subst, pattern.fields[1])]);
     default:
       return defaultArg(tryFind2(pattern.fields[0], subst), pattern);
   }
@@ -5657,12 +6550,7 @@ var ProofStep = class extends Record {
 function size(f) {
   let matchResult, a, a_1, b;
   switch (f.tag) {
-    case 2: {
-      matchResult = 1;
-      a = f.fields[0];
-      break;
-    }
-    case 8: {
+    case 3: {
       matchResult = 1;
       a = f.fields[0];
       break;
@@ -5672,10 +6560,19 @@ function size(f) {
       a = f.fields[0];
       break;
     }
-    case 3: {
-      matchResult = 2;
-      a_1 = f.fields[0];
-      b = f.fields[1];
+    case 10: {
+      matchResult = 1;
+      a = f.fields[0];
+      break;
+    }
+    case 11: {
+      matchResult = 1;
+      a = f.fields[1];
+      break;
+    }
+    case 12: {
+      matchResult = 1;
+      a = f.fields[1];
       break;
     }
     case 4: {
@@ -5702,6 +6599,12 @@ function size(f) {
       b = f.fields[1];
       break;
     }
+    case 8: {
+      matchResult = 2;
+      a_1 = f.fields[0];
+      b = f.fields[1];
+      break;
+    }
     default:
       matchResult = 0;
   }
@@ -5715,7 +6618,7 @@ function size(f) {
   }
 }
 function subformulas(f) {
-  return cons(f, f.tag === 1 ? empty2() : f.tag === 2 ? subformulas(f.fields[0]) : f.tag === 8 ? subformulas(f.fields[0]) : f.tag === 9 ? subformulas(f.fields[0]) : f.tag === 3 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 4 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 5 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 6 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 7 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : empty2());
+  return cons(f, f.tag === 1 ? empty2() : f.tag === 2 ? empty2() : f.tag === 3 ? subformulas(f.fields[0]) : f.tag === 9 ? subformulas(f.fields[0]) : f.tag === 10 ? subformulas(f.fields[0]) : f.tag === 11 ? subformulas(f.fields[1]) : f.tag === 12 ? subformulas(f.fields[1]) : f.tag === 4 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 5 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 6 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 7 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : f.tag === 8 ? append(subformulas(f.fields[0]), subformulas(f.fields[1])) : empty2());
 }
 function prove(premises, goal) {
   const steps = [];
@@ -5807,7 +6710,7 @@ function prove(premises, goal) {
   }
 }
 function suggestRepairs(premises, conclusion) {
-  const literals = collect2((a) => ofArray([new Formula(0, [a]), new Formula(2, [new Formula(0, [a])])]), List_distinct(collect2(atoms, append(premises, singleton3(conclusion))), {
+  const literals = collect2((a) => ofArray([new Formula(0, [a]), new Formula(3, [new Formula(0, [a])])]), List_distinct(collect2(atoms, append(premises, singleton3(conclusion))), {
     Equals: (x, y) => x === y,
     GetHashCode: (x) => stringHash(x) | 0
   }));
@@ -5819,7 +6722,7 @@ function suggestRepairs(premises, conclusion) {
         a_1 = lit.fields[0];
         break;
       }
-      case 2: {
+      case 3: {
         if (lit.fields[0].tag === 0) {
           matchResult = 1;
           a_2 = lit.fields[0].fields[0];
@@ -5847,12 +6750,12 @@ function suggestRepairs(premises, conclusion) {
       return append(kept, singleton3(c_3));
     }
   }, empty2(), sortBy((f_1) => size(f_1) | 0, filter2((c_2) => {
-    if (checkArgument(cons(c_2, premises), conclusion).IsValid && !equals(truthTable(fold3((acc, p) => new Formula(3, [acc, p]), c_2, premises)).Verdict, new Verdict(1, []))) {
-      return !equals(truthTable(new Formula(6, [c_2, conclusion])).Verdict, new Verdict(0, []));
+    if (checkArgument(cons(c_2, premises), conclusion).IsValid && !equals(truthTable(fold3((acc, p) => new Formula(4, [acc, p]), c_2, premises)).Verdict, new Verdict(1, []))) {
+      return !equals(truthTable(new Formula(7, [c_2, conclusion])).Verdict, new Verdict(0, []));
     } else {
       return false;
     }
-  }, append(literals, toList(delay(() => collect((x_1) => collect((y_1) => atomOf(x_1) !== atomOf(y_1) ? singleton2(new Formula(6, [x_1, y_1])) : empty(), literals), literals))))), {
+  }, append(literals, toList(delay(() => collect((x_1) => collect((y_1) => atomOf(x_1) !== atomOf(y_1) ? singleton2(new Formula(7, [x_1, y_1])) : empty(), literals), literals))))), {
     Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
   })));
 }
@@ -5899,7 +6802,7 @@ var Token = class extends Union {
     this.fields = fields;
   }
   cases() {
-    return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TLParen", "TRParen"];
+    return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TForall", "TExists", "TDot", "TComma", "TLParen", "TRParen"];
   }
 };
 function isIdentChar(c) {
@@ -5927,6 +6830,10 @@ function wordToToken(word) {
       return new Token(9, []);
     case "possibly":
       return new Token(10, []);
+    case "forall":
+      return new Token(11, []);
+    case "exists":
+      return new Token(12, []);
     case "true":
       return new Token(1, []);
     case "false":
@@ -5954,12 +6861,12 @@ function tokenize(input) {
             case "!":
             case "~":
             case "\xAC": {
-              matchResult = 5;
+              matchResult = 9;
               break;
             }
             case "&":
             case "\u2227": {
-              matchResult = 3;
+              matchResult = 7;
               break;
             }
             case "(": {
@@ -5970,79 +6877,95 @@ function tokenize(input) {
               matchResult = 2;
               break;
             }
-            case "|":
-            case "\u2228": {
+            case ",": {
+              matchResult = 3;
+              break;
+            }
+            case ".": {
               matchResult = 4;
               break;
             }
-            case "\u2192": {
-              matchResult = 7;
-              break;
-            }
-            case "\u2194": {
+            case "|":
+            case "\u2228": {
               matchResult = 8;
               break;
             }
-            case "\u2295": {
-              matchResult = 6;
-              break;
-            }
-            case "\u22A4": {
-              matchResult = 9;
-              break;
-            }
-            case "\u22A5": {
-              matchResult = 10;
-              break;
-            }
-            case "\u25A1": {
+            case "\u2192": {
               matchResult = 11;
               break;
             }
-            case "\u25C7": {
+            case "\u2194": {
               matchResult = 12;
+              break;
+            }
+            case "\u2200": {
+              matchResult = 5;
+              break;
+            }
+            case "\u2203": {
+              matchResult = 6;
+              break;
+            }
+            case "\u2295": {
+              matchResult = 10;
+              break;
+            }
+            case "\u22A4": {
+              matchResult = 13;
+              break;
+            }
+            case "\u22A5": {
+              matchResult = 14;
+              break;
+            }
+            case "\u25A1": {
+              matchResult = 15;
+              break;
+            }
+            case "\u25C7": {
+              matchResult = 16;
               break;
             }
             case "-": {
               if (i + 1 < input.length && input[i + 1] === ">") {
-                matchResult = 14;
-              } else if (isLetter(c)) {
-                matchResult = 17;
-              } else {
                 matchResult = 18;
+              } else if (isLetter(c)) {
+                matchResult = 21;
+              } else {
+                matchResult = 22;
                 other = c;
               }
               break;
             }
             case "<": {
               if (i + 2 < input.length && input[i + 1] === "-" && input[i + 2] === ">") {
-                matchResult = 15;
+                matchResult = 19;
               } else if (i + 1 < input.length && input[i + 1] === ">") {
-                matchResult = 16;
+                matchResult = 20;
               } else if (isLetter(c)) {
-                matchResult = 17;
+                matchResult = 21;
               } else {
-                matchResult = 18;
+                matchResult = 22;
                 other = c;
               }
               break;
             }
             case "[": {
               if (i + 1 < input.length && input[i + 1] === "]") {
-                matchResult = 13;
-              } else if (isLetter(c)) {
                 matchResult = 17;
+              } else if (isLetter(c)) {
+                matchResult = 21;
               } else {
-                matchResult = 18;
+                matchResult = 22;
                 other = c;
               }
               break;
             }
             default:
               if (isLetter(c)) {
-                matchResult = 17;
+                matchResult = 21;
               } else {
-                matchResult = 18;
+                matchResult = 22;
                 other = c;
               }
           }
@@ -6054,85 +6977,105 @@ function tokenize(input) {
             }
             case 1: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(11, []), acc);
+              acc_mut = cons(new Token(15, []), acc);
               continue loop;
             }
             case 2: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(12, []), acc);
+              acc_mut = cons(new Token(16, []), acc);
               continue loop;
             }
             case 3: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(4, []), acc);
+              acc_mut = cons(new Token(14, []), acc);
               continue loop;
             }
             case 4: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(5, []), acc);
+              acc_mut = cons(new Token(13, []), acc);
               continue loop;
             }
             case 5: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(3, []), acc);
+              acc_mut = cons(new Token(11, []), acc);
               continue loop;
             }
             case 6: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(6, []), acc);
+              acc_mut = cons(new Token(12, []), acc);
               continue loop;
             }
             case 7: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(7, []), acc);
+              acc_mut = cons(new Token(4, []), acc);
               continue loop;
             }
             case 8: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(8, []), acc);
+              acc_mut = cons(new Token(5, []), acc);
               continue loop;
             }
             case 9: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(1, []), acc);
+              acc_mut = cons(new Token(3, []), acc);
               continue loop;
             }
             case 10: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(2, []), acc);
+              acc_mut = cons(new Token(6, []), acc);
               continue loop;
             }
             case 11: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(9, []), acc);
+              acc_mut = cons(new Token(7, []), acc);
               continue loop;
             }
             case 12: {
               i_mut = i + 1;
-              acc_mut = cons(new Token(10, []), acc);
-              continue loop;
-            }
-            case 13: {
-              i_mut = i + 2;
-              acc_mut = cons(new Token(9, []), acc);
-              continue loop;
-            }
-            case 14: {
-              i_mut = i + 2;
-              acc_mut = cons(new Token(7, []), acc);
-              continue loop;
-            }
-            case 15: {
-              i_mut = i + 3;
               acc_mut = cons(new Token(8, []), acc);
               continue loop;
             }
+            case 13: {
+              i_mut = i + 1;
+              acc_mut = cons(new Token(1, []), acc);
+              continue loop;
+            }
+            case 14: {
+              i_mut = i + 1;
+              acc_mut = cons(new Token(2, []), acc);
+              continue loop;
+            }
+            case 15: {
+              i_mut = i + 1;
+              acc_mut = cons(new Token(9, []), acc);
+              continue loop;
+            }
             case 16: {
-              i_mut = i + 2;
+              i_mut = i + 1;
               acc_mut = cons(new Token(10, []), acc);
               continue loop;
             }
             case 17: {
+              i_mut = i + 2;
+              acc_mut = cons(new Token(9, []), acc);
+              continue loop;
+            }
+            case 18: {
+              i_mut = i + 2;
+              acc_mut = cons(new Token(7, []), acc);
+              continue loop;
+            }
+            case 19: {
+              i_mut = i + 3;
+              acc_mut = cons(new Token(8, []), acc);
+              continue loop;
+            }
+            case 20: {
+              i_mut = i + 2;
+              acc_mut = cons(new Token(10, []), acc);
+              continue loop;
+            }
+            case 21: {
               const start = i | 0;
               let j = i;
               while (j < input.length && (isIdentChar(input[j]) ? true : input[j] === "-" && j + 1 < input.length && isLetterOrDigit(input[j + 1]))) {
@@ -6292,7 +7235,7 @@ function parseIff(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(7, [l, tupledArg_1[0]]), tupledArg_1[1]), parseImplies(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(8, [l, tupledArg_1[0]]), tupledArg_1[1]), parseImplies(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
@@ -6317,7 +7260,7 @@ function parseImplies(tokens) {
     }
     switch (matchResult) {
       case 0:
-        return Result_Map((tupledArg_1) => [new Formula(6, [left, tupledArg_1[0]]), tupledArg_1[1]], parseImplies(more));
+        return Result_Map((tupledArg_1) => [new Formula(7, [left, tupledArg_1[0]]), tupledArg_1[1]], parseImplies(more));
       default:
         return new FSharpResult$2(0, [[left, rest]]);
     }
@@ -6339,7 +7282,7 @@ function parseXor(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(6, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
@@ -6363,7 +7306,7 @@ function parseOr(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(4, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
@@ -6387,7 +7330,7 @@ function parseAnd(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(3, [l, tupledArg_1[0]]), tupledArg_1[1]), parseUnary(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(4, [l, tupledArg_1[0]]), tupledArg_1[1]), parseUnary(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
@@ -6396,7 +7339,7 @@ function parseAnd(tokens) {
   }, parseUnary(tokens));
 }
 function parseUnary(tokens) {
-  let matchResult, more, more_1, more_2;
+  let matchResult, more, more_1, more_2, more_3, x, more_4, x_1;
   if (!isEmpty(tokens)) {
     switch (head(tokens).tag) {
       case 3: {
@@ -6414,58 +7357,217 @@ function parseUnary(tokens) {
         more_2 = tail(tokens);
         break;
       }
+      case 11: {
+        if (!isEmpty(tail(tokens))) {
+          if (head(tail(tokens)).tag === 0) {
+            if (!isEmpty(tail(tail(tokens)))) {
+              if (head(tail(tail(tokens))).tag === 13) {
+                matchResult = 3;
+                more_3 = tail(tail(tail(tokens)));
+                x = head(tail(tokens)).fields[0];
+              } else {
+                matchResult = 5;
+              }
+            } else {
+              matchResult = 5;
+            }
+          } else {
+            matchResult = 5;
+          }
+        } else {
+          matchResult = 5;
+        }
+        break;
+      }
+      case 12: {
+        if (!isEmpty(tail(tokens))) {
+          if (head(tail(tokens)).tag === 0) {
+            if (!isEmpty(tail(tail(tokens)))) {
+              if (head(tail(tail(tokens))).tag === 13) {
+                matchResult = 4;
+                more_4 = tail(tail(tail(tokens)));
+                x_1 = head(tail(tokens)).fields[0];
+              } else {
+                matchResult = 5;
+              }
+            } else {
+              matchResult = 5;
+            }
+          } else {
+            matchResult = 5;
+          }
+        } else {
+          matchResult = 5;
+        }
+        break;
+      }
       default:
-        matchResult = 3;
+        matchResult = 6;
     }
   } else {
-    matchResult = 3;
+    matchResult = 6;
   }
   switch (matchResult) {
     case 0:
-      return Result_Map((tupledArg) => [new Formula(2, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
+      return Result_Map((tupledArg) => [new Formula(3, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
     case 1:
-      return Result_Map((tupledArg_1) => [new Formula(8, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
+      return Result_Map((tupledArg_1) => [new Formula(9, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
     case 2:
-      return Result_Map((tupledArg_2) => [new Formula(9, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
+      return Result_Map((tupledArg_2) => [new Formula(10, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
+    case 3:
+      return Result_Map((tupledArg_3) => [new Formula(11, [x, tupledArg_3[0]]), tupledArg_3[1]], parseIff(more_3));
+    case 4:
+      return Result_Map((tupledArg_4) => [new Formula(12, [x_1, tupledArg_4[0]]), tupledArg_4[1]], parseIff(more_4));
+    case 5:
+      return new FSharpResult$2(1, ["a quantifier needs a variable then '.', e.g.  forall x. Human(x)"]);
     default:
       return parseAtom(tokens);
   }
 }
+function parseTermList(tokens) {
+  let matchResult, rest;
+  if (!isEmpty(tokens)) {
+    if (head(tokens).tag === 16) {
+      matchResult = 0;
+      rest = tail(tokens);
+    } else {
+      matchResult = 1;
+    }
+  } else {
+    matchResult = 1;
+  }
+  switch (matchResult) {
+    case 0:
+      return new FSharpResult$2(0, [[empty2(), rest]]);
+    default: {
+      const loop = (acc_mut, toks_mut) => {
+        loop:
+          while (true) {
+            const acc = acc_mut, toks = toks_mut;
+            let matchResult_1, more, t, more_1, t_1;
+            if (!isEmpty(toks)) {
+              if (head(toks).tag === 0) {
+                if (!isEmpty(tail(toks))) {
+                  switch (head(tail(toks)).tag) {
+                    case 14: {
+                      matchResult_1 = 0;
+                      more = tail(tail(toks));
+                      t = head(toks).fields[0];
+                      break;
+                    }
+                    case 16: {
+                      matchResult_1 = 1;
+                      more_1 = tail(tail(toks));
+                      t_1 = head(toks).fields[0];
+                      break;
+                    }
+                    default:
+                      matchResult_1 = 2;
+                  }
+                } else {
+                  matchResult_1 = 2;
+                }
+              } else {
+                matchResult_1 = 2;
+              }
+            } else {
+              matchResult_1 = 2;
+            }
+            switch (matchResult_1) {
+              case 0: {
+                acc_mut = append(acc, singleton3(t));
+                toks_mut = more;
+                continue loop;
+              }
+              case 1:
+                return new FSharpResult$2(0, [[append(acc, singleton3(t_1)), more_1]]);
+              default:
+                return new FSharpResult$2(1, ["expected a term (a name), ',' or ')' in the predicate's arguments"]);
+            }
+            break;
+          }
+      };
+      return loop(empty2(), tokens);
+    }
+  }
+}
 function parseAtom(tokens) {
+  let matchResult, name, rest, name_1, rest_1, rest_2, rest_3, rest_4;
   if (isEmpty(tokens)) {
-    return new FSharpResult$2(1, ["Unexpected end of formula"]);
+    matchResult = 5;
   } else {
     switch (head(tokens).tag) {
-      case 0:
-        return new FSharpResult$2(0, [[new Formula(0, [head(tokens).fields[0]]), tail(tokens)]]);
-      case 1:
-        return new FSharpResult$2(0, [[new Formula(1, [true]), tail(tokens)]]);
-      case 2:
-        return new FSharpResult$2(0, [[new Formula(1, [false]), tail(tokens)]]);
-      case 11:
-        return Result_Bind((tupledArg) => {
-          const rest$0027 = tupledArg[1];
-          let matchResult, rest$0027$0027;
-          if (!isEmpty(rest$0027)) {
-            if (head(rest$0027).tag === 12) {
-              matchResult = 0;
-              rest$0027$0027 = tail(rest$0027);
-            } else {
-              matchResult = 1;
-            }
+      case 0: {
+        if (!isEmpty(tail(tokens))) {
+          if (head(tail(tokens)).tag === 15) {
+            matchResult = 0;
+            name = head(tokens).fields[0];
+            rest = tail(tail(tokens));
           } else {
             matchResult = 1;
+            name_1 = head(tokens).fields[0];
+            rest_1 = tail(tokens);
           }
-          switch (matchResult) {
-            case 0:
-              return new FSharpResult$2(0, [[tupledArg[0], rest$0027$0027]]);
-            default:
-              return new FSharpResult$2(1, ["Expected a closing ')'"]);
-          }
-        }, parseIff(tail(tokens)));
+        } else {
+          matchResult = 1;
+          name_1 = head(tokens).fields[0];
+          rest_1 = tail(tokens);
+        }
+        break;
+      }
+      case 1: {
+        matchResult = 2;
+        rest_2 = tail(tokens);
+        break;
+      }
+      case 2: {
+        matchResult = 3;
+        rest_3 = tail(tokens);
+        break;
+      }
+      case 15: {
+        matchResult = 4;
+        rest_4 = tail(tokens);
+        break;
+      }
       default:
-        return new FSharpResult$2(1, ["Expected a proposition, a constant, or '('"]);
+        matchResult = 6;
     }
+  }
+  switch (matchResult) {
+    case 0:
+      return Result_Map((tupledArg) => [new Formula(1, [name, tupledArg[0]]), tupledArg[1]], parseTermList(rest));
+    case 1:
+      return new FSharpResult$2(0, [[new Formula(0, [name_1]), rest_1]]);
+    case 2:
+      return new FSharpResult$2(0, [[new Formula(2, [true]), rest_2]]);
+    case 3:
+      return new FSharpResult$2(0, [[new Formula(2, [false]), rest_3]]);
+    case 4:
+      return Result_Bind((tupledArg_1) => {
+        const rest$0027_1 = tupledArg_1[1];
+        let matchResult_1, rest$0027$0027;
+        if (!isEmpty(rest$0027_1)) {
+          if (head(rest$0027_1).tag === 16) {
+            matchResult_1 = 0;
+            rest$0027$0027 = tail(rest$0027_1);
+          } else {
+            matchResult_1 = 1;
+          }
+        } else {
+          matchResult_1 = 1;
+        }
+        switch (matchResult_1) {
+          case 0:
+            return new FSharpResult$2(0, [[tupledArg_1[0], rest$0027$0027]]);
+          default:
+            return new FSharpResult$2(1, ["Expected a closing ')'"]);
+        }
+      }, parseIff(rest_4));
+    case 5:
+      return new FSharpResult$2(1, ["Unexpected end of formula"]);
+    default:
+      return new FSharpResult$2(1, ["Expected a proposition, a constant, or '('"]);
   }
 }
 function parseFormula(text) {
@@ -6800,7 +7902,7 @@ function parseLines(source) {
 
 // src/core/Api.js
 var BlockView = class extends Record {
-  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, actual, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations) {
+  constructor(kind, level, title, name, gloss, formula, verdict, atoms2, rows, results, actual, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations, model) {
     super();
     this.kind = kind;
     this.level = level | 0;
@@ -6822,9 +7924,10 @@ var BlockView = class extends Record {
     this.suggestion = suggestion;
     this.proof = proof;
     this.relations = relations;
+    this.model = model;
   }
 };
-var empty5 = new BlockView("", 0, "", "", "", "", "", [], [], [], -1, 0, [], "", "", "", "", [], [], []);
+var empty5 = new BlockView("", 0, "", "", "", "", "", [], [], [], -1, 0, [], "", "", "", "", [], [], [], []);
 function verdictName(_arg) {
   switch (_arg.tag) {
     case 1:
@@ -6872,12 +7975,12 @@ function tableBlock(f) {
   const atoms2 = toArray(t.Atoms);
   const rows = toArray(map4((tupledArg) => toArray(map4((a) => FSharpMap__get_Item(tupledArg[0], a), t.Atoms)), t.Rows));
   const results = toArray(map4((tuple) => tuple[1], t.Rows));
-  return new BlockView("table", empty5.level, empty5.title, empty5.name, empty5.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, verdictNote(t), empty5.suggestion, empty5.proof, empty5.relations);
+  return new BlockView("table", empty5.level, empty5.title, empty5.name, empty5.gloss, formula, verdictName(t.Verdict), atoms2, rows, results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, verdictNote(t), empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
 }
 var tooLargeNote = "Too many atoms and modal operators to check exhaustively \u2014 the engine won't guess.";
 function modalBlock(kindName, f) {
-  const base$0027 = new BlockView(kindName, empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(f), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
-  const matchValue = s5Satisfy(new Formula(2, [f]));
+  const base$0027 = new BlockView(kindName, empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(f), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
+  const matchValue = s5Satisfy(new Formula(3, [f]));
   const matchValue_1 = s5Satisfy(f);
   let matchResult, actual, worlds;
   switch (matchValue.tag) {
@@ -6915,16 +8018,66 @@ function modalBlock(kindName, f) {
   }
   switch (matchResult) {
     case 0:
-      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Necessarily true: it holds at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations);
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Necessarily true: it holds at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
     case 1:
-      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Impossible: it fails at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations);
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Impossible: it fails at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
     case 2:
-      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations);
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
     default: {
       const names = atoms(f);
       const note_2 = "Contingent: its truth depends on the facts and on how the possibilities are arranged \u2014 here is an arrangement where it fails at the actual world.";
-      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", toArray(names), toArray(map4((w) => toArray(map4((a) => defaultArg(tryFind2(a, w), false), names)), worlds)), toArray(map4((w_1) => evalS5(worlds, w_1, f), worlds)), actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations);
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", toArray(names), toArray(map4((w) => toArray(map4((a) => defaultArg(tryFind2(a, w), false), names)), worlds)), toArray(map4((w_1) => evalS5(worlds, w_1, f), worlds)), actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
     }
+  }
+}
+function foFormulaBlock(kindName, f) {
+  const base$0027 = new BlockView(kindName, empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(f), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
+  const matchValue = foSatisfy(new Formula(3, [f]));
+  const matchValue_1 = foSatisfy(f);
+  let matchResult, m;
+  switch (matchValue.tag) {
+    case 2: {
+      switch (matchValue_1.tag) {
+        case 0: {
+          matchResult = 1;
+          break;
+        }
+        default:
+          matchResult = 2;
+      }
+      break;
+    }
+    case 1: {
+      switch (matchValue_1.tag) {
+        case 0: {
+          matchResult = 1;
+          break;
+        }
+        case 2: {
+          matchResult = 2;
+          break;
+        }
+        default: {
+          matchResult = 3;
+          m = matchValue.fields[0];
+        }
+      }
+      break;
+    }
+    default:
+      matchResult = 0;
+  }
+  switch (matchResult) {
+    case 0: {
+      const note = "Valid: true in every model checked (domains up to size 4). First-order validity is undecidable, so this is a bounded check, not a full guarantee.";
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
+    }
+    case 1:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Unsatisfiable: false in every model checked (domains up to size 4).", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
+    case 2:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model);
+    default:
+      return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Contingent: its truth depends on the domain and interpretation \u2014 here is a model where it is false.", base$0027.suggestion, base$0027.proof, base$0027.relations, toArray(describeModel(m, new Formula(3, [f]))));
   }
 }
 function describeSituation(env) {
@@ -6940,17 +8093,21 @@ function proofRow(index, step) {
 function argumentBlock(defs, name, premises, conclusion) {
   const rp = map4((formula) => resolve(defs, formula), premises);
   const rc = resolve(defs, conclusion);
-  const modal = exists2(containsModal, cons(rc, rp));
+  const fo = exists2(containsFO, cons(rc, rp));
+  const modal = !fo && exists2(containsModal, cons(rc, rp));
   let patternInput;
-  if (modal) {
-    const matchValue = checkArgumentS5(rp, rc);
-    patternInput = matchValue.tag === 2 ? [false, true, empty2(), empty2(), -1] : matchValue.tag === 1 ? [false, false, List_distinct(collect2(atoms, append(rp, singleton3(rc))), {
+  if (fo) {
+    const matchValue = checkArgumentFO(rp, rc);
+    patternInput = matchValue.tag === 2 ? [false, true, empty2(), empty2(), -1, empty2()] : matchValue.tag === 1 ? [false, false, empty2(), empty2(), -1, describeModel(matchValue.fields[0], fold3((acc, p) => new Formula(4, [acc, p]), new Formula(3, [rc]), rp))] : [true, false, empty2(), empty2(), -1, empty2()];
+  } else if (modal) {
+    const matchValue_1 = checkArgumentS5(rp, rc);
+    patternInput = matchValue_1.tag === 2 ? [false, true, empty2(), empty2(), -1, empty2()] : matchValue_1.tag === 1 ? [false, false, List_distinct(collect2(atoms, append(rp, singleton3(rc))), {
       Equals: (x, y) => x === y,
       GetHashCode: (x) => stringHash(x) | 0
-    }), matchValue.fields[0], matchValue.fields[1]] : [true, false, empty2(), empty2(), -1];
+    }), matchValue_1.fields[0], matchValue_1.fields[1], empty2()] : [true, false, empty2(), empty2(), -1, empty2()];
   } else {
     const check = checkArgument(rp, rc);
-    patternInput = [check.IsValid, false, check.Atoms, check.Counterexamples, -1];
+    patternInput = [check.IsValid, false, check.Atoms, check.Counterexamples, -1, empty2()];
   }
   const unknown = patternInput[1];
   const isValid2 = patternInput[0];
@@ -6965,21 +8122,23 @@ function argumentBlock(defs, name, premises, conclusion) {
       return form.Title + " (" + form.Aka + ")";
     }
   };
-  const proofSteps = isValid2 ? defaultArg(prove(rp, rc), empty2()) : empty2();
-  const repairs = ((isValid2 ? true : unknown) ? true : modal) ? empty2() : suggestRepairs(rp, rc);
+  const proofSteps = isValid2 && !modal && !fo ? defaultArg(prove(rp, rc), empty2()) : empty2();
+  const repairs = (((isValid2 ? true : unknown) ? true : modal) ? true : fo) ? empty2() : suggestRepairs(rp, rc);
   let premisesConsistent;
   if (isEmpty(rp)) {
     premisesConsistent = true;
   } else {
-    const together = reduce((a, b) => new Formula(3, [a, b]), rp);
-    premisesConsistent = modal ? !equals(s5Satisfy(together), new ModalSearch(0, [])) : !equals(truthTable(together).Verdict, new Verdict(1, []));
+    const together_1 = reduce((a, b) => new Formula(4, [a, b]), rp);
+    premisesConsistent = fo ? !equals(foSatisfy(together_1), new FOSearch(0, [])) : modal ? !equals(s5Satisfy(together_1), new ModalSearch(0, [])) : !equals(truthTable(together_1).Verdict, new Verdict(1, []));
   }
   let explanation;
   if (unknown) {
     explanation = tooLargeNote;
   } else if (isEmpty(rp)) {
     if (isValid2) {
-      explanation = recognized == null ? modal ? "A theorem of S5: the conclusion holds at every world of every arrangement \u2014 provable from no premises at all." : "A theorem: the conclusion holds in every possible situation \u2014 a tautology, provable from no premises at all." : recognized.Note;
+      explanation = recognized == null ? fo ? "A theorem: the conclusion holds in every model checked (domains up to size 4) \u2014 provable from no premises at all." : modal ? "A theorem of S5: the conclusion holds at every world of every arrangement \u2014 provable from no premises at all." : "A theorem: the conclusion holds in every possible situation \u2014 a tautology, provable from no premises at all." : recognized.Note;
+    } else if (fo) {
+      explanation = "Not a theorem: there is a model where the conclusion fails.";
     } else if (modal) {
       explanation = "Not a theorem: there is an arrangement of possible worlds where the conclusion fails.";
     } else {
@@ -6989,10 +8148,14 @@ function argumentBlock(defs, name, premises, conclusion) {
   } else if (isValid2 && !premisesConsistent) {
     explanation = "Valid, but vacuously so: the premises contradict one another and can never all hold \u2014 and from a contradiction, anything follows (ex falso quodlibet).";
   } else if (recognized == null) {
-    if (isValid2 && modal) {
+    if (isValid2 && fo) {
+      explanation = "Valid: no model (over domains up to size 4) makes every premise true and the conclusion false. First-order validity is undecidable, so this is a bounded check.";
+    } else if (isValid2 && modal) {
       explanation = "Valid in S5: no arrangement of possible worlds makes every premise true at the actual world while the conclusion fails there.";
     } else if (isValid2) {
       explanation = "Valid: no possible situation makes every premise true and the conclusion false.";
+    } else if (fo) {
+      explanation = "Invalid: here is a model where every premise holds but the conclusion fails.";
     } else if (modal) {
       explanation = "Invalid in S5: there is an arrangement of possible worlds where every premise holds at the actual world while the conclusion fails there.";
     } else {
@@ -7009,7 +8172,7 @@ function argumentBlock(defs, name, premises, conclusion) {
   const fallacy = defaultArg((isValid2 ? true : unknown) ? void 0 : map(displayTitle, recognized), "");
   const suggestion = toArray(map4(toUnicode, repairs));
   const proof = toArray(mapIndexed(proofRow, proofSteps));
-  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(cxAtoms), toArray(map4((env) => toArray(map4((a_1) => defaultArg(tryFind2(a_1, env), false), cxAtoms)), cxRows)), cxActual >= 0 ? toArray(map4((w) => evalS5(cxRows, w, rc), cxRows)) : toArray(map4((_arg) => false, cxRows)), cxActual, empty5.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty5.relations);
+  return new BlockView("argument", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, toArray(cxAtoms), toArray(map4((env) => toArray(map4((a_1) => defaultArg(tryFind2(a_1, env), false), cxAtoms)), cxRows)), cxActual >= 0 ? toArray(map4((w) => evalS5(cxRows, w, rc), cxRows)) : toArray(map4((_arg) => false, cxRows)), cxActual, empty5.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty5.relations, toArray(patternInput[5]));
 }
 function proofBlock(defs, name, lines) {
   let known = empty4({
@@ -7090,7 +8253,7 @@ function proofBlock(defs, name, lines) {
   }
   const verdict = allOk ? "valid" : "invalid";
   const note = allOk ? "Every step checks out \u2014 the conclusion follows from the premises. \u220E" : "The first \u2717 step is where the chain breaks \u2014 repair it and the proof may go through.";
-  return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations);
+  return new BlockView("proof", empty5.level, empty5.title, name, empty5.gloss, empty5.formula, verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, defaultArg(map((l) => toUnicode(resolve(defs, l.tag === 1 ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty5.form, empty5.fallacy, note, empty5.suggestion, rows.slice(), empty5.relations, empty5.model);
 }
 function relationInfo(defs, glosses, left, kind, right) {
   const display = (_arg) => {
@@ -7150,7 +8313,7 @@ function relationInfo(defs, glosses, left, kind, right) {
       break;
     }
     case 1: {
-      const modal = containsModal(a) ? true : containsModal(b);
+      const classical = !(((containsModal(a) ? true : containsModal(b)) ? true : containsFO(a)) ? true : containsFO(b));
       const checkFormal = (f, holdsNote, failsNote) => {
         const matchValue_3 = valid(f);
         if (matchValue_3 == null) {
@@ -7161,24 +8324,22 @@ function relationInfo(defs, glosses, left, kind, right) {
           return ["fails", failsNote()];
         }
       };
-      patternInput = kind.tag === 3 ? checkFormal(new Formula(6, [a, b]), "verified: whenever the first holds, so does the second", () => {
-        if (modal) {
-          return "does not hold \u2014 it fails in some arrangement of possible worlds";
-        } else {
+      patternInput = kind.tag === 3 ? checkFormal(new Formula(7, [a, b]), "verified: whenever the first holds, so does the second", () => {
+        if (classical) {
           const arg = describeSituation(head(checkArgument(singleton3(a), b).Counterexamples));
           return toText(printf("does not hold \u2014 counterexample: %s"))(arg);
-        }
-      }) : kind.tag === 2 ? checkFormal(new Formula(2, [new Formula(3, [a, b])]), "verified: they can never both be true", () => {
-        if (modal) {
-          return "they CAN both be true \u2014 in some arrangement of possible worlds";
         } else {
-          const arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(3, [a, b])).Rows)[0]);
+          return "does not hold \u2014 it fails in some situation the engine found";
+        }
+      }) : kind.tag === 2 ? checkFormal(new Formula(3, [new Formula(4, [a, b])]), "verified: they can never both be true", () => {
+        if (classical) {
+          const arg_1 = describeSituation(find((tuple) => tuple[1], truthTable(new Formula(4, [a, b])).Rows)[0]);
           return toText(printf("they CAN both be true \u2014 for instance when %s"))(arg_1);
-        }
-      }) : checkFormal(new Formula(7, [a, b]), "verified: always the same truth value \u2014 two phrasings of one claim", () => {
-        if (modal) {
-          return "not equivalent \u2014 they come apart in some arrangement of possible worlds";
         } else {
+          return "they CAN both be true \u2014 in some situation the engine found";
+        }
+      }) : checkFormal(new Formula(8, [a, b]), "verified: always the same truth value \u2014 two phrasings of one claim", () => {
+        if (classical) {
           const matchValue_4 = distinguishing(a, b);
           if (matchValue_4 == null) {
             return "not equivalent";
@@ -7186,6 +8347,8 @@ function relationInfo(defs, glosses, left, kind, right) {
             const arg_2 = describeSituation(matchValue_4);
             return toText(printf("not equivalent \u2014 they come apart when %s"))(arg_2);
           }
+        } else {
+          return "not equivalent \u2014 they come apart in some situation the engine found";
         }
       });
       break;
@@ -7226,20 +8389,22 @@ function relationsBlock(claims) {
       const r = matchValue;
       return [nameA, relationName(r), nameB, relationWhy(r)];
     }
-  }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))));
+  }, rangeDouble(i + 1, 1, length(claims) - 1)), rangeDouble(0, 1, length(claims) - 1)))), empty5.model);
 }
 function toBlock(defs, glosses, claims, relationRows, st) {
   let matchValue_3, arg;
   switch (st.tag) {
     case 1:
-      return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("prose", empty5.level, st.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
     case 2:
-      return new BlockView("prop", empty5.level, empty5.title, st.fields[0], st.fields[1], empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("prop", empty5.level, empty5.title, st.fields[0], st.fields[1], empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
     case 3:
-      return new BlockView("claim", empty5.level, empty5.title, st.fields[0], empty5.gloss, toUnicode(st.fields[1]), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, toEnglish((name) => tryFind2(name, glosses), resolve(defs, st.fields[1])), empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("claim", empty5.level, empty5.title, st.fields[0], empty5.gloss, toUnicode(st.fields[1]), empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, toEnglish((name) => tryFind2(name, glosses), resolve(defs, st.fields[1])), empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
     case 4: {
       const f_2 = st.fields[0].tag === 0 ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]);
-      if (containsModal(f_2)) {
+      if (containsFO(f_2)) {
+        return foFormulaBlock("table", f_2);
+      } else if (containsModal(f_2)) {
         return modalBlock("table", f_2);
       } else {
         return tableBlock(f_2);
@@ -7254,14 +8419,16 @@ function toBlock(defs, glosses, claims, relationRows, st) {
         let patternInput_1;
         const matchValue_2 = equivalent2(ra, rb);
         patternInput_1 = matchValue_2 == null ? ["unknown", tooLargeNote] : matchValue_2 ? modal ? ["equivalent", "At every world of every arrangement the two sides carry the same truth value \u2014 two phrasings of one claim."] : ["equivalent", "In every possible situation the two sides carry the same truth value \u2014 two phrasings of one claim."] : modal ? ["not-equivalent", "They come apart in some arrangement of possible worlds: there, one holds and the other doesn't."] : ["not-equivalent", (matchValue_3 = distinguishing(ra, rb), matchValue_3 == null ? "" : (arg = describeSituation(matchValue_3), toText(printf("They come apart when %s: then one holds and the other doesn't."))(arg)))];
-        return new BlockView("check", empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), patternInput_1[0], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, patternInput_1[1], empty5.suggestion, empty5.proof, empty5.relations);
+        return new BlockView("check", empty5.level, empty5.title, empty5.name, empty5.gloss, toUnicode(ra) + " \u2261 " + toUnicode(rb), patternInput_1[0], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, patternInput_1[1], empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
       } else {
         const rf = resolve(defs, st.fields[0].fields[0]);
-        if (containsModal(rf)) {
+        if (containsFO(rf)) {
+          return foFormulaBlock("check", rf);
+        } else if (containsModal(rf)) {
           return modalBlock("check", rf);
         } else {
           const bind$0040 = tableBlock(rf);
-          return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.actual, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations);
+          return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.actual, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations, bind$0040.model);
         }
       }
     case 6:
@@ -7272,12 +8439,12 @@ function toBlock(defs, glosses, claims, relationRows, st) {
       return relationsBlock(claims);
     case 9: {
       const patternInput_2 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
-      return new BlockView("relation", empty5.level, patternInput_2[1], empty5.name, empty5.gloss, patternInput_2[0], patternInput_2[3], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, patternInput_2[2], empty5.form, empty5.fallacy, patternInput_2[4], empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("relation", empty5.level, patternInput_2[1], empty5.name, empty5.gloss, patternInput_2[0], patternInput_2[3], empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, patternInput_2[2], empty5.form, empty5.fallacy, patternInput_2[4], empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
     }
     case 10:
-      return new BlockView("map", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, relationRows);
+      return new BlockView("map", empty5.level, empty5.title, empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, relationRows, empty5.model);
     default:
-      return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("heading", st.fields[0], st.fields[1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, empty5.line, empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
   }
 }
 function analyze(source) {
@@ -7326,7 +8493,7 @@ function analyze(source) {
   return toArray(choose2((tupledArg_1) => {
     const r_2 = tupledArg_1[1];
     if (r_2.tag === 1) {
-      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations);
+      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model);
     } else if (r_2.fields[0] != null) {
       return toBlock(defs, glosses, claims, relationRows, r_2.fields[0]);
     } else {
@@ -7376,7 +8543,96 @@ function lint(source) {
         return void 0;
     }
   }, parseLines(source));
-  const usedNames = ofList(collect2(atoms, collect2((tupledArg_1) => {
+  const mentioned = (f_4_mut) => {
+    mentioned:
+      while (true) {
+        const f_4 = f_4_mut;
+        let matchResult_1, a_1, a_2, b_1;
+        switch (f_4.tag) {
+          case 1: {
+            matchResult_1 = 1;
+            break;
+          }
+          case 2: {
+            matchResult_1 = 2;
+            break;
+          }
+          case 3: {
+            matchResult_1 = 3;
+            a_1 = f_4.fields[0];
+            break;
+          }
+          case 9: {
+            matchResult_1 = 3;
+            a_1 = f_4.fields[0];
+            break;
+          }
+          case 10: {
+            matchResult_1 = 3;
+            a_1 = f_4.fields[0];
+            break;
+          }
+          case 11: {
+            matchResult_1 = 3;
+            a_1 = f_4.fields[1];
+            break;
+          }
+          case 12: {
+            matchResult_1 = 3;
+            a_1 = f_4.fields[1];
+            break;
+          }
+          case 4: {
+            matchResult_1 = 4;
+            a_2 = f_4.fields[0];
+            b_1 = f_4.fields[1];
+            break;
+          }
+          case 5: {
+            matchResult_1 = 4;
+            a_2 = f_4.fields[0];
+            b_1 = f_4.fields[1];
+            break;
+          }
+          case 6: {
+            matchResult_1 = 4;
+            a_2 = f_4.fields[0];
+            b_1 = f_4.fields[1];
+            break;
+          }
+          case 7: {
+            matchResult_1 = 4;
+            a_2 = f_4.fields[0];
+            b_1 = f_4.fields[1];
+            break;
+          }
+          case 8: {
+            matchResult_1 = 4;
+            a_2 = f_4.fields[0];
+            b_1 = f_4.fields[1];
+            break;
+          }
+          default:
+            matchResult_1 = 0;
+        }
+        switch (matchResult_1) {
+          case 0:
+            return singleton3(f_4.fields[0]);
+          case 1:
+            return cons(f_4.fields[0], f_4.fields[1]);
+          case 2:
+            return empty2();
+          case 3: {
+            f_4_mut = a_1;
+            continue mentioned;
+          }
+          default:
+            return append(mentioned(a_2), mentioned(b_1));
+        }
+        break;
+      }
+  };
+  const usedNames = ofList(collect2(mentioned, collect2((tupledArg_1) => {
     const st_1 = tupledArg_1[1];
     switch (st_1.tag) {
       case 3:
@@ -7421,24 +8677,24 @@ function lint(source) {
   });
   const declaredNames = ofList(choose2((tupledArg_2) => {
     const st_3 = tupledArg_2[1];
-    let matchResult_2, n_2;
+    let matchResult_3, n_4;
     switch (st_3.tag) {
       case 2: {
-        matchResult_2 = 0;
-        n_2 = st_3.fields[0];
+        matchResult_3 = 0;
+        n_4 = st_3.fields[0];
         break;
       }
       case 3: {
-        matchResult_2 = 0;
-        n_2 = st_3.fields[0];
+        matchResult_3 = 0;
+        n_4 = st_3.fields[0];
         break;
       }
       default:
-        matchResult_2 = 1;
+        matchResult_3 = 1;
     }
-    switch (matchResult_2) {
+    switch (matchResult_3) {
       case 0:
-        return n_2;
+        return n_4;
       default:
         return void 0;
     }
@@ -7448,45 +8704,45 @@ function lint(source) {
   return toArray(collect2((tupledArg_3) => {
     const lineNo = tupledArg_3[0] | 0;
     const st_4 = tupledArg_3[1];
-    let matchResult_3, name_1, l_1, r_2;
+    let matchResult_4, name_1, l_1, r_2;
     switch (st_4.tag) {
       case 2: {
         if (!contains2(st_4.fields[0], usedNames)) {
-          matchResult_3 = 0;
+          matchResult_4 = 0;
           name_1 = st_4.fields[0];
         } else {
-          matchResult_3 = 2;
+          matchResult_4 = 2;
         }
         break;
       }
       case 9: {
-        matchResult_3 = 1;
+        matchResult_4 = 1;
         l_1 = st_4.fields[0];
         r_2 = st_4.fields[2];
         break;
       }
       default:
-        matchResult_3 = 2;
+        matchResult_4 = 2;
     }
-    switch (matchResult_3) {
+    switch (matchResult_4) {
       case 0:
         return singleton3(new LintView(lineNo, toText(printf("prop '%s' is declared but never used in a formula"))(name_1)));
       case 1:
         return choose2((_arg_4) => {
-          let matchResult_4, n_4;
+          let matchResult_5, n_6;
           if (_arg_4.tag === 0) {
             if (!contains2(_arg_4.fields[0], declaredNames)) {
-              matchResult_4 = 0;
-              n_4 = _arg_4.fields[0];
+              matchResult_5 = 0;
+              n_6 = _arg_4.fields[0];
             } else {
-              matchResult_4 = 1;
+              matchResult_5 = 1;
             }
           } else {
-            matchResult_4 = 1;
+            matchResult_5 = 1;
           }
-          switch (matchResult_4) {
+          switch (matchResult_5) {
             case 0:
-              return new LintView(lineNo, toText(printf("relation references '%s', which is not a declared prop or claim \u2014 it will appear as an ad-hoc node (quote it to make that intentional)"))(n_4));
+              return new LintView(lineNo, toText(printf("relation references '%s', which is not a declared prop or claim \u2014 it will appear as an ad-hoc node (quote it to make that intentional)"))(n_6));
             default:
               return void 0;
           }
@@ -7536,6 +8792,16 @@ function renderTruthTable(atoms2, rows, results, resultHeader, actual = -1) {
 function renderTable(block) {
   return renderTruthTable(block.atoms, block.rows, block.results, block.formula, block.actual);
 }
+function renderModelCard(lines) {
+  const rows = lines.map((line) => {
+    const eq = line.indexOf("=");
+    if (eq === -1) return `<div class="model-line">${escapeHtml(line)}</div>`;
+    const lhs = line.slice(0, eq).trim();
+    const rhs = line.slice(eq + 1).trim();
+    return `<div class="model-line"><span class="model-lhs">${escapeHtml(lhs)}</span><span class="model-eq">=</span><span class="model-rhs">${escapeHtml(rhs)}</span></div>`;
+  }).join("");
+  return `<div class="model-card">${rows}</div>`;
+}
 function renderArgument(block) {
   const chips = [verdictBadge(block.verdict)];
   if (block.form) chips.push(`<span class="chip chip-form">${escapeHtml(block.form)}</span>`);
@@ -7555,6 +8821,11 @@ function renderArgument(block) {
     const label = block.actual >= 0 ? "countermodel \u2014 premises true at the actual world (\u2192), conclusion false there:" : "counterexample \u2014 premises true, conclusion false:";
     parts.push(
       `<div class="counterexample"><span class="cx-label">${label}</span>` + renderTruthTable(block.atoms, block.rows, block.results, block.conclusion, block.actual) + `</div>`
+    );
+  }
+  if (block.verdict === "invalid" && block.model.length > 0) {
+    parts.push(
+      `<div class="counterexample"><span class="cx-label">countermodel \u2014 premises true, conclusion false:</span>` + renderModelCard(block.model) + `</div>`
     );
   }
   if (block.suggestion.length > 0) {
@@ -7957,12 +9228,16 @@ function renderBlock(block) {
     }
     case "table": {
       const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
-      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
+      const card = block.model.length > 0 ? renderModelCard(block.model) : "";
+      const body = block.atoms.length > 0 ? renderTable(block) : card;
+      const head2 = block.atoms.length > 0 ? "" : `<div class="fo-formula">${escapeHtml(block.formula)}</div>`;
+      return `<figure class="statement"><figcaption>${verdictBadge(block.verdict)}${note}</figcaption>${head2}${body}</figure>`;
     }
     case "check": {
       const note = block.note ? `<span class="note-inline">${escapeHtml(block.note)}</span>` : "";
+      const card = block.model.length > 0 ? renderModelCard(block.model) : "";
       if (block.atoms.length === 0) {
-        return `<div class="check"><div><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>${note}</div>`;
+        return `<div class="check"><div><span class="formula">${escapeHtml(block.formula)}</span>${verdictBadge(block.verdict)}</div>${note}${card}</div>`;
       }
       return `<figure class="statement"><figcaption><span class="check-label">check</span> ${verdictBadge(block.verdict)}${note}</figcaption>${renderTable(block)}</figure>`;
     }
@@ -8015,7 +9290,11 @@ var KEYWORD_SNIPPETS = [
   { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
   { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
-  { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" }
+  { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" },
+  { label: "necessarily", detail: "modal \u25A1 \u2014 true in every possible world", body: "necessarily ${1:p}" },
+  { label: "possibly", detail: "modal \u25C7 \u2014 true in some possible world", body: "possibly ${1:p}" },
+  { label: "forall", detail: "\u2200 \u2014 holds for every individual", body: "forall ${1:x}. ${2:P(x)}" },
+  { label: "exists", detail: "\u2203 \u2014 holds for some individual", body: "exists ${1:x}. ${2:P(x)}" }
 ];
 function registerCompletions(context) {
   const forms2 = catalog2();
@@ -8163,6 +9442,11 @@ var STYLE = `
   .badge-unknown { background: var(--vscode-descriptionForeground, #8d96a0); color: #101214; }
   table.truth td.world-name, table.truth th.world-name { font-style: italic; opacity: .75; text-align: right; }
   table.truth td.world-name.actual { font-weight: 700; opacity: 1; }
+  .fo-formula { font-family: var(--vscode-editor-font-family); margin: .2rem 0 .4rem; }
+  .model-card { font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; padding: .4rem .7rem; display: inline-block; margin: .2rem 0; }
+  .model-line { padding: .08rem 0; }
+  .model-lhs { color: var(--vscode-symbolIcon-variableForeground, #4ec9b0); font-weight: 600; }
+  .model-eq { opacity: .5; margin: 0 .5em; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }

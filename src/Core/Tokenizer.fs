@@ -24,6 +24,10 @@ module Tokenizer =
         | TIff                 // iff  <->  ↔
         | TBox                 // necessarily  []  □
         | TDiamond             // possibly  <>  ◇
+        | TForall              // forall  ∀
+        | TExists              // exists  ∃
+        | TDot                 // .   (separates a quantifier's variable from its body)
+        | TComma               // ,   (separates a predicate's arguments)
         | TLParen              // (
         | TRParen              // )
 
@@ -42,6 +46,8 @@ module Tokenizer =
         | "iff" -> TIff
         | "necessarily" -> TBox
         | "possibly" -> TDiamond
+        | "forall" -> TForall
+        | "exists" -> TExists
         | "true" -> TTrue
         | "false" -> TFalse
         | other -> TIdent other
@@ -58,6 +64,10 @@ module Tokenizer =
                 | ' ' | '\t' -> loop (i + 1) acc
                 | '(' -> loop (i + 1) (TLParen :: acc)
                 | ')' -> loop (i + 1) (TRParen :: acc)
+                | ',' -> loop (i + 1) (TComma :: acc)
+                | '.' -> loop (i + 1) (TDot :: acc)
+                | '∀' -> loop (i + 1) (TForall :: acc)
+                | '∃' -> loop (i + 1) (TExists :: acc)
                 | '&' | '∧' -> loop (i + 1) (TAnd :: acc)
                 | '|' | '∨' -> loop (i + 1) (TOr :: acc)
                 | '~' | '!' | '¬' -> loop (i + 1) (TNot :: acc)

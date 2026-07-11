@@ -79,10 +79,32 @@ module Parser =
         | TNot :: more -> parseUnary more |> Result.map (fun (f, rest) -> Not f, rest)
         | TBox :: more -> parseUnary more |> Result.map (fun (f, rest) -> Box f, rest)
         | TDiamond :: more -> parseUnary more |> Result.map (fun (f, rest) -> Diamond f, rest)
+        // Quantifiers bind loosest: their body is parsed at the top level, so
+        // `forall x. P(x) -> Q(x)` scopes over the whole implication. They still
+        // live at the unary level so they can appear as an operand, as in
+        // `p -> forall x. Q(x)`.
+        | TForall :: TIdent x :: TDot :: more -> parseIff more |> Result.map (fun (f, rest) -> Forall(x, f), rest)
+        | TExists :: TIdent x :: TDot :: more -> parseIff more |> Result.map (fun (f, rest) -> Exists(x, f), rest)
+        | (TForall | TExists) :: _ -> Error "a quantifier needs a variable then '.', e.g.  forall x. Human(x)"
         | _ -> parseAtom tokens
+
+    // Parse the comma-separated argument list of a predicate, after its '('.
+    and private parseTermList tokens =
+        match tokens with
+        | TRParen :: rest -> Ok([], rest)
+        | _ ->
+            let rec loop acc toks =
+                match toks with
+                | TIdent t :: TComma :: more -> loop (acc @ [ t ]) more
+                | TIdent t :: TRParen :: more -> Ok(acc @ [ t ], more)
+                | _ -> Error "expected a term (a name), ',' or ')' in the predicate's arguments"
+            loop [] tokens
 
     and private parseAtom tokens =
         match tokens with
+        // An identifier immediately followed by '(' is a predicate application.
+        | TIdent name :: TLParen :: rest ->
+            parseTermList rest |> Result.map (fun (terms, rest') -> Pred(name, terms), rest')
         | TIdent name :: rest -> Ok(Atom name, rest)
         | TTrue :: rest -> Ok(Const true, rest)
         | TFalse :: rest -> Ok(Const false, rest)

@@ -1,0 +1,54 @@
+# Predicates and quantifiers
+
+The classic move that propositional logic can't make: reasoning about
+*all* and *some*. Props name whole statements; predicates name properties
+that individuals may or may not have.
+
+prop socrates : (unused here — predicates carry the meaning now)
+
+// Man(x) reads "x is a man"; socrates is an individual, x a variable.
+
+argument socrates-is-mortal {
+  premise forall x. Man(x) -> Mortal(x)
+  premise Man(socrates)
+  ---
+  conclude Mortal(socrates)
+}
+
+// Valid over every domain the engine checks — the textbook syllogism.
+
+## Where quantifiers trip people up
+
+// "Some are human, some are mortal" does NOT give "some are both". The
+// engine finds the two-individual world that pulls them apart.
+
+argument existential-slip {
+  premise exists x. Human(x)
+  premise exists x. Mortal(x)
+  ---
+  conclude exists x. Human(x) and Mortal(x)
+}
+
+// Order of quantifiers matters: "everyone loves someone" is not
+// "someone is loved by everyone".
+argument quantifier-order {
+  premise forall x. exists y. Loves(x, y)
+  ---
+  conclude exists y. forall x. Loves(x, y)
+}
+
+## Theorems of pure quantification
+
+// True in every model, no premises needed — the duality of ∀ and ∃:
+argument not-all-means-some-not {
+  ---
+  conclude (not forall x. P(x)) <-> (exists x. not P(x))
+}
+
+// And the drinker paradox: in any non-empty pub there's someone such that,
+// if they are drinking, everyone is.
+claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
+// And the drinker paradox: in any non-empty pub there's someone such that,
+// if they are drinking, everyone is.
+claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
+check C1

@@ -1,6 +1,6 @@
 
 import { Union } from "./fable_modules/fable-library-js.5.6.0/Types.js";
-import { list_type, int32_type, union_type, bool_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
+import { int32_type, union_type, bool_type, list_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
 
 /**
  * A logical formula built from atomic propositions and connectives.
@@ -14,12 +14,12 @@ export class Formula extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Atom", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond"];
+        return ["Atom", "Pred", "Const", "Not", "And", "Or", "Xor", "Implies", "Iff", "Box", "Diamond", "Forall", "Exists"];
     }
 }
 
 export function Formula_$reflection() {
-    return union_type("Meticulous.Ast.Formula", [], Formula, () => [[["Item", string_type]], [["Item", bool_type]], [["Item", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item", Formula_$reflection()]], [["Item", Formula_$reflection()]]]);
+    return union_type("Meticulous.Ast.Formula", [], Formula, () => [[["Item", string_type]], [["Item1", string_type], ["Item2", list_type(string_type)]], [["Item", bool_type]], [["Item", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item1", Formula_$reflection()], ["Item2", Formula_$reflection()]], [["Item", Formula_$reflection()]], [["Item", Formula_$reflection()]], [["Item1", string_type], ["Item2", Formula_$reflection()]], [["Item1", string_type], ["Item2", Formula_$reflection()]]]);
 }
 
 /**

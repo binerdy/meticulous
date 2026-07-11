@@ -519,6 +519,46 @@ let ``the modal ontological argument is S5-valid`` () =
     let result = checkArgumentS5 [ parse "<>god"; parse "[](god -> []god)" ] (parse "god")
     Assert.Equal(Engine.NoModel, result)
 
+// ---- First-order logic: predicates and quantifiers ---------------------------------
+
+[<Fact>]
+let ``predicates and quantifiers parse and render`` () =
+    Assert.Equal(Pred("Man", [ "socrates" ]), parse "Man(socrates)")
+    Assert.Equal(Forall("x", Implies(Pred("Human", [ "x" ]), Pred("Mortal", [ "x" ]))),
+                 parse "forall x. Human(x) -> Mortal(x)")   // maximal scope
+    Assert.Equal(parse "forall x. P(x)", parse "∀x. P(x)")
+    Assert.Equal(parse "exists x. P(x)", parse "∃x. P(x)")
+    Assert.Equal("∀x. Human(x) → Mortal(x)", Meticulous.Render.toUnicode (parse "forall x. Human(x) -> Mortal(x)"))
+    // a quantifier under negation keeps its parentheses
+    Assert.Equal("¬(∃x. P(x))", Meticulous.Render.toUnicode (parse "not exists x. P(x)"))
+
+[<Fact>]
+let ``the Socrates syllogism is valid over finite domains`` () =
+    let premises = [ parse "forall x. Human(x) -> Mortal(x)"; parse "Human(socrates)" ]
+    Assert.Equal(FONoModel, checkArgumentFO premises (parse "Mortal(socrates)"))
+
+[<Fact>]
+let ``the existential fallacy is refuted with a two-element countermodel`` () =
+    // ∃x.Human(x), ∃x.Mortal(x) ⊬ ∃x.(Human(x) ∧ Mortal(x))
+    let premises = [ parse "exists x. Human(x)"; parse "exists x. Mortal(x)" ]
+    match checkArgumentFO premises (parse "exists x. Human(x) and Mortal(x)") with
+    | FOModelFound m ->
+        Assert.Equal(2, m.Size)   // needs two individuals to split human from mortal
+    | other -> failwithf "expected a countermodel, got %A" other
+
+[<Fact>]
+let ``quantifier duality and the drinker paradox are valid`` () =
+    Assert.Equal(Some true, Engine.valid (parse "(not forall x. P(x)) <-> (exists x. not P(x))"))
+    // the drinker paradox: someone is such that, if they drink, everyone drinks
+    Assert.Equal(Some true, Engine.valid (parse "exists x. (Drinks(x) -> forall y. Drinks(y))"))
+
+[<Fact>]
+let ``a plainly invalid quantifier shift is caught`` () =
+    // ∀x.∃y.Loves(x,y) ⊬ ∃y.∀x.Loves(x,y)   (everyone loves someone ≠ someone is loved by all)
+    match checkArgumentFO [ parse "forall x. exists y. Loves(x, y)" ] (parse "exists y. forall x. Loves(x, y)") with
+    | FOModelFound _ -> ()
+    | other -> failwithf "expected a countermodel, got %A" other
+
 // ---- Modal logic through the Api --------------------------------------------------
 
 [<Fact>]
@@ -569,6 +609,36 @@ let ``a modal proof checks with the S5 rules`` () =
              }\n"
     Assert.Equal("valid", proof.verdict)
 
+// ---- First-order logic through the Api ---------------------------------------------
+
+[<Fact>]
+let ``the Socrates syllogism is valid through the Api`` () =
+    let doc =
+        "argument s {\n  premise forall x. Man(x) -> Mortal(x)\n  premise Man(socrates)\n  ---\n  conclude Mortal(socrates)\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+
+[<Fact>]
+let ``an invalid FO argument shows a model card`` () =
+    let doc =
+        "argument e {\n  premise exists x. Human(x)\n  premise exists x. Mortal(x)\n  ---\n  conclude exists x. Human(x) and Mortal(x)\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("invalid", arg.verdict)
+    Assert.NotEmpty arg.model
+    Assert.Contains(arg.model, fun line -> line.StartsWith "domain =")
+
+[<Fact>]
+let ``a FO table reports bounded validity`` () =
+    let block = analyze "table forall x. P(x) -> P(x)\n" |> Array.find (fun b -> b.kind = "table")
+    Assert.Equal("tautology", block.verdict)
+    Assert.Contains("bounded", block.note)
+
+[<Fact>]
+let ``FO claims read back in English with the unary shorthand`` () =
+    let doc = "claim S : forall x. Man(x) -> Mortal(x)\n"
+    let claim = analyze doc |> Array.find (fun b -> b.kind = "claim")
+    Assert.Equal("For every x, if x is Man, then x is Mortal.", claim.note)
+
 // ---- Editor extras: catalog and lint -------------------------------------------
 
 [<Fact>]
@@ -587,6 +657,13 @@ let ``lint flags props that never appear in a formula`` () =
     let w = Assert.Single warnings
     Assert.Equal(1, w.line)
     Assert.Contains("ghost", w.message)
+
+[<Fact>]
+let ``lint counts a prop used only as a predicate argument`` () =
+    // socrates appears in Man(socrates) / Mortal(socrates) — that IS usage.
+    let warnings =
+        lint "prop socrates : the philosopher\nclaim S : Man(socrates) -> Mortal(socrates)\n"
+    Assert.Empty warnings
 
 [<Fact>]
 let ``a valid but unrecognized argument still explains its verdict`` () =

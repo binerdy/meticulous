@@ -47,7 +47,8 @@ module Api =
           note: string
           suggestion: string[]
           proof: string[][]      // one step: [number; formula; justification]
-          relations: string[][] } // one pair: [left; relation; right]
+          relations: string[][]  // one pair: [left; relation; right]
+          model: string[] }      // first-order (counter)model description, line by line
 
     /// A blank block we copy-and-tweak, so each branch only sets what it needs.
     let private empty =
@@ -70,7 +71,8 @@ module Api =
           note = ""
           suggestion = [||]
           proof = [||]
-          relations = [||] }
+          relations = [||]
+          model = [||] }
 
     let private verdictName =
         function
@@ -150,6 +152,28 @@ module Api =
                 results = worlds |> List.map (fun w -> evalS5 worlds w f) |> List.toArray
                 actual = actual }
 
+    /// The verdict card for a *first-order* formula. No truth table can capture
+    /// quantifiers, so the verdict comes from the finite-model search, and a
+    /// contingent formula shows a small model where it fails.
+    let private foFormulaBlock (kindName: string) (f: Formula) =
+        let base' = { empty with kind = kindName; formula = toUnicode f }
+        match foSatisfy (Not f), foSatisfy f with
+        | FONoModel, _ ->
+            { base' with
+                verdict = "tautology"
+                note = "Valid: true in every model checked (domains up to size 4). First-order validity is undecidable, so this is a bounded check, not a full guarantee." }
+        | _, FONoModel ->
+            { base' with
+                verdict = "contradiction"
+                note = "Unsatisfiable: false in every model checked (domains up to size 4)." }
+        | FOTooLarge, _ | _, FOTooLarge ->
+            { base' with verdict = "unknown"; note = tooLargeNote }
+        | FOModelFound m, _ ->
+            { base' with
+                verdict = "contingent"
+                note = "Contingent: its truth depends on the domain and interpretation — here is a model where it is false."
+                model = Engine.describeModel m (Not f) |> List.toArray }
+
     /// Describe an assignment in words: "policy is true and growth is false".
     let private describeSituation (env: Map<string, bool>) =
         env
@@ -170,21 +194,30 @@ module Api =
     let private argumentBlock (defs: Map<string, Formula>) (name: string) premises conclusion =
         let rp = premises |> List.map (resolve defs)
         let rc = resolve defs conclusion
-        let modal = List.exists containsModal (rc :: rp)
+        let fo = List.exists containsFO (rc :: rp)
+        let modal = not fo && List.exists containsModal (rc :: rp)
 
-        // isValid/unknown plus, when invalid, the refuting situations:
-        // classical rows (many), or one modal countermodel with its actual world.
-        let isValid, unknown, cxAtoms, cxRows, cxActual =
-            if modal then
+        // isValid/unknown plus, when invalid, the refuting situation: classical
+        // rows (many), a modal countermodel with its actual world, or a
+        // first-order model card.
+        let isValid, unknown, cxAtoms, cxRows, cxActual, cxModel =
+            if fo then
+                match checkArgumentFO rp rc with
+                | FONoModel -> true, false, [], [], -1, []
+                | FOTooLarge -> false, true, [], [], -1, []
+                | FOModelFound m ->
+                    let together = List.fold (fun acc p -> And(acc, p)) (Not rc) rp
+                    false, false, [], [], -1, Engine.describeModel m together
+            elif modal then
                 match checkArgumentS5 rp rc with
-                | NoModel -> true, false, [], [], -1
-                | TooLarge -> false, true, [], [], -1
+                | NoModel -> true, false, [], [], -1, []
+                | TooLarge -> false, true, [], [], -1, []
                 | Model(worlds, actual) ->
                     let names = rp @ [ rc ] |> List.collect atoms |> List.distinct
-                    false, false, names, worlds, actual
+                    false, false, names, worlds, actual, []
             else
                 let check = checkArgument rp rc
-                check.IsValid, false, check.Atoms, check.Counterexamples, -1
+                check.IsValid, false, check.Atoms, check.Counterexamples, -1, []
 
         let recognized =
             if unknown then None
@@ -196,13 +229,13 @@ module Api =
             if form.Aka = "" then form.Title
             else form.Title + " (" + form.Aka + ")"
 
+        // Proof search and missing-premise repair are propositional machinery;
+        // they honestly stay out of modal and first-order arguments.
         let proofSteps =
-            if isValid then prove rp rc |> Option.defaultValue [] else []
+            if isValid && not modal && not fo then prove rp rc |> Option.defaultValue [] else []
 
-        // Missing-premise repair is a classical search; modal repair would need
-        // its own candidate space, so it honestly stays out of modal arguments.
         let repairs =
-            if isValid || unknown || modal then [] else suggestRepairs rp rc
+            if isValid || unknown || modal || fo then [] else suggestRepairs rp rc
 
         // Can the premises all hold at once? If not, the argument is valid only
         // *vacuously* — a situation worth naming, not hiding behind a green badge.
@@ -211,7 +244,8 @@ module Api =
             | [] -> true
             | _ ->
                 let together = List.reduce (fun a b -> And(a, b)) rp
-                if modal then s5Satisfy together <> NoModel
+                if fo then foSatisfy together <> FONoModel
+                elif modal then s5Satisfy together <> NoModel
                 else (truthTable together).Verdict <> Contradiction
 
         // Every argument gets an explanation: the catalog's note when the shape
@@ -222,10 +256,14 @@ module Api =
                 if isValid then
                     match recognized with
                     | Some form -> form.Note
+                    | None when fo ->
+                        "A theorem: the conclusion holds in every model checked (domains up to size 4) — provable from no premises at all."
                     | None when modal ->
                         "A theorem of S5: the conclusion holds at every world of every arrangement — provable from no premises at all."
                     | None ->
                         "A theorem: the conclusion holds in every possible situation — a tautology, provable from no premises at all."
+                elif fo then
+                    "Not a theorem: there is a model where the conclusion fails."
                 elif modal then
                     "Not a theorem: there is an arrangement of possible worlds where the conclusion fails."
                 else
@@ -237,10 +275,14 @@ module Api =
                 match recognized with
                 | Some form -> form.Note
                 | None ->
-                    if isValid && modal then
+                    if isValid && fo then
+                        "Valid: no model (over domains up to size 4) makes every premise true and the conclusion false. First-order validity is undecidable, so this is a bounded check."
+                    elif isValid && modal then
                         "Valid in S5: no arrangement of possible worlds makes every premise true at the actual world while the conclusion fails there."
                     elif isValid then
                         "Valid: no possible situation makes every premise true and the conclusion false."
+                    elif fo then
+                        "Invalid: here is a model where every premise holds but the conclusion fails."
                     elif modal then
                         "Invalid in S5: there is an arrangement of possible worlds where every premise holds at the actual world while the conclusion fails there."
                     else
@@ -279,7 +321,8 @@ module Api =
             results =
                 if cxActual >= 0 then cxRows |> List.map (fun w -> evalS5 cxRows w rc) |> List.toArray
                 else cxRows |> List.map (fun _ -> false) |> List.toArray
-            actual = cxActual }
+            actual = cxActual
+            model = List.toArray cxModel }
 
     /// Check a user-written proof line by line. Each derived step must
     /// genuinely follow from the lines it cites, *by the rule it names* —
@@ -411,7 +454,7 @@ module Api =
             | (Supports | Presupposes), _, _ ->
                 "asserted", "an informal relation — asserted by you, recorded but not checked by the engine"
             | _, Some a, Some b ->
-                let modal = containsModal a || containsModal b
+                let classical = not (containsModal a || containsModal b || containsFO a || containsFO b)
                 let checkFormal (f: Formula) (holdsNote: string) (failsNote: unit -> string) =
                     match valid f with
                     | Some true -> "holds", holdsNote
@@ -420,23 +463,23 @@ module Api =
                 match kind with
                 | Entails ->
                     checkFormal (Implies(a, b)) "verified: whenever the first holds, so does the second" (fun () ->
-                        if modal then "does not hold — it fails in some arrangement of possible worlds"
-                        else
+                        if classical then
                             let cx = (checkArgument [ a ] b).Counterexamples |> List.head
-                            sprintf "does not hold — counterexample: %s" (describeSituation cx))
+                            sprintf "does not hold — counterexample: %s" (describeSituation cx)
+                        else "does not hold — it fails in some situation the engine found")
                 | Contradicts ->
                     checkFormal (Not(And(a, b))) "verified: they can never both be true" (fun () ->
-                        if modal then "they CAN both be true — in some arrangement of possible worlds"
-                        else
+                        if classical then
                             let both = (truthTable (And(a, b))).Rows |> List.find snd |> fst
-                            sprintf "they CAN both be true — for instance when %s" (describeSituation both))
+                            sprintf "they CAN both be true — for instance when %s" (describeSituation both)
+                        else "they CAN both be true — in some situation the engine found")
                 | _ ->
                     checkFormal (Iff(a, b)) "verified: always the same truth value — two phrasings of one claim" (fun () ->
-                        if modal then "not equivalent — they come apart in some arrangement of possible worlds"
-                        else
+                        if classical then
                             match distinguishing a b with
                             | Some env -> sprintf "not equivalent — they come apart when %s" (describeSituation env)
-                            | None -> "not equivalent")
+                            | None -> "not equivalent"
+                        else "not equivalent — they come apart in some situation the engine found")
             | _ ->
                 "asserted", "cannot be checked — one side is not a declared claim or prop"
 
@@ -494,10 +537,13 @@ module Api =
                 match target with
                 | TargetFormula f -> resolve defs f
                 | TargetRef n -> resolve defs (Atom n)
-            if containsModal f then modalBlock "table" f else tableBlock f
+            if containsFO f then foFormulaBlock "table" f
+            elif containsModal f then modalBlock "table" f
+            else tableBlock f
         | Check(Verdict f) ->
             let rf = resolve defs f
-            if containsModal rf then modalBlock "check" rf
+            if containsFO rf then foFormulaBlock "check" rf
+            elif containsModal rf then modalBlock "check" rf
             else { (tableBlock rf) with kind = "check" }
         | Check(Equivalent(a, b)) ->
             let ra, rb = resolve defs a, resolve defs b
@@ -636,10 +682,22 @@ module Api =
                 [ l; r ] |> List.choose (function Named n -> Some(Atom n) | Quoted _ -> None)
             | _ -> []
 
+        // Every name a formula mentions: propositional atoms, and — crucially —
+        // predicate names and their term arguments, so `Man(socrates)` counts
+        // both `Man` and `socrates` as used.
+        let rec mentioned f =
+            match f with
+            | Atom n -> [ n ]
+            | Pred(n, args) -> n :: args
+            | Const _ -> []
+            | Not a | Box a | Diamond a | Forall(_, a) | Exists(_, a) -> mentioned a
+            | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
+                mentioned a @ mentioned b
+
         let usedNames =
             statements
             |> List.collect (fun (_, st) -> formulasOf st)
-            |> List.collect atoms
+            |> List.collect mentioned
             |> Set.ofList
 
         let declaredNames =

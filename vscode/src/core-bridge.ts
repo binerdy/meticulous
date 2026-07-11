@@ -45,6 +45,7 @@ export interface BlockView {
   suggestion: string[]; // missing premises that would repair an invalid argument
   proof: string[][];    // derivation steps: [number, formula, justification]
   relations: string[][]; // from `analyze`: [left, relation, right]
+  model: string[];      // first-order (counter)model description, line by line
 }
 
 export const analyze = fableAnalyze as unknown as (source: string) => BlockView[];

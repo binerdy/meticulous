@@ -44,6 +44,11 @@ const STYLE = `
   .badge-unknown { background: var(--vscode-descriptionForeground, #8d96a0); color: #101214; }
   table.truth td.world-name, table.truth th.world-name { font-style: italic; opacity: .75; text-align: right; }
   table.truth td.world-name.actual { font-weight: 700; opacity: 1; }
+  .fo-formula { font-family: var(--vscode-editor-font-family); margin: .2rem 0 .4rem; }
+  .model-card { font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; padding: .4rem .7rem; display: inline-block; margin: .2rem 0; }
+  .model-line { padding: .08rem 0; }
+  .model-lhs { color: var(--vscode-symbolIcon-variableForeground, #4ec9b0); font-weight: 600; }
+  .model-eq { opacity: .5; margin: 0 .5em; }
   .error { color: var(--vscode-errorForeground, #f85149); font-family: var(--vscode-editor-font-family); margin: .3rem 0; }
   .error-line { opacity: .6; margin-right: .5em; }
   .empty { opacity: .6; }

@@ -12,6 +12,7 @@ module Render =
     let private precedence f =
         match f with
         | Atom _
+        | Pred _
         | Const _ -> 100
         | Not _
         | Box _
@@ -21,6 +22,10 @@ module Render =
         | Xor _ -> 60
         | Implies _ -> 50
         | Iff _ -> 40
+        // Quantifiers scope as far right as possible, so they bind loosest of
+        // all — anything to their right is inside them unless parenthesised.
+        | Forall _
+        | Exists _ -> 20
 
     /// Render a formula to a minimally-parenthesised Unicode string.
     let toUnicode (formula: Formula) : string =
@@ -44,11 +49,15 @@ module Render =
 
             match f with
             | Atom n -> n
+            | Pred(n, []) -> n
+            | Pred(n, args) -> n + "(" + String.concat ", " args + ")"
             | Const true -> "⊤"
             | Const false -> "⊥"
             | Not a -> "¬" + wrap true a
             | Box a -> "□" + wrap true a
             | Diamond a -> "◇" + wrap true a
+            | Forall(x, a) -> "∀" + x + ". " + wrap false a
+            | Exists(x, a) -> "∃" + x + ". " + wrap false a
             | And(a, b) -> wrap true a + " ∧ " + wrap false b
             | Or(a, b) -> wrap true a + " ∨ " + wrap false b
             | Xor(a, b) -> wrap true a + " ⊕ " + wrap false b
@@ -76,11 +85,18 @@ module Render =
         let rec go f =
             match f with
             | Atom name -> glossOf name |> Option.map soften |> Option.defaultValue name
+            // A unary predicate reads naturally as "socrates is Man"; anything
+            // else falls back to the symbolic form spoken aloud.
+            | Pred(name, [ t ]) -> t + " is " + name
+            | Pred(name, []) -> glossOf name |> Option.map soften |> Option.defaultValue name
+            | Pred(name, args) -> name + " holds of " + String.concat ", " args
             | Const true -> "true"
             | Const false -> "false"
             | Not a -> "it is not the case that " + go a
             | Box a -> "it is necessary that " + go a
             | Diamond a -> "it is possible that " + go a
+            | Forall(x, a) -> "for every " + x + ", " + go a
+            | Exists(x, a) -> "for some " + x + ", " + go a
             | And(a, b) -> "both " + go a + ", and " + go b
             | Or(a, b) -> "either " + go a + ", or " + go b
             | Xor(a, b) -> "either " + go a + " or " + go b + ", but not both"
