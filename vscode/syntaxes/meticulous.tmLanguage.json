@@ -9,7 +9,10 @@
     { "include": "#justification" },
     { "include": "#relation" },
     { "include": "#string" },
+    { "include": "#term-subject" },
+    { "include": "#term-predicate" },
     { "include": "#operator" },
+    { "include": "#prose" },
     { "include": "#constant" }
   ],
   "repository": {
@@ -50,6 +53,24 @@
     "operator": {
       "match": "->|<->|<>|→|↔|∧|∨|¬|⊕|□|◇|∀|∃|\\[\\]|&|\\||~|!|\\b(and|or|not|implies|iff|xor|necessarily|possibly|forall|exists)\\b",
       "name": "keyword.operator.logical.meticulous"
+    },
+    "prose": {
+      "match": "\\b(If|if|then|Either|either|neither|nor|All|all|No|Some|some|Every|every|are|is|Therefore|therefore|Thus|thus|Hence|hence)\\b",
+      "name": "keyword.other.prose.meticulous"
+    },
+    "term-subject": {
+      "comment": "the class term after a quantifier — the 'x' in 'All x are ...'",
+      "match": "\\b(?i:all|no|some|every)\\s+([A-Za-z][\\w-]*)",
+      "captures": {
+        "1": { "name": "variable.other.term.meticulous" }
+      }
+    },
+    "term-predicate": {
+      "comment": "the class term after a copula — the 'y' in '... are y' / '... is a y'",
+      "match": "\\b(?i:are|is)\\s+(?i:not\\s+)?(?i:an?\\s+)?([A-Za-z][\\w-]*)",
+      "captures": {
+        "1": { "name": "variable.other.term.meticulous" }
+      }
     },
     "constant": {
       "match": "\\b(true|false)\\b|⊤|⊥",

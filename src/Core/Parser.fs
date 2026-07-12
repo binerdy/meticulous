@@ -127,6 +127,25 @@ module Parser =
                 | [] -> Ok f
                 | _ -> Error "Unexpected leftover input after the formula"))
 
+    // Words that only appear in the prose surface — their presence means a
+    // failed symbolic parse should report the *prose* error instead.
+    let private proseSignals =
+        set [ "if"; "then"; "all"; "no"; "some"; "every"; "either"; "neither"; "nor"; "is"; "are" ]
+
+    /// Parse a formula written either symbolically (p -> q) or as an English
+    /// sentence (If p, then q). Symbolic is tried first; prose is the fallback.
+    let parseAny (text: string) : Result<Formula, string> =
+        match parseFormula text with
+        | Ok f -> Ok f
+        | Error symErr ->
+            match Prose.parseSentence text with
+            | Ok f -> Ok f
+            | Error proseErr ->
+                let looksProse =
+                    text.Split([| ' '; '\t' |], System.StringSplitOptions.RemoveEmptyEntries)
+                    |> Array.exists (fun w -> Set.contains (w.ToLowerInvariant()) proseSignals)
+                Error(if looksProse then proseErr else symErr)
+
     // ---- Document parser -------------------------------------------------
 
     /// Remove an inline `//` comment. (Naive, but formulas never contain "//".)
@@ -215,22 +234,22 @@ module Parser =
             | idx ->
                 let name = rest.Substring(0, idx).Trim()
                 let body = rest.Substring(idx + 1).Trim()
-                parseFormula body |> Result.map (fun f -> Some(Claim(name, f)))
+                parseAny body |> Result.map (fun f -> Some(Claim(name, f)))
 
         elif line.StartsWith "table " then
             let target = line.Substring(6).Trim()
             if isSingleIdentifier target then
                 Ok(Some(Table(TargetRef target)))
             else
-                parseFormula target |> Result.map (fun f -> Some(Table(TargetFormula f)))
+                parseAny target |> Result.map (fun f -> Some(Table(TargetFormula f)))
 
         elif line.StartsWith "check " then
             let rest = line.Substring(6).Trim()
             match splitOnKeyword rest "equivalent" with
             | Some (l, r) ->
-                parseFormula l
-                |> Result.bind (fun lf -> parseFormula r |> Result.map (fun rf -> Some(Check(Equivalent(lf, rf)))))
-            | None -> parseFormula rest |> Result.map (fun f -> Some(Check(Verdict f)))
+                parseAny l
+                |> Result.bind (fun lf -> parseAny r |> Result.map (fun rf -> Some(Check(Equivalent(lf, rf)))))
+            | None -> parseAny rest |> Result.map (fun f -> Some(Check(Verdict f)))
 
         elif line = "analyze" then
             Ok(Some Analyze)
@@ -261,11 +280,14 @@ module Parser =
             Error "`venn` needs an argument name (venn my-argument) or a block (venn name { … })"
 
         else
-            // A relation assertion like `C1 supports C2`?
-            // Anything else is plain prose.
+            // A relation assertion like `C1 supports C2`? A whole prose argument
+            // like `If P, then Q. P. Therefore, Q.`? Otherwise, plain prose.
             match tryParseRelation line with
             | Some relation -> Ok(Some relation)
-            | None -> Ok(Some(Prose line))
+            | None ->
+                match Prose.tryParseArgument line with
+                | Some(name, premises, conclusion) -> Ok(Some(Argument(name, premises, conclusion)))
+                | None -> Ok(Some(Prose line))
 
     /// Parse the interior of an `argument name { ... }` block.
     /// `body` carries (lineNumber, rawLine) for everything between the braces.

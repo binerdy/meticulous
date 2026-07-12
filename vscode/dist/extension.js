@@ -1545,7 +1545,7 @@ function split(str, splitters, count, options) {
     return [];
   }
   const removeEmpty = (options & 1) === 1;
-  const trim = (options & 2) === 2;
+  const trim2 = (options & 2) === 2;
   splitters = splitters || [];
   splitters = splitters.filter((x) => x).map(escape);
   splitters = splitters.length > 0 ? splitters : ["\\s"];
@@ -1556,16 +1556,16 @@ function split(str, splitters, count, options) {
   do {
     const match = reg.exec(str);
     if (match === null) {
-      const candidate = trim ? str.substring(i).trim() : str.substring(i);
+      const candidate = trim2 ? str.substring(i).trim() : str.substring(i);
       if (!removeEmpty || candidate.length > 0) {
         splits.push(candidate);
       }
       findSplits = false;
     } else {
-      const candidate = trim ? str.substring(i, match.index).trim() : str.substring(i, match.index);
+      const candidate = trim2 ? str.substring(i, match.index).trim() : str.substring(i, match.index);
       if (!removeEmpty || candidate.length > 0) {
         if (count != null && splits.length + 1 === count) {
-          splits.push(trim ? str.substring(i).trim() : str.substring(i));
+          splits.push(trim2 ? str.substring(i).trim() : str.substring(i));
           findSplits = false;
         } else {
           splits.push(candidate);
@@ -1575,6 +1575,13 @@ function split(str, splitters, count, options) {
     }
   } while (findSplits);
   return splits;
+}
+function trim(str, ...chars) {
+  if (chars.length === 0) {
+    return str.trim();
+  }
+  const pattern = "[" + escape(chars.join("")) + "]+";
+  return str.replace(new RegExp("^" + pattern), "").replace(new RegExp(pattern + "$"), "");
 }
 function trimStart(str, ...chars) {
   return chars.length === 0 ? str.trimStart() : str.replace(new RegExp("^[" + escape(chars.join("")) + "]+"), "");
@@ -1685,6 +1692,13 @@ function initialize(count, initializer, cons2) {
 function fold(folder, state, array) {
   const folder_1 = folder;
   return array.reduce(folder_1, state);
+}
+function tryHead(array) {
+  if (array.length === 0) {
+    return void 0;
+  } else {
+    return some(item(0, array));
+  }
 }
 function item(index, array) {
   if (index < 0 ? true : index >= array.length) {
@@ -4017,6 +4031,9 @@ function ofList(elements, comparer) {
 function toList2(set$) {
   return FSharpSet__ToList(set$);
 }
+function ofSeq3(elements, comparer) {
+  return FSharpSet_$ctor(comparer, SetTreeModule_ofSeq(comparer, elements));
+}
 
 // src/core/fable_modules/fable-library-js.5.6.0/Map.js
 var MapTreeLeaf$2 = class {
@@ -4666,6 +4683,9 @@ function map5(mapping, table) {
   return FSharpMap__Map(table, mapping);
 }
 function ofList2(elements, comparer) {
+  return FSharpMap_$ctor(comparer, MapTreeModule_ofSeq(comparer, elements));
+}
+function ofSeq4(elements, comparer) {
   return FSharpMap_$ctor(comparer, MapTreeModule_ofSeq(comparer, elements));
 }
 function toList3(table) {
@@ -7209,6 +7229,852 @@ function tokenize(input) {
   return loop(0, empty2());
 }
 
+// src/core/Prose.js
+var reserved = ofSeq3(["if", "then", "and", "or", "not", "either", "neither", "nor", "implies", "iff", "necessarily", "possibly", "all", "no", "some", "every", "are", "is", "a", "an", "therefore", "thus", "hence", "true", "false"], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+function lower(w) {
+  return w.toLowerCase();
+}
+function normalize(s) {
+  return replace(replace(replace(replace(replace(trimEnd(s.trim(), "."), ",", " "), " if and only if ", " iff "), "it is not the case that ", "not "), "it is necessary that ", "necessarily "), "it is possible that ", "possibly ");
+}
+function tokenize2(s) {
+  return ofArray(split(replace(replace(normalize(s), "(", " ( "), ")", " ) "), [" ", "	"], void 0, 1));
+}
+function isName(w) {
+  if (w.length > 0 && isLetter(w[0])) {
+    return forAll((c) => {
+      if (isLetterOrDigit(c) ? true : c === "_") {
+        return true;
+      } else {
+        return c === "-";
+      }
+    }, w.split(""));
+  } else {
+    return false;
+  }
+}
+var irregularPlurals = ofSeq4([["men", "man"], ["women", "woman"], ["children", "child"], ["people", "person"], ["feet", "foot"], ["teeth", "tooth"], ["mice", "mouse"], ["geese", "goose"]], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+function singular(w) {
+  const matchValue = tryFind2(w, irregularPlurals);
+  if (matchValue == null) {
+    if (w.endsWith("ies") && w.length > 3) {
+      return substring(w, 0, w.length - 3) + "y";
+    } else if (exists2((value2) => w.endsWith(value2), ofArray(["ses", "xes", "zes", "ches", "shes"]))) {
+      return substring(w, 0, w.length - 2);
+    } else if (w.endsWith("s") && !w.endsWith("ss") && w.length > 2) {
+      return substring(w, 0, w.length - 1);
+    } else {
+      return w;
+    }
+  } else {
+    return matchValue;
+  }
+}
+function categorical(ws) {
+  const p = (name, arg) => new Formula(1, [singular(lower(name)), singleton3(lower(arg))]);
+  const matchValue = map4((w) => [w, lower(w)], ws);
+  let matchResult, s, t, s_1, t_1, s_2, t_2, s_3, t_3, s_4, t_4, s_5, t_5, subj, t_6, subj_1, t_7;
+  if (!isEmpty(matchValue)) {
+    switch (head(matchValue)[1]) {
+      case "all": {
+        if (!isEmpty(tail(matchValue))) {
+          if (!isEmpty(tail(tail(matchValue)))) {
+            switch (head(tail(tail(matchValue)))[1]) {
+              case "are": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  matchResult = 0;
+                  s = head(tail(matchValue))[0];
+                  t = head(tail(tail(tail(matchValue))))[0];
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "a": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "an": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              default:
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+            }
+          } else {
+            matchResult = 8;
+          }
+        } else {
+          matchResult = 8;
+        }
+        break;
+      }
+      case "no": {
+        if (!isEmpty(tail(matchValue))) {
+          if (!isEmpty(tail(tail(matchValue)))) {
+            switch (head(tail(tail(matchValue)))[1]) {
+              case "are": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  matchResult = 1;
+                  s_1 = head(tail(matchValue))[0];
+                  t_1 = head(tail(tail(tail(matchValue))))[0];
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "a": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "an": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              default:
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+            }
+          } else {
+            matchResult = 8;
+          }
+        } else {
+          matchResult = 8;
+        }
+        break;
+      }
+      case "some": {
+        if (!isEmpty(tail(matchValue))) {
+          if (!isEmpty(tail(tail(matchValue)))) {
+            switch (head(tail(tail(matchValue)))[1]) {
+              case "are": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (head(tail(tail(tail(matchValue))))[1] === "not") {
+                  if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                    matchResult = 3;
+                    s_3 = head(tail(matchValue))[0];
+                    t_3 = head(tail(tail(tail(matchValue))))[0];
+                  } else if (isEmpty(tail(tail(tail(tail(tail(matchValue))))))) {
+                    matchResult = 2;
+                    s_2 = head(tail(matchValue))[0];
+                    t_2 = head(tail(tail(tail(tail(matchValue)))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  matchResult = 3;
+                  s_3 = head(tail(matchValue))[0];
+                  t_3 = head(tail(tail(tail(matchValue))))[0];
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "a": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "an": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              default:
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+            }
+          } else {
+            matchResult = 8;
+          }
+        } else {
+          matchResult = 8;
+        }
+        break;
+      }
+      case "every": {
+        if (!isEmpty(tail(matchValue))) {
+          if (!isEmpty(tail(tail(matchValue)))) {
+            switch (head(tail(tail(matchValue)))[1]) {
+              case "is": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  switch (head(tail(tail(tail(matchValue))))[1]) {
+                    case "a": {
+                      if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                        matchResult = 5;
+                        s_5 = head(tail(matchValue))[0];
+                        t_5 = head(tail(tail(tail(matchValue))))[0];
+                      } else if (isEmpty(tail(tail(tail(tail(tail(matchValue))))))) {
+                        matchResult = 4;
+                        s_4 = head(tail(matchValue))[0];
+                        t_4 = head(tail(tail(tail(tail(matchValue)))))[0];
+                      } else {
+                        matchResult = 8;
+                      }
+                      break;
+                    }
+                    case "an": {
+                      if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                        matchResult = 5;
+                        s_5 = head(tail(matchValue))[0];
+                        t_5 = head(tail(tail(tail(matchValue))))[0];
+                      } else if (isEmpty(tail(tail(tail(tail(tail(matchValue))))))) {
+                        matchResult = 4;
+                        s_4 = head(tail(matchValue))[0];
+                        t_4 = head(tail(tail(tail(tail(matchValue)))))[0];
+                      } else {
+                        matchResult = 8;
+                      }
+                      break;
+                    }
+                    default:
+                      if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                        matchResult = 5;
+                        s_5 = head(tail(matchValue))[0];
+                        t_5 = head(tail(tail(tail(matchValue))))[0];
+                      } else {
+                        matchResult = 8;
+                      }
+                  }
+                }
+                break;
+              }
+              case "a": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              case "an": {
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+                break;
+              }
+              default:
+                if (isEmpty(tail(tail(tail(matchValue))))) {
+                  if (head(tail(matchValue))[1] === "is") {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                } else {
+                  matchResult = 8;
+                }
+            }
+          } else {
+            matchResult = 8;
+          }
+        } else {
+          matchResult = 8;
+        }
+        break;
+      }
+      default:
+        if (!isEmpty(tail(matchValue))) {
+          if (head(tail(matchValue))[1] === "is") {
+            if (!isEmpty(tail(tail(matchValue)))) {
+              switch (head(tail(tail(matchValue)))[1]) {
+                case "a": {
+                  if (isEmpty(tail(tail(tail(matchValue))))) {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                  break;
+                }
+                case "an": {
+                  if (isEmpty(tail(tail(tail(matchValue))))) {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else if (isEmpty(tail(tail(tail(tail(matchValue)))))) {
+                    matchResult = 6;
+                    subj = head(matchValue)[0];
+                    t_6 = head(tail(tail(tail(matchValue))))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+                  break;
+                }
+                default:
+                  if (isEmpty(tail(tail(tail(matchValue))))) {
+                    matchResult = 7;
+                    subj_1 = head(matchValue)[0];
+                    t_7 = head(tail(tail(matchValue)))[0];
+                  } else {
+                    matchResult = 8;
+                  }
+              }
+            } else {
+              matchResult = 8;
+            }
+          } else {
+            matchResult = 8;
+          }
+        } else {
+          matchResult = 8;
+        }
+    }
+  } else {
+    matchResult = 8;
+  }
+  switch (matchResult) {
+    case 0:
+      return new Formula(11, ["x", new Formula(7, [p(s, "x"), p(t, "x")])]);
+    case 1:
+      return new Formula(11, ["x", new Formula(7, [p(s_1, "x"), new Formula(3, [p(t_1, "x")])])]);
+    case 2:
+      return new Formula(12, ["x", new Formula(4, [p(s_2, "x"), new Formula(3, [p(t_2, "x")])])]);
+    case 3:
+      return new Formula(12, ["x", new Formula(4, [p(s_3, "x"), p(t_3, "x")])]);
+    case 4:
+      return new Formula(11, ["x", new Formula(7, [p(s_4, "x"), p(t_4, "x")])]);
+    case 5:
+      return new Formula(11, ["x", new Formula(7, [p(s_5, "x"), p(t_5, "x")])]);
+    case 6:
+      return p(t_6, subj);
+    case 7:
+      return p(t_7, subj_1);
+    default:
+      return void 0;
+  }
+}
+function parseTop(ts) {
+  return parseIff(ts);
+}
+function parseIff(ts) {
+  return Result_Bind((tupledArg) => {
+    const l = tupledArg[0];
+    const rest = tupledArg[1];
+    let matchResult, more_1, w_1;
+    if (!isEmpty(rest)) {
+      if (lower(head(rest)) === "iff") {
+        matchResult = 0;
+        more_1 = tail(rest);
+        w_1 = head(rest);
+      } else {
+        matchResult = 1;
+      }
+    } else {
+      matchResult = 1;
+    }
+    switch (matchResult) {
+      case 0:
+        return Result_Map((tupledArg_1) => [new Formula(8, [l, tupledArg_1[0]]), tupledArg_1[1]], parseImp(more_1));
+      default:
+        return new FSharpResult$2(0, [[l, rest]]);
+    }
+  }, parseImp(ts));
+}
+function parseImp(ts) {
+  let matchResult, rest_1, w_1;
+  if (!isEmpty(ts)) {
+    if (lower(head(ts)) === "if") {
+      matchResult = 0;
+      rest_1 = tail(ts);
+      w_1 = head(ts);
+    } else {
+      matchResult = 1;
+    }
+  } else {
+    matchResult = 1;
+  }
+  switch (matchResult) {
+    case 0:
+      return Result_Bind((tupledArg) => {
+        const rest$0027 = tupledArg[1];
+        let matchResult_1, more_1, t_1;
+        if (!isEmpty(rest$0027)) {
+          if (lower(head(rest$0027)) === "then") {
+            matchResult_1 = 0;
+            more_1 = tail(rest$0027);
+            t_1 = head(rest$0027);
+          } else {
+            matchResult_1 = 1;
+          }
+        } else {
+          matchResult_1 = 1;
+        }
+        switch (matchResult_1) {
+          case 0:
+            return Result_Map((tupledArg_1) => [new Formula(7, [tupledArg[0], tupledArg_1[0]]), tupledArg_1[1]], parseTop(more_1));
+          default:
+            return new FSharpResult$2(1, ["expected 'then' to close the 'if \u2026' clause"]);
+        }
+      }, parseOr(rest_1));
+    default:
+      return Result_Bind((tupledArg_2) => {
+        const l = tupledArg_2[0];
+        const rest_2 = tupledArg_2[1];
+        let matchResult_2, more_3, w_3;
+        if (!isEmpty(rest_2)) {
+          if (lower(head(rest_2)) === "implies") {
+            matchResult_2 = 0;
+            more_3 = tail(rest_2);
+            w_3 = head(rest_2);
+          } else {
+            matchResult_2 = 1;
+          }
+        } else {
+          matchResult_2 = 1;
+        }
+        switch (matchResult_2) {
+          case 0:
+            return Result_Map((tupledArg_3) => [new Formula(7, [l, tupledArg_3[0]]), tupledArg_3[1]], parseImp(more_3));
+          default:
+            return new FSharpResult$2(0, [[l, rest_2]]);
+        }
+      }, parseOr(ts));
+  }
+}
+function parseOr(ts) {
+  return Result_Bind((tupledArg) => {
+    const loop = (acc, toks) => {
+      let matchResult, more_3, w_3;
+      if (!isEmpty(toks)) {
+        if (lower(head(toks)) === "or") {
+          matchResult = 0;
+          more_3 = tail(toks);
+          w_3 = head(toks);
+        } else {
+          matchResult = 1;
+        }
+      } else {
+        matchResult = 1;
+      }
+      switch (matchResult) {
+        case 0:
+          return Result_Bind((tupledArg_1) => loop(new Formula(5, [acc, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more_3));
+        default:
+          return new FSharpResult$2(0, [[acc, toks]]);
+      }
+    };
+    return loop(tupledArg[0], tupledArg[1]);
+  }, parseAnd(!isEmpty(ts) ? lower(head(ts)) === "either" ? tail(ts) : ts : ts));
+}
+function parseAnd(ts) {
+  return Result_Bind((tupledArg) => {
+    const loop = (acc, toks) => {
+      let matchResult, more_1, w_1;
+      if (!isEmpty(toks)) {
+        if (lower(head(toks)) === "and") {
+          matchResult = 0;
+          more_1 = tail(toks);
+          w_1 = head(toks);
+        } else {
+          matchResult = 1;
+        }
+      } else {
+        matchResult = 1;
+      }
+      switch (matchResult) {
+        case 0:
+          return Result_Bind((tupledArg_1) => loop(new Formula(4, [acc, tupledArg_1[0]]), tupledArg_1[1]), parseNeg(more_1));
+        default:
+          return new FSharpResult$2(0, [[acc, toks]]);
+      }
+    };
+    return loop(tupledArg[0], tupledArg[1]);
+  }, parseNeg(ts));
+}
+function parseNeg(ts) {
+  let matchResult, more_4, w_4, more_5, w_5, more_6, w_6, more_7, w_7;
+  if (!isEmpty(ts)) {
+    if (lower(head(ts)) === "not") {
+      matchResult = 0;
+      more_4 = tail(ts);
+      w_4 = head(ts);
+    } else if (lower(head(ts)) === "necessarily") {
+      matchResult = 1;
+      more_5 = tail(ts);
+      w_5 = head(ts);
+    } else if (lower(head(ts)) === "possibly") {
+      matchResult = 2;
+      more_6 = tail(ts);
+      w_6 = head(ts);
+    } else if (lower(head(ts)) === "neither") {
+      matchResult = 3;
+      more_7 = tail(ts);
+      w_7 = head(ts);
+    } else {
+      matchResult = 4;
+    }
+  } else {
+    matchResult = 4;
+  }
+  switch (matchResult) {
+    case 0:
+      return Result_Map((tupledArg) => [new Formula(3, [tupledArg[0]]), tupledArg[1]], parseNeg(more_4));
+    case 1:
+      return Result_Map((tupledArg_1) => [new Formula(9, [tupledArg_1[0]]), tupledArg_1[1]], parseNeg(more_5));
+    case 2:
+      return Result_Map((tupledArg_2) => [new Formula(10, [tupledArg_2[0]]), tupledArg_2[1]], parseNeg(more_6));
+    case 3:
+      return Result_Bind((tupledArg_3) => {
+        const rest = tupledArg_3[1];
+        let matchResult_1, r2_1, t_1;
+        if (!isEmpty(rest)) {
+          if (lower(head(rest)) === "nor") {
+            matchResult_1 = 0;
+            r2_1 = tail(rest);
+            t_1 = head(rest);
+          } else {
+            matchResult_1 = 1;
+          }
+        } else {
+          matchResult_1 = 1;
+        }
+        switch (matchResult_1) {
+          case 0:
+            return Result_Map((tupledArg_4) => [new Formula(4, [new Formula(3, [tupledArg_3[0]]), new Formula(3, [tupledArg_4[0]])]), tupledArg_4[1]], parseNeg(r2_1));
+          default:
+            return new FSharpResult$2(1, ["expected 'nor' after 'neither'"]);
+        }
+      }, parseAnd(more_7));
+    default:
+      return parseAtom(ts);
+  }
+}
+function parseAtom(ts) {
+  let w_3;
+  if (isEmpty(ts)) {
+    return new FSharpResult$2(1, ["the sentence ended unexpectedly"]);
+  } else if (lower(head(ts)) === "(") {
+    return Result_Bind((tupledArg) => {
+      const rest = tupledArg[1];
+      let matchResult, r_1, t_1;
+      if (!isEmpty(rest)) {
+        if (lower(head(rest)) === ")") {
+          matchResult = 0;
+          r_1 = tail(rest);
+          t_1 = head(rest);
+        } else {
+          matchResult = 1;
+        }
+      } else {
+        matchResult = 1;
+      }
+      switch (matchResult) {
+        case 0:
+          return new FSharpResult$2(0, [[tupledArg[0], r_1]]);
+        default:
+          return new FSharpResult$2(1, ["expected ')'"]);
+      }
+    }, parseTop(tail(ts)));
+  } else if (lower(head(ts)) === "true") {
+    return new FSharpResult$2(0, [[new Formula(2, [true]), tail(ts)]]);
+  } else if (lower(head(ts)) === "false") {
+    return new FSharpResult$2(0, [[new Formula(2, [false]), tail(ts)]]);
+  } else if (w_3 = head(ts), isName(w_3) && !contains2(lower(w_3), reserved)) {
+    return new FSharpResult$2(0, [[new Formula(0, [head(ts)]), tail(ts)]]);
+  } else {
+    return new FSharpResult$2(1, [toText(printf("didn't expect '%s' here"))(head(ts))]);
+  }
+}
+function parseSentence(text) {
+  const ws = tokenize2(text);
+  if (isEmpty(ws)) {
+    return new FSharpResult$2(1, ["empty sentence"]);
+  } else {
+    const matchValue = categorical(ws);
+    if (matchValue == null) {
+      return Result_Bind((tupledArg) => {
+        let arg;
+        const rest = tupledArg[1];
+        if (isEmpty(rest)) {
+          return new FSharpResult$2(0, [tupledArg[0]]);
+        } else {
+          return new FSharpResult$2(1, [(arg = join(" ", rest), toText(printf("didn't understand the rest of the sentence: '%s'"))(arg))]);
+        }
+      }, parseTop(ws));
+    } else {
+      return new FSharpResult$2(0, [matchValue]);
+    }
+  }
+}
+var markers = ofSeq3(["therefore", "thus", "hence"], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+function firstWord(s) {
+  return defaultArg(map((w) => trim(lower(w), ",", ";", ".", ":"), tryHead(split(s.trim(), [" ", "	"], void 0, 1))), "");
+}
+function tryParseArgument(line) {
+  let i, array_1, s_3, t, sp, idx;
+  let patternInput;
+  const matchValue = line.indexOf(":") | 0;
+  if (i = matchValue | 0, i > 0 && forAll((c) => {
+    if (isLetterOrDigit(c) ? true : c === "-") {
+      return true;
+    } else {
+      return c === "_";
+    }
+  }, substring(line, 0, i).trim().split(""))) {
+    const i_1 = matchValue | 0;
+    patternInput = [substring(line, 0, i_1).trim(), substring(line, i_1 + 1)];
+  } else {
+    patternInput = ["", line];
+  }
+  const sentences = ofArray((array_1 = map2((s) => s.trim(), split(patternInput[1], ["."], void 0, 0)), array_1.filter((s_1) => s_1 !== "")));
+  const matchValue_1 = tryFindIndex2((s_2) => contains2(firstWord(s_2), markers), sentences);
+  let matchResult, idx_1;
+  if (matchValue_1 != null) {
+    if (idx = matchValue_1 | 0, length(sentences) >= 2) {
+      matchResult = 0;
+      idx_1 = matchValue_1;
+    } else {
+      matchResult = 1;
+    }
+  } else {
+    matchResult = 1;
+  }
+  switch (matchResult) {
+    case 0: {
+      const parsedPremises = map4(parseSentence, map4((tuple) => tuple[1], filter2((tupledArg) => tupledArg[0] !== idx_1, mapIndexed((i_2, s_4) => [i_2, s_4], sentences))));
+      const matchValue_2 = parseSentence((s_3 = item2(idx_1, sentences), t = s_3.trim(), sp = t.indexOf(" ") | 0, sp > 0 ? substring(t, sp + 1).trim() : ""));
+      let matchResult_1;
+      if (matchValue_2.tag === 0) {
+        if (forAll2((_arg_1) => {
+          if (_arg_1.tag === 0) {
+            return true;
+          } else {
+            return false;
+          }
+        }, parsedPremises)) {
+          matchResult_1 = 0;
+        } else {
+          matchResult_1 = 1;
+        }
+      } else {
+        matchResult_1 = 1;
+      }
+      switch (matchResult_1) {
+        case 0:
+          return [patternInput[0], map4((_arg_2) => {
+            if (_arg_2.tag === 0) {
+              return _arg_2.fields[0];
+            } else {
+              return new Formula(2, [true]);
+            }
+          }, parsedPremises), matchValue_2.fields[0]];
+        default:
+          return void 0;
+      }
+    }
+    default:
+      return void 0;
+  }
+}
+
 // src/core/fable_modules/fable-library-js.5.6.0/Int32.js
 var NumberStyles = {
   // None: 0x00000000,
@@ -7332,7 +8198,7 @@ function parse(str, style, unsigned, bitsize, radix) {
 }
 
 // src/core/Parser.js
-function parseIff(tokens) {
+function parseIff2(tokens) {
   return Result_Bind((tupledArg) => {
     const loop = (l, toks) => {
       let matchResult, more;
@@ -7395,15 +8261,15 @@ function parseXor(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(6, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(6, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr2(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
     };
     return loop(tupledArg[0], tupledArg[1]);
-  }, parseOr(tokens));
+  }, parseOr2(tokens));
 }
-function parseOr(tokens) {
+function parseOr2(tokens) {
   return Result_Bind((tupledArg) => {
     const loop = (l, toks) => {
       let matchResult, more;
@@ -7419,15 +8285,15 @@ function parseOr(tokens) {
       }
       switch (matchResult) {
         case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd(more));
+          return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd2(more));
         default:
           return new FSharpResult$2(0, [[l, toks]]);
       }
     };
     return loop(tupledArg[0], tupledArg[1]);
-  }, parseAnd(tokens));
+  }, parseAnd2(tokens));
 }
-function parseAnd(tokens) {
+function parseAnd2(tokens) {
   return Result_Bind((tupledArg) => {
     const loop = (l, toks) => {
       let matchResult, more;
@@ -7528,13 +8394,13 @@ function parseUnary(tokens) {
     case 2:
       return Result_Map((tupledArg_2) => [new Formula(10, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
     case 3:
-      return Result_Map((tupledArg_3) => [new Formula(11, [x, tupledArg_3[0]]), tupledArg_3[1]], parseIff(more_3));
+      return Result_Map((tupledArg_3) => [new Formula(11, [x, tupledArg_3[0]]), tupledArg_3[1]], parseIff2(more_3));
     case 4:
-      return Result_Map((tupledArg_4) => [new Formula(12, [x_1, tupledArg_4[0]]), tupledArg_4[1]], parseIff(more_4));
+      return Result_Map((tupledArg_4) => [new Formula(12, [x_1, tupledArg_4[0]]), tupledArg_4[1]], parseIff2(more_4));
     case 5:
       return new FSharpResult$2(1, ["a quantifier needs a variable then '.', e.g.  forall x. Human(x)"]);
     default:
-      return parseAtom(tokens);
+      return parseAtom2(tokens);
   }
 }
 function parseTermList(tokens) {
@@ -7604,7 +8470,7 @@ function parseTermList(tokens) {
     }
   }
 }
-function parseAtom(tokens) {
+function parseAtom2(tokens) {
   let matchResult, name, rest, name_1, rest_1, rest_2, rest_3, rest_4;
   if (isEmpty(tokens)) {
     matchResult = 5;
@@ -7676,7 +8542,7 @@ function parseAtom(tokens) {
           default:
             return new FSharpResult$2(1, ["Expected a closing ')'"]);
         }
-      }, parseIff(rest_4));
+      }, parseIff2(rest_4));
     case 5:
       return new FSharpResult$2(1, ["Unexpected end of formula"]);
     default:
@@ -7690,7 +8556,24 @@ function parseFormula(text) {
     } else {
       return new FSharpResult$2(1, ["Unexpected leftover input after the formula"]);
     }
-  }, parseIff(tokens)), tokenize(text));
+  }, parseIff2(tokens)), tokenize(text));
+}
+var proseSignals = ofSeq3(["if", "then", "all", "no", "some", "every", "either", "neither", "nor", "is", "are"], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+function parseAny(text) {
+  let array;
+  const matchValue = parseFormula(text);
+  if (matchValue.tag === 1) {
+    const matchValue_1 = parseSentence(text);
+    if (matchValue_1.tag === 1) {
+      return new FSharpResult$2(1, [(array = split(text, [" ", "	"], void 0, 1), array.some((w) => contains2(w.toLowerCase(), proseSignals))) ? matchValue_1.fields[0] : matchValue.fields[0]]);
+    } else {
+      return new FSharpResult$2(0, [matchValue_1.fields[0]]);
+    }
+  } else {
+    return new FSharpResult$2(0, [matchValue.fields[0]]);
+  }
 }
 function stripComment(line) {
   const matchValue = line.indexOf("//") | 0;
@@ -7792,23 +8675,23 @@ function parseLine(raw) {
     } else {
       const idx_1 = matchValue_1 | 0;
       const name_1 = substring(rest_1, 0, idx_1).trim();
-      return Result_Map((f) => new Statement(3, [name_1, f]), parseFormula(substring(rest_1, idx_1 + 1).trim()));
+      return Result_Map((f) => new Statement(3, [name_1, f]), parseAny(substring(rest_1, idx_1 + 1).trim()));
     }
   } else if (line.startsWith("table ")) {
     const target = substring(line, 6).trim();
     if (isSingleIdentifier(target)) {
       return new FSharpResult$2(0, [new Statement(4, [new TableTarget(0, [target])])]);
     } else {
-      return Result_Map((f_1) => new Statement(4, [new TableTarget(1, [f_1])]), parseFormula(target));
+      return Result_Map((f_1) => new Statement(4, [new TableTarget(1, [f_1])]), parseAny(target));
     }
   } else if (line.startsWith("check ")) {
     const rest_2 = substring(line, 6).trim();
     const matchValue_2 = splitOnKeyword(rest_2, "equivalent");
     if (matchValue_2 == null) {
-      return Result_Map((f_2) => new Statement(5, [new CheckKind(0, [f_2])]), parseFormula(rest_2));
+      return Result_Map((f_2) => new Statement(5, [new CheckKind(0, [f_2])]), parseAny(rest_2));
     } else {
       const r = matchValue_2[1];
-      return Result_Bind((lf) => Result_Map((rf) => new Statement(5, [new CheckKind(1, [lf, rf])]), parseFormula(r)), parseFormula(matchValue_2[0]));
+      return Result_Bind((lf) => Result_Map((rf) => new Statement(5, [new CheckKind(1, [lf, rf])]), parseAny(r)), parseAny(matchValue_2[0]));
     }
   } else {
     switch (line) {
@@ -7839,7 +8722,12 @@ function parseLine(raw) {
         } else {
           const matchValue_3 = tryParseRelation(line);
           if (matchValue_3 == null) {
-            return new FSharpResult$2(0, [new Statement(1, [line])]);
+            const matchValue_4 = tryParseArgument(line);
+            if (matchValue_4 == null) {
+              return new FSharpResult$2(0, [new Statement(1, [line])]);
+            } else {
+              return new FSharpResult$2(0, [new Statement(6, [matchValue_4[0], matchValue_4[1], matchValue_4[2]])]);
+            }
           } else {
             return new FSharpResult$2(0, [matchValue_3]);
           }

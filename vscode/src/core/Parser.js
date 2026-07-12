@@ -1,13 +1,15 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
 import { ProofLine, CheckKind, TableTarget, Statement, RelationKind, RelRef, Formula } from "./Ast.js";
-import { choose, ofSeq, map as map_1, filter, tryPick, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { choose, ofSeq as ofSeq_1, map as map_1, filter, tryPick, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
-import { replace, printf, toText, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
+import { contains, ofSeq } from "./fable_modules/fable-library-js.5.6.0/Set.js";
+import { disposeSafe, getEnumerator, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { tryParseArgument, parseSentence } from "./Prose.js";
+import { replace, printf, toText, trimStart, substring, split } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
 import { takeWhile, length, forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { bind } from "./fable_modules/fable-library-js.5.6.0/Option.js";
-import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { parse } from "./fable_modules/fable-library-js.5.6.0/Int32.js";
 import { item, map } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
@@ -413,6 +415,31 @@ export function parseFormula(text) {
     }, parseIff(tokens)), tokenize(text));
 }
 
+const proseSignals = ofSeq(["if", "then", "all", "no", "some", "every", "either", "neither", "nor", "is", "are"], {
+    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+});
+
+/**
+ * Parse a formula written either symbolically (p -> q) or as an English
+ * sentence (If p, then q). Symbolic is tried first; prose is the fallback.
+ */
+export function parseAny(text) {
+    let array;
+    const matchValue = parseFormula(text);
+    if (matchValue.tag === 1) {
+        const matchValue_1 = parseSentence(text);
+        if (matchValue_1.tag === 1) {
+            return new FSharpResult$2(1, [((array = split(text, [" ", "\t"], undefined, 1), array.some((w) => contains(w.toLowerCase(), proseSignals)))) ? matchValue_1.fields[0] : matchValue.fields[0]]);
+        }
+        else {
+            return new FSharpResult$2(0, [matchValue_1.fields[0]]);
+        }
+    }
+    else {
+        return new FSharpResult$2(0, [matchValue.fields[0]]);
+    }
+}
+
 function stripComment(line) {
     const matchValue = line.indexOf("//") | 0;
     if (matchValue === -1) {
@@ -538,7 +565,7 @@ export function parseLine(raw) {
         else {
             const idx_1 = matchValue_1 | 0;
             const name_1 = substring(rest_1, 0, idx_1).trim();
-            return Result_Map((f) => (new Statement(3, [name_1, f])), parseFormula(substring(rest_1, idx_1 + 1).trim()));
+            return Result_Map((f) => (new Statement(3, [name_1, f])), parseAny(substring(rest_1, idx_1 + 1).trim()));
         }
     }
     else if (line.startsWith("table ")) {
@@ -547,18 +574,18 @@ export function parseLine(raw) {
             return new FSharpResult$2(0, [new Statement(4, [new TableTarget(0, [target])])]);
         }
         else {
-            return Result_Map((f_1) => (new Statement(4, [new TableTarget(1, [f_1])])), parseFormula(target));
+            return Result_Map((f_1) => (new Statement(4, [new TableTarget(1, [f_1])])), parseAny(target));
         }
     }
     else if (line.startsWith("check ")) {
         const rest_2 = substring(line, 6).trim();
         const matchValue_2 = splitOnKeyword(rest_2, "equivalent");
         if (matchValue_2 == null) {
-            return Result_Map((f_2) => (new Statement(5, [new CheckKind(0, [f_2])])), parseFormula(rest_2));
+            return Result_Map((f_2) => (new Statement(5, [new CheckKind(0, [f_2])])), parseAny(rest_2));
         }
         else {
             const r = matchValue_2[1];
-            return Result_Bind((lf) => Result_Map((rf) => (new Statement(5, [new CheckKind(1, [lf, rf])])), parseFormula(r)), parseFormula(matchValue_2[0]));
+            return Result_Bind((lf) => Result_Map((rf) => (new Statement(5, [new CheckKind(1, [lf, rf])])), parseAny(r)), parseAny(matchValue_2[0]));
         }
     }
     else {
@@ -596,7 +623,13 @@ export function parseLine(raw) {
                 else {
                     const matchValue_3 = tryParseRelation(line);
                     if (matchValue_3 == null) {
-                        return new FSharpResult$2(0, [new Statement(1, [line])]);
+                        const matchValue_4 = tryParseArgument(line);
+                        if (matchValue_4 == null) {
+                            return new FSharpResult$2(0, [new Statement(1, [line])]);
+                        }
+                        else {
+                            return new FSharpResult$2(0, [new Statement(6, [matchValue_4[0], matchValue_4[1], matchValue_4[2]])]);
+                        }
                     }
                     else {
                         return new FSharpResult$2(0, [matchValue_3]);
@@ -860,7 +893,7 @@ export function parseLines(source) {
                 i = (lines.length | 0);
             }
             else {
-                const matchValue_1 = parseBlock(name_3)(no)(ofSeq(body_3));
+                const matchValue_1 = parseBlock(name_3)(no)(ofSeq_1(body_3));
                 if (matchValue_1.tag === 1) {
                     const enumerator = getEnumerator(matchValue_1.fields[0]);
                     try {
@@ -880,7 +913,7 @@ export function parseLines(source) {
             }
         }
     }
-    return ofSeq(results);
+    return ofSeq_1(results);
 }
 
 /**

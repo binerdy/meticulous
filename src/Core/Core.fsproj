@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="Ast.fs" />
     <Compile Include="Tokenizer.fs" />
+    <Compile Include="Prose.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="InferenceRules.fs" />

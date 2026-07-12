@@ -1,0 +1,37 @@
+# Plain-language meticulous
+
+You don't have to write symbols. Meticulous understands arguments written
+the way you'd say them — a sentence per premise, "Therefore" for the
+conclusion. Each one below is checked, its form named, its proof found.
+
+If P, then Q. P. Therefore, Q.
+
+If P, then Q. Not Q. Therefore, not P.
+
+If P, then Q. If Q, then R. Therefore, if P, then R.
+
+Either P or Q. Not P. Therefore, Q.
+
+# Categorical arguments
+
+Words like "all", "no", and "some" become quantifiers. Use the same term
+throughout (say "mortal" both times, not "mortal" then "mortals").
+
+All men are mortal. Socrates is a man. Therefore, Socrates is mortal.
+
+Some men are philosophers. All philosophers are wise. Therefore, some men are wise.
+
+# The four categorical forms
+
+You can also name a claim in prose and inspect it on its own:
+
+claim A : All men are mortal
+claim E : No men are mortal
+claim I : Some men are mortal
+claim O : Some men are not mortal
+
+# Mixing is fine
+
+Prose and symbols mean the same thing — write whichever reads better:
+
+check (If P, then Q) equivalent (not P or Q)

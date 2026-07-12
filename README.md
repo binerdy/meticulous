@@ -58,6 +58,20 @@ Operators come in three spellings — words (`and or not implies iff xor`),
 ASCII (`& | ~ -> <->`), or Unicode (`∧ ∨ ¬ → ↔ ⊕`) — and all render as real
 logic symbols.
 
+### …or just write it in English
+
+Don't want symbols at all? Write arguments the way you'd say them:
+
+```meticulous
+If P, then Q. P. Therefore, Q.
+Either P or Q. Not P. Therefore, Q.
+All men are mortal. Socrates is a man. Therefore, Socrates is mortal.
+```
+
+Each is parsed, checked, its inference form named, and its proof found —
+exactly as if you'd written the symbols. "All/no/some" become quantifiers,
+"If … then …" becomes `→`, and plurals are matched up for you.
+
 ### Arguments are checked, named, and explained
 
 ```meticulous

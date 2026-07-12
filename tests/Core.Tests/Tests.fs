@@ -495,6 +495,69 @@ let ``relations keep props counted as used, and undeclared names warn`` () =
     Assert.Contains("ghost", w.message)
     Assert.Equal(4, w.line)
 
+// ---- Prose: the natural-language surface -------------------------------------------
+
+let private prose text =
+    match Meticulous.Prose.parseSentence text with
+    | Ok f -> f
+    | Error e -> failwithf "prose parse failed for %A: %s" text e
+
+[<Fact>]
+let ``connective sentences parse to the expected formulas`` () =
+    Assert.Equal(Implies(Atom "P", Atom "Q"), prose "If P, then Q")
+    Assert.Equal(Implies(Atom "P", Atom "Q"), prose "If P then Q")   // comma optional
+    Assert.Equal(Or(Atom "P", Atom "Q"), prose "Either P or Q")
+    Assert.Equal(And(Not(Atom "P"), Not(Atom "Q")), prose "Neither P nor Q")
+    Assert.Equal(Not(Atom "P"), prose "not P")
+    Assert.Equal(Iff(Atom "P", Atom "Q"), prose "P if and only if Q")
+
+[<Fact>]
+let ``if-then takes the widest scope, like the symbolic form`` () =
+    // "If P and Q, then R" == P ∧ Q → R
+    Assert.Equal(Implies(And(Atom "P", Atom "Q"), Atom "R"), prose "If P and Q, then R")
+
+[<Fact>]
+let ``categorical sentences become quantified formulas`` () =
+    // "men" is singularized to "man" so it matches "Socrates is a man"
+    Assert.Equal(Forall("x", Implies(Pred("man", ["x"]), Pred("mortal", ["x"]))), prose "All men are mortal")
+    Assert.Equal(Forall("x", Implies(Pred("s", ["x"]), Not(Pred("p", ["x"])))), prose "No S are P")
+    Assert.Equal(Exists("x", And(Pred("s", ["x"]), Pred("p", ["x"]))), prose "Some S are P")
+    Assert.Equal(Exists("x", And(Pred("s", ["x"]), Not(Pred("p", ["x"])))), prose "Some S are not P")
+    // singular predication, lowercased so it matches the class term
+    Assert.Equal(Pred("man", ["socrates"]), prose "Socrates is a man")
+
+[<Fact>]
+let ``a prose argument with Therefore is recognized and checked`` () =
+    let mp = analyze "If P, then Q. P. Therefore, Q.\n" |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", mp.verdict)
+    Assert.Equal("modus ponens (modus ponendo ponens)", mp.form)
+    let mt = analyze "If P, then Q. Not Q. Therefore, not P.\n" |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("modus tollens (modus tollendo tollens)", mt.form)
+    let ds = analyze "Either P or Q. Not P. Therefore, Q.\n" |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("disjunctive syllogism (modus tollendo ponens)", ds.form)
+
+[<Fact>]
+let ``a prose argument can be named and a categorical syllogism works`` () =
+    // plurals are singularized, so "men"/"man" and "mortals"/"mortal" unify
+    let named = analyze "barbara: All men are mortal. All mortals are finite. Therefore, all men are finite.\n"
+                |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("barbara", named.name)
+    Assert.Equal("valid", named.verdict)
+
+[<Fact>]
+let ``the prose Socrates syllogism is valid once plurals are unified`` () =
+    let arg = analyze "All men are mortal. Socrates is a man. Therefore, Socrates is mortal.\n"
+              |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("valid", arg.verdict)
+
+[<Fact>]
+let ``prose works inside claims and a plain paragraph stays prose`` () =
+    let claim = analyze "claim C1 : If P then Q\n" |> Array.find (fun b -> b.kind = "claim")
+    Assert.Equal("P → Q", claim.formula)
+    // ordinary prose that happens to have periods is not mistaken for an argument
+    let blocks = analyze "This is just a note about the argument.\n"
+    Assert.Equal("prose", blocks.[0].kind)
+
 // ---- Venn diagrams: monadic analysis ----------------------------------------------
 
 [<Fact>]
