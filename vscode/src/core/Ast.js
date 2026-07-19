@@ -127,11 +127,11 @@ export class Statement extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Venn", "VennRef", "Analyze", "Relates", "RelationMap"];
+        return ["Heading", "Prose", "Prop", "Claim", "Table", "Check", "Argument", "Proof", "Venn", "VennRef", "Square", "Analyze", "Relates", "RelationMap"];
     }
 }
 
 export function Statement_$reflection() {
-    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", Formula_$reflection()]], [["name", string_type], ["lines", list_type(ProofLine_$reflection())]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", option_type(Formula_$reflection())]], [["argument", string_type]], [], [["left", RelRef_$reflection()], ["kind", RelationKind_$reflection()], ["right", RelRef_$reflection()]], []]);
+    return union_type("Meticulous.Ast.Statement", [], Statement, () => [[["level", int32_type], ["text", string_type]], [["Item", string_type]], [["name", string_type], ["gloss", string_type]], [["name", string_type], ["body", Formula_$reflection()]], [["Item", TableTarget_$reflection()]], [["Item", CheckKind_$reflection()]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", Formula_$reflection()]], [["name", string_type], ["lines", list_type(ProofLine_$reflection())]], [["name", string_type], ["premises", list_type(Formula_$reflection())], ["conclusion", option_type(Formula_$reflection())]], [["argument", string_type]], [["subject", string_type], ["predicate", string_type]], [], [["left", RelRef_$reflection()], ["kind", RelationKind_$reflection()], ["right", RelRef_$reflection()]], []]);
 }
 

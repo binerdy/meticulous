@@ -9,13 +9,14 @@ open Meticulous.Api
 
 let private cell (b: bool) = if b then "T" else "F"
 
-let private printTable indent (atoms: string[]) (rows: bool[][]) (results: bool[]) (resultHeader: string) =
-    let header = String.concat " | " (Array.toList atoms @ [ resultHeader ])
+let private printTable indent (atoms: string[]) (rows: bool[][]) (results: bool[]) (resultHeader: string) (subHeaders: string[]) (subRows: bool[][]) =
+    let header = String.concat " | " (Array.toList atoms @ Array.toList subHeaders @ [ resultHeader ])
     printfn "%s%s" indent header
     printfn "%s%s" indent (String('-', header.Length))
     rows
     |> Array.iteri (fun i row ->
-        let cells = (row |> Array.map cell |> Array.toList) @ [ cell results.[i] ]
+        let subs = if i < subRows.Length then subRows.[i] |> Array.map cell |> Array.toList else []
+        let cells = (row |> Array.map cell |> Array.toList) @ subs @ [ cell results.[i] ]
         printfn "%s%s" indent (String.concat " | " cells))
 
 let private printBlock (b: BlockView) =
@@ -27,7 +28,7 @@ let private printBlock (b: BlockView) =
         printfn "  %s := %s" b.name b.formula
         if b.note <> "" then printfn "      \"%s\"" b.note
     | "table" ->
-        if b.atoms.Length > 0 then printTable "    " b.atoms b.rows b.results b.formula
+        if b.atoms.Length > 0 then printTable "    " b.atoms b.rows b.results b.formula b.subHeaders b.subRows
         else printfn "    %s" b.formula
         printfn "    => %s — %s" (b.verdict.ToUpper()) b.note
         b.model |> Array.iter (printfn "      %s")
@@ -45,7 +46,7 @@ let private printBlock (b: BlockView) =
         if b.form = "" && b.fallacy = "" && b.note <> "" then printfn "    %s" b.note
         if b.rows.Length > 0 then
             printfn "    counterexample(s): premises true, conclusion false:"
-            printTable "      " b.atoms b.rows b.results b.conclusion
+            printTable "      " b.atoms b.rows b.results b.conclusion b.subHeaders b.subRows
         if b.model.Length > 0 then
             printfn "    countermodel: premises true, conclusion false:"
             b.model |> Array.iter (printfn "      %s")
@@ -77,6 +78,11 @@ let private printBlock (b: BlockView) =
             |> Array.iter (fun c ->
                 if c.[1] <> "free" then printfn "    [%s] %s" (c.[1].ToUpper()) (describeCell c.[0]))
             b.vennPoints |> Array.iter (fun p -> printfn "    • %s in cell(s) %s" p.[0] p.[1])
+        printfn "    %s" b.note
+    | "square" ->
+        printfn "  square of opposition: %s / %s" b.vennCircles.[0] b.vennCircles.[1]
+        [ "A"; "E"; "I"; "O" ] |> List.iteri (fun i c -> printfn "    %s: %s" c b.premises.[i])
+        b.relations |> Array.iter (fun e -> printfn "    %s — %s — %s   [%s]" e.[0] e.[1] e.[2] (e.[3].ToUpper()))
         printfn "    %s" b.note
     | "relations" ->
         printfn "  claim relations:"

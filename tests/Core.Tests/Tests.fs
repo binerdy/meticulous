@@ -572,6 +572,40 @@ let ``prose works inside claims and a plain paragraph stays prose`` () =
     let blocks = analyze "This is just a note about the argument.\n"
     Assert.Equal("prose", blocks.[0].kind)
 
+// ---- Textbook tables: subformula and premise columns --------------------------------
+
+[<Fact>]
+let ``a truth table shows textbook subformula columns`` () =
+    let tbl =
+        analyze "table if (p and q) then r\n" |> Array.find (fun b -> b.kind = "table")
+    // one middle column: the subformula p ∧ q (the whole formula is the result column)
+    Assert.Equal<string[]>([| "p ∧ q" |], tbl.subHeaders)
+    Assert.Equal(tbl.rows.Length, tbl.subRows.Length)
+    // row where p=T q=T r=F: subformula true, result false
+    let idx = tbl.rows |> Array.findIndex (fun r -> r.[0] && r.[1] && not r.[2])
+    Assert.True(tbl.subRows.[idx].[0])
+    Assert.False(tbl.results.[idx])
+
+[<Fact>]
+let ``counterexample tables carry premise columns, all true`` () =
+    let doc = "argument oops {\n  premise if p then q\n  premise q\n  ---\n  conclude p\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal<string[]>([| "p → q"; "q" |], arg.subHeaders)
+    // in every counterexample row, every premise is true and the conclusion false
+    Assert.True(arg.subRows |> Array.forall (Array.forall id))
+    Assert.True(arg.results |> Array.forall not)
+
+[<Fact>]
+let ``an invalid argument narrates its first counterexample`` () =
+    let doc =
+        "prop rain : It is raining\nprop wet : The street is wet\n\
+         argument oops {\n  premise if rain then wet\n  premise wet\n  ---\n  conclude rain\n}\n"
+    let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
+    // the fallacy is named AND the counterexample is narrated
+    Assert.Equal("affirming the consequent", arg.fallacy)
+    Assert.Contains("Picture the situation where", arg.note)
+    Assert.Contains("It is raining", arg.note)   // conclusion read via the gloss
+
 // ---- Natural rule citations and relation verbs --------------------------------------
 
 [<Fact>]
@@ -631,12 +665,48 @@ let ``the Socrates argument is named universal instantiation`` () =
         formOf "All men are mortal. Socrates is a man. Therefore, Socrates is mortal.\n")
 
 [<Fact>]
+let ``figures two to four are recognized by name`` () =
+    Assert.Equal("Cesare (EAE-2)",
+        formOf "No fish are mammals. All whales are mammals. Therefore, no whales are fish.\n")
+    Assert.Equal("Baroco (AOO-2)",
+        formOf "All cats are mammals. Some pets are not mammals. Therefore, some pets are not cats.\n")
+    Assert.Equal("Bocardo (OAO-3)",
+        formOf "Some cats are not friendly. All cats are animals. Therefore, some animals are not friendly.\n")
+    Assert.Equal("Camenes (AEE-4)",
+        formOf "All squares are rectangles. No rectangles are circles. Therefore, no circles are squares.\n")
+
+[<Fact>]
+let ``Darapti is named, refuted, and explained — the existential import lesson`` () =
+    let arg =
+        analyze "All unicorns are horses. All unicorns are magical. Therefore, some magical are horses.\n"
+        |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("invalid", arg.verdict)                 // modern logic: unicorns may not exist
+    Assert.Equal("Darapti (AAI-3)", arg.form)            // yet the mood is named
+    Assert.Equal("", arg.fallacy)                        // and it is NOT called a fallacy
+    Assert.Contains("Aristotle", arg.note)
+    Assert.NotEmpty arg.model                            // the empty-class countermodel
+
+[<Fact>]
 let ``the undistributed middle is named as a fallacy`` () =
     let arg =
         analyze "All cats are animals. All dogs are animals. Therefore, all dogs are cats.\n"
         |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("invalid", arg.verdict)
     Assert.Equal("undistributed middle", arg.fallacy)
+
+// ---- The square of opposition --------------------------------------------------------
+
+[<Fact>]
+let ``the square computes its edges: diagonals modern, the rest Aristotle-only`` () =
+    let sq = analyze "square men mortal\n" |> Array.find (fun b -> b.kind = "square")
+    Assert.Equal<string[]>([| "men"; "mortal" |], sq.vennCircles)   // display keeps your words
+    Assert.Equal(4, sq.premises.Length)                             // corners A E I O
+    let edge kind = sq.relations |> Array.filter (fun e -> e.[1] = kind) |> Array.map (fun e -> e.[3])
+    Assert.Equal<string[]>([| "holds"; "holds" |], edge "contradictories")
+    Assert.Equal<string[]>([| "aristotle" |], edge "contraries")
+    Assert.Equal<string[]>([| "aristotle" |], edge "subcontraries")
+    Assert.Equal<string[]>([| "aristotle"; "aristotle" |], edge "subalternation")
+    Assert.Contains("existential import", sq.note)
 
 // ---- Venn diagrams: monadic analysis ----------------------------------------------
 

@@ -271,6 +271,19 @@ module Parser =
         elif line = "venn" then
             Error "`venn` needs an argument name (venn my-argument) or a block (venn name { … })"
 
+        elif line.StartsWith "square " then
+            // square <subject> <predicate> — e.g.  square men mortal
+            let parts =
+                line.Substring(7).Split([| ' '; '\t' |], System.StringSplitOptions.RemoveEmptyEntries)
+            match parts with
+            // keep the user's own words for display; the engine normalizes
+            // (lowercase + singular) when it builds the corner formulas
+            | [| s; p |] -> Ok(Some(Square(s, p)))
+            | _ -> Error "`square` needs exactly two class terms — e.g.  square men mortal"
+
+        elif line = "square" then
+            Error "`square` needs two class terms — e.g.  square men mortal"
+
         else
             // A relation assertion like `C1 supports C2`? A whole prose argument
             // like `If P, then Q. P. Therefore, Q.`? Otherwise, plain prose.

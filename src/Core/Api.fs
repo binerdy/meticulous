@@ -38,6 +38,8 @@ module Api =
           atoms: string[]
           rows: bool[][]
           results: bool[]
+          subHeaders: string[] // extra columns between atoms and result: subformulas (tables) or premises (counterexamples)
+          subRows: bool[][]    // their values, row by row (parallel to rows)
           actual: int          // for modal blocks: which row is the actual world (-1 = not modal)
           line: int
           premises: string[]
@@ -65,6 +67,8 @@ module Api =
           atoms = [||]
           rows = [||]
           results = [||]
+          subHeaders = [||]
+          subRows = [||]
           actual = -1
           line = 0
           premises = [||]
@@ -109,15 +113,23 @@ module Api =
         | Contingent ->
             sprintf "True in %d of %d possible situations — whether it holds depends on the facts." trues total
 
-    /// Build a full table view (columns, rows, verdict) for a formula.
+    /// Build a full table view (columns, rows, verdict) for a formula —
+    /// textbook style: one column per compound subformula, so the truth value
+    /// visibly builds up from the atoms to the whole formula.
     let private tableBlock (f: Formula) =
         let t = truthTable f
+        let subs = subformulasFor f |> List.filter (fun s -> s <> f)
         { empty with
             kind = "table"
             formula = toUnicode f
             atoms = List.toArray t.Atoms
             rows = t.Rows |> List.map (fun (env, _) -> t.Atoms |> List.map (fun a -> env.[a]) |> List.toArray) |> List.toArray
             results = t.Rows |> List.map snd |> List.toArray
+            subHeaders = subs |> List.map toUnicode |> List.toArray
+            subRows =
+                t.Rows
+                |> List.map (fun (env, _) -> subs |> List.map (eval env) |> List.toArray)
+                |> List.toArray
             verdict = verdictName t.Verdict
             note = verdictNote t }
 
@@ -223,6 +235,46 @@ module Api =
                 vennCells = List.toArray cells
                 vennPoints = List.toArray points }
 
+    /// The classical square of opposition for subject S and predicate P: the
+    /// four categorical corners A/E/I/O with every edge *computed* — "holds"
+    /// outright in modern logic, "aristotle" when it needs existential import
+    /// (at least one S), or "fails".
+    let private squareBlock (rawS: string) (rawP: string) =
+        // the engine reasons over normalized terms; the display keeps yours
+        let s = Prose.normalizeTerm rawS
+        let p = Prose.normalizeTerm rawP
+        let sx = Pred(s, [ "x" ])
+        let px = Pred(p, [ "x" ])
+        let cornerA = Forall("x", Implies(sx, px))          // All S are P
+        let cornerE = Forall("x", Implies(sx, Not px))      // No S are P
+        let cornerI = Exists("x", And(sx, px))              // Some S are P
+        let cornerO = Exists("x", And(sx, Not px))          // Some S are not P
+
+        let holds f = valid f = Some true
+        let withImport f = holds (Implies(Exists("x", sx), f))
+        let status f =
+            if holds f then "holds"
+            elif withImport f then "aristotle"
+            else "fails"
+
+        let edges =
+            [ [| "A"; "contraries"; "E"; status (Not(And(cornerA, cornerE))) |]
+              [| "I"; "subcontraries"; "O"; status (Or(cornerI, cornerO)) |]
+              [| "A"; "contradictories"; "O"; status (Iff(cornerA, Not cornerO)) |]
+              [| "E"; "contradictories"; "I"; status (Iff(cornerE, Not cornerI)) |]
+              [| "A"; "subalternation"; "I"; status (Implies(cornerA, cornerI)) |]
+              [| "E"; "subalternation"; "O"; status (Implies(cornerE, cornerO)) |] ]
+
+        { empty with
+            kind = "square"
+            vennCircles = [| rawS; rawP |]
+            premises = [| cornerA; cornerE; cornerI; cornerO |] |> Array.map toUnicode
+            relations = List.toArray edges
+            note =
+                sprintf
+                    "Solid edges hold in modern logic; dashed amber edges hold only under Aristotle's *existential import* — the silent assumption that at least one %s exists. Only the contradictory diagonals survive without it."
+                    s }
+
     /// The verdict card for a *first-order* formula. No truth table can capture
     /// quantifiers, so the verdict comes from the finite-model search, and a
     /// contingent formula shows a small model where it fails.
@@ -267,7 +319,7 @@ module Api =
     /// Analyse one argument: validity by truth table (classical) or S5 model
     /// search (modal), then — depending on the outcome — either a derivation,
     /// or counterexamples/countermodel plus diagnosis.
-    let private argumentBlock (defs: Map<string, Formula>) (name: string) premises conclusion =
+    let private argumentBlock (defs: Map<string, Formula>) (glosses: Map<string, string>) (name: string) premises conclusion =
         let rp = premises |> List.map (resolve defs)
         let rc = resolve defs conclusion
         let fo = List.exists containsFO (rc :: rp)
@@ -297,7 +349,14 @@ module Api =
 
         let recognized =
             if unknown then None
-            else recognize (if isValid then validForms else fallacies) rp rc
+            elif isValid then recognize validForms rp rc
+            else
+                // An invalid argument may be a named fallacy — or one of the four
+                // Aristotelian moods that need existential import: recognized,
+                // named, and honestly refuted.
+                match recognize fallacies rp rc with
+                | Some f -> Some f
+                | None -> recognize existentialImportForms rp rc
 
         // A form is shown with its traditional alias when it has one,
         // e.g. "disjunctive syllogism (modus tollendo ponens)".
@@ -365,14 +424,29 @@ module Api =
                         sprintf "Invalid: %d situation(s) make every premise true while the conclusion fails."
                             (List.length cxRows)
 
+        // Narrate the first counterexample — a concrete story beats an abstract
+        // row — whether or not the fallacy was recognized by name.
+        let explanation =
+            if isValid || unknown || fo || modal then explanation
+            else
+                match cxRows with
+                | env :: _ ->
+                    let reading =
+                        (toEnglish (fun n -> Map.tryFind n glosses) rc).TrimEnd('.')
+                    explanation
+                    + sprintf " Picture the situation where %s: every premise holds — the columns show it — and yet “%s” fails."
+                        (describeSituation env) reading
+                | [] -> explanation
+
         // The chip next to the verdict: a recognized form's name, or — for a
         // premise-less theorem no law accounts for — the plain label "tautology".
+        // Aristotelian existential-import moods get their name even though the
+        // verdict is invalid: that pairing IS the lesson.
         let formLabel =
-            if not isValid then ""
-            else
-                match recognized with
-                | Some f -> displayTitle f
-                | None -> if List.isEmpty rp then "tautology" else ""
+            match recognized with
+            | Some f when isValid -> displayTitle f
+            | Some f when f.Kind = ExistentialImportForm -> displayTitle f
+            | _ -> if isValid && List.isEmpty rp then "tautology" else ""
 
         { empty with
             kind = "argument"
@@ -381,7 +455,11 @@ module Api =
             conclusion = toUnicode rc
             verdict = if unknown then "unknown" elif isValid then "valid" else "invalid"
             form = formLabel
-            fallacy = (if isValid || unknown then None else recognized |> Option.map displayTitle) |> Option.defaultValue ""
+            fallacy =
+                (match recognized with
+                 | Some f when not isValid && not unknown && f.Kind = FallacyForm -> Some(displayTitle f)
+                 | _ -> None)
+                |> Option.defaultValue ""
             note = explanation
             suggestion = repairs |> List.map toUnicode |> List.toArray
             proof = proofSteps |> List.mapi proofRow |> List.toArray
@@ -397,6 +475,16 @@ module Api =
             results =
                 if cxActual >= 0 then cxRows |> List.map (fun w -> evalS5 cxRows w rc) |> List.toArray
                 else cxRows |> List.map (fun _ -> false) |> List.toArray
+            // one column per premise, so the row visibly shows every premise
+            // true (at the actual world, for modal countermodels)
+            subHeaders = rp |> List.map toUnicode |> List.toArray
+            subRows =
+                cxRows
+                |> List.map (fun env ->
+                    rp
+                    |> List.map (fun p -> if cxActual >= 0 then evalS5 cxRows env p else eval env p)
+                    |> List.toArray)
+                |> List.toArray
             actual = cxActual
             model = List.toArray cxModel }
 
@@ -460,6 +548,10 @@ module Api =
                             "bad", sprintf "unknown rule '%s' — write it naturally (by modus ponens) or kebab-case (by modus-ponens); Latin aliases work too" ruleName, ruleName
                         | Some fm when fm.Kind = FallacyForm ->
                             "bad", sprintf "'%s' is a fallacy, not a rule — it cannot justify a step" fm.Title, fm.Title
+                        | Some fm when fm.Kind = ExistentialImportForm ->
+                            "bad",
+                            sprintf "'%s' holds only under Aristotle's existential import (that the classes aren't empty) — modern logic rejects this step" fm.Title,
+                            fm.Title
                         | Some fm ->
                             let cited = refs |> List.map (fun r -> known.[r])
                             if List.length fm.Premises <> List.length cited then
@@ -658,7 +750,7 @@ module Api =
                 formula = toUnicode ra + " ≡ " + toUnicode rb
                 verdict = verdict
                 note = note }
-        | Argument(name, premises, conclusion) -> argumentBlock defs name premises conclusion
+        | Argument(name, premises, conclusion) -> argumentBlock defs glosses name premises conclusion
         | Proof(name, lines) -> proofBlock defs name lines
         | Venn(name, premises, conclusion) -> vennBlock defs name premises conclusion
         | VennRef argName ->
@@ -670,6 +762,7 @@ module Api =
                     name = argName
                     verdict = "not-drawable"
                     note = sprintf "No argument named '%s' to draw — `venn` needs the name of an `argument` defined in this document." argName }
+        | Square(s, p) -> squareBlock s p
         | Analyze -> relationsBlock claims
         | Relates(left, kind, right) ->
             let l, verb, r, status, note = relationInfo defs glosses left kind right
@@ -801,6 +894,7 @@ module Api =
                 lines |> List.map (function ProofPremise(_, f) | ProofDerived(_, f, _, _) -> f)
             | Venn(_, premises, conclusion) -> premises @ (Option.toList conclusion)
             | VennRef _ -> []   // refers to an argument whose formulas are already counted
+            | Square _ -> []    // its four corners are generated, not user formulas
             | Relates(l, _, r) ->
                 // A prop that only appears in a relation still counts as used.
                 [ l; r ] |> List.choose (function Named n -> Some(Atom n) | Quoted _ -> None)

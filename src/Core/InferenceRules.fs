@@ -18,10 +18,13 @@ open Meticulous.Ast
 ///   * snippets      — `/modus-ponens` in VS Code expands from the same data
 module InferenceRules =
 
-    /// Is this shape a valid inference or a known mistake?
+    /// Is this shape a valid inference, a known mistake, or — the historically
+    /// delicate case — an Aristotelian syllogism that is valid only under
+    /// *existential import* (the silent assumption that classes aren't empty)?
     type FormKind =
         | ValidForm
         | FallacyForm
+        | ExistentialImportForm
 
     type ArgumentForm =
         { Name: string             // machine name, e.g. "modus-ponens" (used for /snippets)
@@ -309,6 +312,131 @@ module InferenceRules =
             Kind = ValidForm
             Note = "No Φ are Ψ; some Σ are Φ; so some Σ are not Ψ." }
 
+          // -- second figure (the middle term is predicate of both premises) --
+          { Name = "cesare"
+            Title = "Cesare"
+            Aka = "EAE-2"
+            Premises = [ Forall("x", Implies(Ψx, Not Φx)); Forall("x", Implies(Σx, Φx)) ]
+            Conclusion = Forall("x", Implies(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Ψ are Φ; all Σ are Φ; so no Σ are Ψ." }
+
+          { Name = "camestres"
+            Title = "Camestres"
+            Aka = "AEE-2"
+            Premises = [ Forall("x", Implies(Ψx, Φx)); Forall("x", Implies(Σx, Not Φx)) ]
+            Conclusion = Forall("x", Implies(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "All Ψ are Φ; no Σ are Φ; so no Σ are Ψ." }
+
+          { Name = "festino"
+            Title = "Festino"
+            Aka = "EIO-2"
+            Premises = [ Forall("x", Implies(Ψx, Not Φx)); Exists("x", And(Σx, Φx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Ψ are Φ; some Σ are Φ; so some Σ are not Ψ." }
+
+          { Name = "baroco"
+            Title = "Baroco"
+            Aka = "AOO-2"
+            Premises = [ Forall("x", Implies(Ψx, Φx)); Exists("x", And(Σx, Not Φx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "All Ψ are Φ; some Σ are not Φ; so some Σ are not Ψ." }
+
+          // -- third figure (the middle term is subject of both premises) --
+          { Name = "disamis"
+            Title = "Disamis"
+            Aka = "IAI-3"
+            Premises = [ Exists("x", And(Φx, Ψx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ValidForm
+            Note = "Some Φ are Ψ; all Φ are Σ; so some Σ are Ψ." }
+
+          { Name = "datisi"
+            Title = "Datisi"
+            Aka = "AII-3"
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Exists("x", And(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ValidForm
+            Note = "All Φ are Ψ; some Φ are Σ; so some Σ are Ψ." }
+
+          { Name = "bocardo"
+            Title = "Bocardo"
+            Aka = "OAO-3"
+            Premises = [ Exists("x", And(Φx, Not Ψx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "Some Φ are not Ψ; all Φ are Σ; so some Σ are not Ψ." }
+
+          { Name = "ferison"
+            Title = "Ferison"
+            Aka = "EIO-3"
+            Premises = [ Forall("x", Implies(Φx, Not Ψx)); Exists("x", And(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Φ are Ψ; some Φ are Σ; so some Σ are not Ψ." }
+
+          // -- fourth figure --
+          { Name = "camenes"
+            Title = "Camenes"
+            Aka = "AEE-4"
+            Premises = [ Forall("x", Implies(Ψx, Φx)); Forall("x", Implies(Φx, Not Σx)) ]
+            Conclusion = Forall("x", Implies(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "All Ψ are Φ; no Φ are Σ; so no Σ are Ψ." }
+
+          { Name = "dimaris"
+            Title = "Dimaris"
+            Aka = "IAI-4"
+            Premises = [ Exists("x", And(Ψx, Φx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ValidForm
+            Note = "Some Ψ are Φ; all Φ are Σ; so some Σ are Ψ." }
+
+          { Name = "fresison"
+            Title = "Fresison"
+            Aka = "EIO-4"
+            Premises = [ Forall("x", Implies(Ψx, Not Φx)); Exists("x", And(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Ψ are Φ; some Φ are Σ; so some Σ are not Ψ." }
+
+          // -- the four moods Aristotle accepted that modern logic does not:
+          //    each silently assumes its subject or middle class is non-empty --
+          { Name = "darapti"
+            Title = "Darapti"
+            Aka = "AAI-3"
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ExistentialImportForm
+            Note = "All Φ are Ψ; all Φ are Σ; so some Σ are Ψ — valid for Aristotle, who read 'all Φ' as implying some Φ exist. Modern logic allows Φ to be empty, and then nothing follows: see the countermodel." }
+
+          { Name = "felapton"
+            Title = "Felapton"
+            Aka = "EAO-3"
+            Premises = [ Forall("x", Implies(Φx, Not Ψx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ExistentialImportForm
+            Note = "No Φ are Ψ; all Φ are Σ; so some Σ are not Ψ — valid for Aristotle only: modern logic allows Φ to be empty, and then nothing follows." }
+
+          { Name = "bramantip"
+            Title = "Bramantip"
+            Aka = "AAI-4"
+            Premises = [ Forall("x", Implies(Ψx, Φx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ExistentialImportForm
+            Note = "All Ψ are Φ; all Φ are Σ; so some Σ are Ψ — valid for Aristotle only: modern logic allows Ψ to be empty, and then nothing follows." }
+
+          { Name = "fesapo"
+            Title = "Fesapo"
+            Aka = "EAO-4"
+            Premises = [ Forall("x", Implies(Ψx, Not Φx)); Forall("x", Implies(Φx, Σx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ExistentialImportForm
+            Note = "No Ψ are Φ; all Φ are Σ; so some Σ are not Ψ — valid for Aristotle only: modern logic allows Φ to be empty, and then nothing follows." }
+
           // ---- modal rules (S5): reasoning about necessity and possibility ----
           { Name = "axiom-t"
             Title = "axiom T"
@@ -449,3 +577,4 @@ module InferenceRules =
 
     let validForms = forms |> List.filter (fun f -> f.Kind = ValidForm)
     let fallacies = forms |> List.filter (fun f -> f.Kind = FallacyForm)
+    let existentialImportForms = forms |> List.filter (fun f -> f.Kind = ExistentialImportForm)

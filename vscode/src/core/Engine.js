@@ -1,11 +1,11 @@
 
 import { Formula } from "./Ast.js";
-import { toList as toList_1, ofList as ofList_1, union, singleton as singleton_1, empty, add, contains } from "./fable_modules/fable-library-js.5.6.0/Set.js";
-import { find, map as map_3, empty as empty_3, add as add_1, ofList, tryFind } from "./fable_modules/fable-library-js.5.6.0/Map.js";
+import { toList as toList_1, ofList as ofList_1, union, singleton as singleton_1, empty, add as add_1, contains } from "./fable_modules/fable-library-js.5.6.0/Set.js";
+import { find, map as map_3, empty as empty_3, add as add_2, ofList, tryFind } from "./fable_modules/fable-library-js.5.6.0/Map.js";
 import { numberHash, compare, compareArrays, equals, stringHash, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
-import { collect as collect_1, tryFind as tryFind_1, choose, sortBy, fold, item as item_1, filter, cons, head, tail as tail_1, isEmpty, reverse, toArray, exists, forAll, map as map_1, mapIndexed, length, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { collect as collect_1, tryFind as tryFind_1, choose, sortBy, fold, item as item_1, filter, cons, head, tail as tail_1, isEmpty, reverse, toArray, exists as exists_1, forAll, map as map_1, mapIndexed, length, ofSeq, empty as empty_1, singleton, append, contains as contains_1 } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { empty as empty_2, singleton as singleton_2, collect, map, delay, toList, exists } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { map as map_2, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
-import { empty as empty_2, singleton as singleton_2, collect, map, delay, toList } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { int32_type, record_type, tuple_type, class_type, bool_type, list_type, string_type, union_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
@@ -60,7 +60,7 @@ export function resolve(defs, formula) {
                         }
                         else {
                             const body = matchValue;
-                            seen_mut = add(f.fields[0], seen);
+                            seen_mut = add_1(f.fields[0], seen);
                             f_mut = body;
                             continue go;
                         }
@@ -186,6 +186,100 @@ export function atoms(f) {
         }
     };
     return go(f, empty_1());
+}
+
+/**
+ * Every distinct *compound* subformula, children before parents — exactly
+ * the intermediate columns of a textbook truth table, so the reader can
+ * watch the truth value build up from the atoms outward.
+ */
+export function subformulasFor(f) {
+    const acc = [];
+    const add = (g) => {
+        if (!exists((x) => equals(x, g), acc)) {
+            void (acc.push(g));
+        }
+    };
+    const go = (g_1) => {
+        let matchResult, a, a_1, b;
+        switch (g_1.tag) {
+            case 3: {
+                matchResult = 1;
+                a = g_1.fields[0];
+                break;
+            }
+            case 9: {
+                matchResult = 1;
+                a = g_1.fields[0];
+                break;
+            }
+            case 10: {
+                matchResult = 1;
+                a = g_1.fields[0];
+                break;
+            }
+            case 11: {
+                matchResult = 1;
+                a = g_1.fields[1];
+                break;
+            }
+            case 12: {
+                matchResult = 1;
+                a = g_1.fields[1];
+                break;
+            }
+            case 4: {
+                matchResult = 2;
+                a_1 = g_1.fields[0];
+                b = g_1.fields[1];
+                break;
+            }
+            case 5: {
+                matchResult = 2;
+                a_1 = g_1.fields[0];
+                b = g_1.fields[1];
+                break;
+            }
+            case 6: {
+                matchResult = 2;
+                a_1 = g_1.fields[0];
+                b = g_1.fields[1];
+                break;
+            }
+            case 7: {
+                matchResult = 2;
+                a_1 = g_1.fields[0];
+                b = g_1.fields[1];
+                break;
+            }
+            case 8: {
+                matchResult = 2;
+                a_1 = g_1.fields[0];
+                b = g_1.fields[1];
+                break;
+            }
+            default:
+                matchResult = 0;
+        }
+        switch (matchResult) {
+            case 0: {
+                break;
+            }
+            case 1: {
+                go(a);
+                add(g_1);
+                break;
+            }
+            case 2: {
+                go(a_1);
+                go(b);
+                add(g_1);
+                break;
+            }
+        }
+    };
+    go(f);
+    return ofSeq(acc);
 }
 
 /**
@@ -721,7 +815,7 @@ export function evalS5(model_mut, w_mut, f_mut) {
             case 8:
                 return forAll((v) => evalS5(model, v, f.fields[0]), model);
             case 9:
-                return exists((v_1) => evalS5(model, v_1, f.fields[0]), model);
+                return exists_1((v_1) => evalS5(model, v_1, f.fields[0]), model);
             case 10:
                 return false;
             default: {
@@ -798,7 +892,7 @@ export function s5Satisfy(f) {
                                         }
                                         else {
                                             idx_mut = (idx + 1);
-                                            seen_mut = add(i_1, seen);
+                                            seen_mut = add_1(i_1, seen);
                                             indices_mut = rest;
                                             continue tryActual;
                                         }
@@ -1071,7 +1165,7 @@ function freeConstants(f) {
                     continue go;
                 }
                 case 3: {
-                    bound_mut = add(x_2, bound);
+                    bound_mut = add_1(x_2, bound);
                     f_1_mut = a_1;
                     continue go;
                 }
@@ -1201,9 +1295,9 @@ export function evalFO(m_mut, env_mut, f_mut) {
             case 8:
                 return evalFO(m, env, f.fields[0]) === evalFO(m, env, f.fields[1]);
             case 9:
-                return forAll((e_1) => evalFO(m, add_1(f.fields[0], e_1, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
+                return forAll((e_1) => evalFO(m, add_2(f.fields[0], e_1, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
             case 10:
-                return exists((e_2) => evalFO(m, add_1(f.fields[0], e_2, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
+                return exists_1((e_2) => evalFO(m, add_2(f.fields[0], e_2, env), f.fields[1]), toList(rangeDouble(0, 1, m.Size - 1)));
             default: {
                 m_mut = m;
                 env_mut = env;
@@ -1278,7 +1372,7 @@ export function foSatisfy(f) {
                                     return new FOSearch(0, []);
                                 }
                                 else {
-                                    const matchValue = chooseExt(tail_1(remaining))(add_1(head(remaining)[0], ofList_1(toList(delay(() => collect((i) => ((((mask >> i) & 1) === 1) ? singleton_2(item_1(i, tuples)) : empty_2()), rangeDouble(0, 1, n_1 - 1)))), {
+                                    const matchValue = chooseExt(tail_1(remaining))(add_2(head(remaining)[0], ofList_1(toList(delay(() => collect((i) => ((((mask >> i) & 1) === 1) ? singleton_2(item_1(i, tuples)) : empty_2()), rangeDouble(0, 1, n_1 - 1)))), {
                                         Compare: (x_1, y_1) => (compare(x_1, y_1) | 0),
                                     }), ext));
                                     if (matchValue.tag === 0) {
@@ -1310,7 +1404,7 @@ export function foSatisfy(f) {
                                     return new FOSearch(0, []);
                                 }
                                 else {
-                                    const matchValue_1 = chooseConsts(tail_1(remaining_1))(add_1(head(remaining_1), e_1, assigned))(ext_1);
+                                    const matchValue_1 = chooseConsts(tail_1(remaining_1))(add_2(head(remaining_1), e_1, assigned))(ext_1);
                                     if (matchValue_1.tag === 0) {
                                         e_1_mut = (e_1 + 1);
                                         continue loop_1;
@@ -1438,7 +1532,7 @@ export function analyzeMonadic(preds, consts, premise) {
     const allOccupancies = toList(delay(() => map((mask) => toList(delay(() => collect((c) => ((((mask >> c) & 1) === 1) ? singleton_2(c) : empty_2()), rangeDouble(0, 1, cellCount - 1)))), rangeDouble(1, 1, (1 << cellCount) - 1))));
     const placements = (occupied_1, remaining) => {
         if (!isEmpty(remaining)) {
-            return toList(delay(() => collect((cell_5) => map((tail) => add_1(head(remaining), cell_5, tail), placements(occupied_1, tail_1(remaining))), occupied_1)));
+            return toList(delay(() => collect((cell_5) => map((tail) => add_2(head(remaining), cell_5, tail), placements(occupied_1, tail_1(remaining))), occupied_1)));
         }
         else {
             return singleton(empty_3({
@@ -1466,10 +1560,10 @@ export function analyzeMonadic(preds, consts, premise) {
         }), premise) ? singleton_2([occupied_2, cmap]) : empty_2();
     }, placements(occupied_2, consts)), allOccupancies)));
     const consistent = !isEmpty(satisfying);
-    return new VennAnalysis(preds, consistent, ofList(toList(delay(() => map((cell_6) => [cell_6, !consistent ? (new CellStatus(2, [])) : (!exists((tupledArg_1) => contains_1(cell_6, tupledArg_1[0], {
+    return new VennAnalysis(preds, consistent, ofList(toList(delay(() => map((cell_6) => [cell_6, !consistent ? (new CellStatus(2, [])) : (!exists_1((tupledArg_1) => contains_1(cell_6, tupledArg_1[0], {
         Equals: (x_5, y_5) => (x_5 === y_5),
         GetHashCode: (x_5) => (numberHash(x_5) | 0),
-    }), satisfying) ? (new CellStatus(0, [])) : (!exists((tupledArg_2) => !contains_1(cell_6, tupledArg_2[0], {
+    }), satisfying) ? (new CellStatus(0, [])) : (!exists_1((tupledArg_2) => !contains_1(cell_6, tupledArg_2[0], {
         Equals: (x_6, y_6) => (x_6 === y_6),
         GetHashCode: (x_6) => (numberHash(x_6) | 0),
     }), satisfying) ? (new CellStatus(1, [])) : (new CellStatus(2, []))))], rangeDouble(0, 1, cellCount - 1)))), {

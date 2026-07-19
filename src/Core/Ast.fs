@@ -76,6 +76,8 @@ module Ast =
         | Venn of name: string * premises: Formula list * conclusion: Formula option
                                                     // venn x { premise … [/ conclude …] } — a categorical Venn diagram
         | VennRef of argument: string               // venn my-argument — draw an existing argument's Venn diagram
+        | Square of subject: string * predicate: string
+                                                    // square men mortal — the classical square of opposition
         | Analyze                                   // analyze — compare all claims pairwise
         | Relates of left: RelRef * kind: RelationKind * right: RelRef
                                                     // C1 supports C2 / A entails "the streets flood"

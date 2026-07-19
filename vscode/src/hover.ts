@@ -22,6 +22,7 @@ const KEYWORDS: Record<string, string> = {
   by: "**by** names the inference rule that justifies this step (hover the rule name for its pattern).",
   from: "**from** cites the earlier line numbers this step builds on.",
   venn: "**venn** draws a categorical argument as a Venn diagram — shaded regions are provably empty, a dot marks a region that must be occupied.",
+  square: "**square** draws the classical *square of opposition* for two terms:\n\n```\nsquare men mortal\n```\n\nEvery edge is computed: contradictory diagonals hold outright; contraries, subcontraries, and subalternation hold only under Aristotle's *existential import*.",
   analyze: "**analyze** compares every claim with every other: equivalent, contradictory, contrary, subcontrary, entails, or independent.",
   map: "**map** draws all asserted relations (supports, contradicts, …) as an argument map.",
 };

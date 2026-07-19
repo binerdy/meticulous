@@ -2,7 +2,7 @@
   "name": "meticulous",
   "displayName": "Meticulous",
   "description": "A philosophical DSL: propositions, truth tables, and structural relations, with live preview.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "publisher": "meticulous-lang",
   "license": "MIT",
   "repository": {

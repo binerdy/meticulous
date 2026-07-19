@@ -60,9 +60,15 @@ module Prose =
         | Some s -> s
         | None ->
             if w.EndsWith "ies" && w.Length > 3 then w.Substring(0, w.Length - 3) + "y"
-            elif [ "ses"; "xes"; "zes"; "ches"; "shes" ] |> List.exists w.EndsWith then w.Substring(0, w.Length - 2)
+            // "sses/xes/zes/ches/shes" insert an e ("classes" → "class");
+            // bare "-ses" words ("horses", "cases") just add an s.
+            elif [ "sses"; "xes"; "zes"; "ches"; "shes" ] |> List.exists w.EndsWith then w.Substring(0, w.Length - 2)
             elif w.EndsWith "s" && not (w.EndsWith "ss") && w.Length > 2 then w.Substring(0, w.Length - 1)
             else w
+
+    /// Normalize a class-term exactly as prose sentences do (lowercase and
+    /// singular), so `square Men Mortals` and `All men are mortal` agree.
+    let normalizeTerm (w: string) = singular (lower w)
 
     let private categorical (ws: string list) : Formula option =
         // `name` is a class/predicate word (singularized); `arg` is a term.

@@ -56,6 +56,26 @@ module Engine =
             | Iff(a, b) -> go b (go a acc)
         go f []
 
+    /// Every distinct *compound* subformula, children before parents — exactly
+    /// the intermediate columns of a textbook truth table, so the reader can
+    /// watch the truth value build up from the atoms outward.
+    let subformulasFor (f: Formula) : Formula list =
+        let acc = ResizeArray<Formula>()
+        let add g =
+            if not (acc |> Seq.exists (fun x -> x = g)) then acc.Add g
+        let rec go g =
+            match g with
+            | Atom _ | Const _ | Pred _ -> ()
+            | Not a | Box a | Diamond a | Forall(_, a) | Exists(_, a) ->
+                go a
+                add g
+            | And(a, b) | Or(a, b) | Xor(a, b) | Implies(a, b) | Iff(a, b) ->
+                go a
+                go b
+                add g
+        go f
+        List.ofSeq acc
+
     /// Evaluate a formula under an assignment of truth values to its atoms.
     /// □ and ◇ are read over a *single-world* model here (where they both
     /// collapse to the formula itself) — genuine multi-world evaluation lives

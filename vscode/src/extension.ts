@@ -34,6 +34,7 @@ const STYLE = `
   table.truth th, table.truth td { border: 1px solid var(--vscode-widget-border, #8884); padding: .2em .7em; text-align: center; }
   table.truth th.result, table.truth td.result { font-weight: 600; }
   table.truth thead th { background: var(--vscode-editor-inactiveSelectionBackground, #8882); }
+  table.truth th.sub { font-weight: 400; opacity: .85; }
   table.truth td.t { color: var(--vscode-testing-iconPassed, #3fb950); }
   table.truth td.f { color: var(--vscode-testing-iconFailed, #f85149); opacity: .85; }
   .badge { font-size: .72rem; padding: .1em .6em; border-radius: 999px; text-transform: uppercase; letter-spacing: .05em; }
@@ -87,6 +88,24 @@ const STYLE = `
   .step-status.ok { color: var(--vscode-testing-iconPassed, #3fb950); font-weight: 700; }
   .step-status.bad { color: var(--vscode-testing-iconFailed, #f85149); font-weight: 700; }
   tr.step-msg td { color: var(--vscode-testing-iconFailed, #f85149); font-size: .85em; font-family: var(--vscode-font-family); padding-bottom: .4em; }
+
+  /* square of opposition */
+  figure.square-figure { margin: 1rem 0; padding: .6rem .9rem; border: 1px solid var(--vscode-widget-border, #8884); border-radius: 6px; }
+  figure.square-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; opacity: .6; margin-bottom: .3rem; }
+  svg.square { max-width: 580px; width: 100%; height: auto; }
+  svg.square .sq-letter { fill: var(--vscode-foreground); font-family: var(--vscode-editor-font-family); font-size: 26px; font-weight: 700; }
+  svg.square .sq-english { fill: var(--vscode-foreground); font-size: 12.5px; font-family: var(--vscode-font-family); }
+  svg.square .sq-formula { fill: var(--vscode-descriptionForeground, #8d96a0); font-family: var(--vscode-editor-font-family); font-size: 11px; }
+  svg.square .sq-edge { stroke-width: 1.6; fill: none; }
+  svg.square .sq-edge.holds { stroke: var(--vscode-foreground); }
+  svg.square .sq-edge.aristotle { stroke: var(--vscode-editorWarning-foreground, #cca700); stroke-dasharray: 6 4; }
+  svg.square .sq-edge.fails { stroke: var(--vscode-testing-iconFailed, #f85149); stroke-dasharray: 3 4; }
+  svg.square .sq-label { font-size: 11.5px; fill: var(--vscode-descriptionForeground, #8d96a0); font-family: var(--vscode-font-family); }
+  svg.square .sq-label.aristotle { fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.square .sq-label.fails { fill: var(--vscode-testing-iconFailed, #f85149); }
+  svg.square .sq-arrow.holds { fill: var(--vscode-foreground); }
+  svg.square .sq-arrow.aristotle { fill: var(--vscode-editorWarning-foreground, #cca700); }
+  svg.square .sq-arrow.fails { fill: var(--vscode-testing-iconFailed, #f85149); }
 
   /* asserted relations + argument map */
   .relation-stmt { font-family: var(--vscode-editor-font-family); margin: .45rem 0; display: flex; align-items: center; gap: .6em; flex-wrap: wrap; }

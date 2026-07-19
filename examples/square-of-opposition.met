@@ -1,0 +1,25 @@
+# The square of opposition
+
+For two thousand years, students learned the logic of *all*, *no*, and
+*some* from one diagram. The corners are the four categorical forms; the
+edges say how they conflict or cooperate — and here, every edge is checked
+by the engine rather than taken on trust.
+
+square men mortal
+
+# Where Aristotle and modern logic part ways
+
+The diagonals — the contradictories — hold outright: *All men are mortal*
+and *Some men are not mortal* always disagree. But every other edge quietly
+assumes that at least one man exists. Aristotle granted that for free;
+modern logic does not, and the amber edges show exactly what his assumption
+was buying.
+
+The same divide decides four famous syllogisms. Darapti was valid for every
+medieval logician — and modern logic refutes it with an empty class:
+
+All unicorns are horses. All unicorns are magical. Therefore, some magical are horses.
+
+The countermodel is the whole story: a world with no unicorns at all makes
+both premises true — vacuously — and the conclusion false. Grant Aristotle
+his non-empty classes, and Darapti is restored.

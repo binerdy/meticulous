@@ -38,12 +38,15 @@ function renderTruthTable(
   rows: boolean[][],
   results: boolean[],
   resultHeader: string,
-  actual = -1
+  actual = -1,
+  subHeaders: string[] = [],
+  subRows: boolean[][] = []
 ): string {
   const worldly = actual >= 0;
   const head =
     (worldly ? `<th class="world-name">world</th>` : "") +
     atoms.map((a) => `<th>${escapeHtml(a)}</th>`).join("") +
+    subHeaders.map((h) => `<th class="sub">${escapeHtml(h)}</th>`).join("") +
     `<th class="result">${escapeHtml(resultHeader)}</th>`;
 
   const body = rows
@@ -51,7 +54,8 @@ function renderTruthTable(
       const name = worldly
         ? `<td class="world-name${i === actual ? " actual" : ""}">${i === actual ? "→ " : ""}w${i + 1}</td>`
         : "";
-      const cells = name + row.map((v) => tf(v)).join("") + tf(results[i]);
+      const subs = (subRows[i] ?? []).map((v) => tf(v)).join("");
+      const cells = name + row.map((v) => tf(v)).join("") + subs + tf(results[i]);
       return `<tr>${cells}</tr>`;
     })
     .join("");
@@ -60,7 +64,10 @@ function renderTruthTable(
 }
 
 function renderTable(block: BlockView): string {
-  return renderTruthTable(block.atoms, block.rows, block.results, block.formula, block.actual);
+  return renderTruthTable(
+    block.atoms, block.rows, block.results, block.formula,
+    block.actual, block.subHeaders, block.subRows
+  );
 }
 
 /** A first-order (counter)model: the domain, constant assignments, and each
@@ -108,7 +115,10 @@ function renderArgument(block: BlockView): string {
         : "counterexample — premises true, conclusion false:";
     parts.push(
       `<div class="counterexample"><span class="cx-label">${label}</span>` +
-        renderTruthTable(block.atoms, block.rows, block.results, block.conclusion, block.actual) +
+        renderTruthTable(
+          block.atoms, block.rows, block.results, block.conclusion,
+          block.actual, block.subHeaders, block.subRows
+        ) +
         `</div>`
     );
   }
@@ -771,6 +781,82 @@ function renderVenn(block: BlockView): string {
   );
 }
 
+/** The classical square of opposition. Corners A/E/I/O; every edge computed by
+ *  the engine and styled by its status: holds (solid), aristotle (dashed amber
+ *  — needs existential import), fails (dashed red). */
+function renderSquare(block: BlockView): string {
+  const [S, P] = block.vennCircles;
+  const english = [
+    `All ${S} are ${P}`,
+    `No ${S} are ${P}`,
+    `Some ${S} are ${P}`,
+    `Some ${S} are not ${P}`,
+  ];
+  const W = 560, H = 380;
+  const pos: Record<string, [number, number]> = {
+    A: [130, 80],
+    E: [430, 80],
+    I: [130, 300],
+    O: [430, 300],
+  };
+
+  const corners = ["A", "E", "I", "O"]
+    .map((c, i) => {
+      const [x, y] = pos[c];
+      return (
+        `<g class="sq-corner">` +
+        `<text class="sq-letter" x="${x}" y="${y}" text-anchor="middle">${c}</text>` +
+        `<text class="sq-english" x="${x}" y="${y + 18}" text-anchor="middle">${escapeHtml(english[i])}</text>` +
+        `<text class="sq-formula" x="${x}" y="${y + 34}" text-anchor="middle">${escapeHtml(block.premises[i] ?? "")}</text>` +
+        `</g>`
+      );
+    })
+    .join("");
+
+  // pull edge endpoints out of the corner label boxes
+  const trim = (a: [number, number], b: [number, number], d = 66): [number, number, number, number] => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    return [a[0] + (dx / len) * d, a[1] + 8 + (dy / len) * d * 0.6, b[0] - (dx / len) * d, b[1] + 8 - (dy / len) * d * 0.6];
+  };
+
+  const statusOf = (from: string, kind: string, to: string) =>
+    block.relations.find((e) => e[0] === from && e[1] === kind && e[2] === to)?.[3] ?? "holds";
+
+  const line = (from: string, to: string, kind: string, label: string, lx: number, ly: number, arrow = false) => {
+    const st = statusOf(from, kind, to);
+    const [x1, y1, x2, y2] = trim(pos[from], pos[to]);
+    const marker = arrow ? ` marker-end="url(#sq-arrow-${st})"` : "";
+    const suffix = st === "aristotle" ? " (Aristotle)" : st === "fails" ? " ✗" : "";
+    return (
+      `<line class="sq-edge ${st}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"${marker}/>` +
+      `<text class="sq-label ${st}" x="${lx}" y="${ly}" text-anchor="middle">${escapeHtml(label + suffix)}</text>`
+    );
+  };
+
+  const edges =
+    line("A", "E", "contraries", "contraries", W / 2, 72) +
+    line("I", "O", "subcontraries", "subcontraries", W / 2, 330) +
+    line("A", "O", "contradictories", "", 0, 0) +
+    line("E", "I", "contradictories", "", 0, 0) +
+    `<text class="sq-label ${statusOf("A", "contradictories", "O")}" x="${W / 2}" y="${H / 2 + 4}" text-anchor="middle">contradictories</text>` +
+    line("A", "I", "subalternation", "subalternation", 62, H / 2 + 4, true) +
+    line("E", "O", "subalternation", "subalternation", 498, H / 2 + 4, true);
+
+  const markers = ["holds", "aristotle", "fails"]
+    .map(
+      (st) =>
+        `<marker id="sq-arrow-${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="sq-arrow ${st}" d="M 0 0 L 10 5 L 0 10 z"/></marker>`
+    )
+    .join("");
+
+  return (
+    `<figure class="square-figure"><figcaption>square of opposition — ${escapeHtml(S)} / ${escapeHtml(P)}</figcaption>` +
+    `<svg class="square" viewBox="0 0 ${W} ${H}" role="img"><defs>${markers}</defs>${edges}${corners}</svg>` +
+    `<p class="note">${escapeHtml(block.note)}</p></figure>`
+  );
+}
+
 /** The `analyze` block: how every claim stands to every other claim.
  *  Each pair arrives as [left, relation, right, explanation]. */
 function renderRelations(block: BlockView): string {
@@ -839,6 +925,9 @@ function renderBlock(block: BlockView): string {
 
     case "venn":
       return renderVenn(block);
+
+    case "square":
+      return renderSquare(block);
 
     case "relations":
       return renderRelations(block);

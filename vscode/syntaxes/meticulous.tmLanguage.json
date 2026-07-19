@@ -28,7 +28,7 @@
       }
     },
     "statement": {
-      "match": "^\\s*(prop|claim|table|check|argument|proof|venn|premise|conclude|analyze|map)\\b",
+      "match": "^\\s*(prop|claim|table|check|argument|proof|venn|square|premise|conclude|analyze|map)\\b",
       "captures": {
         "1": { "name": "keyword.control.meticulous" }
       }

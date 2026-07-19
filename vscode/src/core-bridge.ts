@@ -23,6 +23,7 @@ export interface BlockView {
     | "argument"
     | "proof"
     | "venn"
+    | "square"
     | "relations"
     | "relation"
     | "map"
@@ -36,6 +37,8 @@ export interface BlockView {
   atoms: string[];    // table column names (for arguments: counterexample columns)
   rows: boolean[][];  // one row per assignment (for arguments: counterexamples; modal: worlds)
   results: boolean[]; // the formula/conclusion value in each row (parallel to rows)
+  subHeaders: string[]; // middle columns: subformulas (tables) or premises (counterexamples)
+  subRows: boolean[][]; // their values, parallel to rows
   actual: number;     // modal blocks: which row is the actual world (-1 = not modal)
   line: number;       // 1-based line, for error blocks
   premises: string[];   // argument premises, rendered

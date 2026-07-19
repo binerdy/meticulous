@@ -8,9 +8,9 @@ import { printf, toText, replace, split, trimStart, substring } from "./fable_mo
 import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
 import { takeWhile, length, forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { bind } from "./fable_modules/fable-library-js.5.6.0/Option.js";
-import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { map, item, equalsWith } from "./fable_modules/fable-library-js.5.6.0/Array.js";
+import { disposeSafe, getEnumerator, defaultOf } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { parse } from "./fable_modules/fable-library-js.5.6.0/Int32.js";
-import { item, map } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
 function parseIff(tokens) {
     return Result_Bind((tupledArg) => {
@@ -503,7 +503,7 @@ function tryParseRelation(line) {
             if (rest_1.startsWith(verb + " ")) {
                 return bind((tupledArg_2) => {
                     if (tupledArg_2[1].trim() === "") {
-                        return new Statement(11, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
+                        return new Statement(12, [tupledArg[0], tupledArg_1[1], tupledArg_2[0]]);
                     }
                     else {
                         return undefined;
@@ -576,9 +576,9 @@ export function parseLine(raw) {
     else {
         switch (line) {
             case "analyze":
-                return new FSharpResult$2(0, [new Statement(10, [])]);
+                return new FSharpResult$2(0, [new Statement(11, [])]);
             case "map":
-                return new FSharpResult$2(0, [new Statement(12, [])]);
+                return new FSharpResult$2(0, [new Statement(13, [])]);
             default:
                 if (line.startsWith("argument")) {
                     return new FSharpResult$2(1, ["an `argument` needs `{` at the end of its first line — e.g.  argument my-point {"]);
@@ -604,6 +604,18 @@ export function parseLine(raw) {
                 }
                 else if (line === "venn") {
                     return new FSharpResult$2(1, ["`venn` needs an argument name (venn my-argument) or a block (venn name { … })"]);
+                }
+                else if (line.startsWith("square ")) {
+                    const parts = split(substring(line, 7), [" ", "\t"], undefined, 1);
+                    if (!equalsWith((x, y) => (x === y), parts, defaultOf()) && (parts.length === 2)) {
+                        return new FSharpResult$2(0, [new Statement(10, [item(0, parts), item(1, parts)])]);
+                    }
+                    else {
+                        return new FSharpResult$2(1, ["`square` needs exactly two class terms — e.g.  square men mortal"]);
+                    }
+                }
+                else if (line === "square") {
+                    return new FSharpResult$2(1, ["`square` needs two class terms — e.g.  square men mortal"]);
                 }
                 else {
                     const matchValue_3 = tryParseRelation(line);

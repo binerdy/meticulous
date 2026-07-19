@@ -1,20 +1,21 @@
 
 import { toString, Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { record_type, bool_type, array_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
-import { ofArray, ofSeq, choose, item, find, tryLast, head, tryFind as tryFind_1, mapIndexed, singleton, append, collect, fold, empty as empty_2, cons, exists, reduce, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
-import { replace, split, join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
-import { equivalent2, Relation, relate, distinguishing, valid, Verdict, ModalSearch, checkArgument, checkArgumentS5, containsModal, containsFO, FOSearch, foSatisfy, describeModel, checkArgumentFO, analyzeMonadic, individuals, predicateArities, resolve, evalS5, atoms as atoms_1, s5Satisfy, truthTable } from "./Engine.js";
+import { ofSeq, choose, item, find, tryLast, tryFind as tryFind_1, mapIndexed, head, append, collect, fold, empty as empty_2, cons, ofArray, singleton, exists, reduce, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { replace, split, trimEnd, join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
+import { equivalent2, Relation, relate, distinguishing, Verdict, ModalSearch, checkArgument, checkArgumentS5, containsModal, containsFO, FOSearch, foSatisfy, describeModel, valid, checkArgumentFO, analyzeMonadic, individuals, predicateArities, resolve, evalS5, atoms as atoms_1, s5Satisfy, eval$, subformulasFor, truthTable } from "./Engine.js";
+import { clear, disposeSafe, getEnumerator, stringHash, int32ToString, comparePrimitives, equals } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { toEnglish, toUnicode } from "./Render.js";
 import { ofList, add, containsKey, empty as empty_3, toList, tryFind, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
 import { Statement, Formula } from "./Ast.js";
 import { toArray as toArray_1, map as map_1, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
-import { map as map_3, initialize } from "./fable_modules/fable-library-js.5.6.0/Array.js";
+import { map as map_2, initialize } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 import { contains, ofList as ofList_1, empty as empty_1, toList as toList_1 } from "./fable_modules/fable-library-js.5.6.0/Set.js";
-import { clear, disposeSafe, getEnumerator, equals, stringHash, int32ToString, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { normalizeTerm } from "./Prose.js";
 import { List_distinct } from "./fable_modules/fable-library-js.5.6.0/Seq2.js";
 import { checkStep, suggestRepairs, prove, recognize } from "./Recognition.js";
-import { FormKind, forms, fallacies, validForms } from "./InferenceRules.js";
-import { map as map_2, collect as collect_1, delay } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
+import { forms, FormKind, existentialImportForms, fallacies, validForms } from "./InferenceRules.js";
+import { map as map_3, collect as collect_1, delay } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
 import { parseLines } from "./Parser.js";
 import { FSharpChoice$2 } from "./fable_modules/fable-library-js.5.6.0/Choice.js";
@@ -36,7 +37,7 @@ import { FSharpChoice$2 } from "./fable_modules/fable-library-js.5.6.0/Choice.js
  * kind = "error"     -> line, title (the message)
  */
 export class BlockView extends Record {
-    constructor(kind, level, title, name, gloss, formula, verdict, atoms, rows, results, actual, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations, model, vennCircles, vennCells, vennPoints) {
+    constructor(kind, level, title, name, gloss, formula, verdict, atoms, rows, results, subHeaders, subRows, actual, line, premises, conclusion, form, fallacy, note, suggestion, proof, relations, model, vennCircles, vennCells, vennPoints) {
         super();
         this.kind = kind;
         this.level = (level | 0);
@@ -48,6 +49,8 @@ export class BlockView extends Record {
         this.atoms = atoms;
         this.rows = rows;
         this.results = results;
+        this.subHeaders = subHeaders;
+        this.subRows = subRows;
         this.actual = (actual | 0);
         this.line = (line | 0);
         this.premises = premises;
@@ -66,10 +69,10 @@ export class BlockView extends Record {
 }
 
 export function BlockView_$reflection() {
-    return record_type("Meticulous.Api.BlockView", [], BlockView, () => [["kind", string_type], ["level", int32_type], ["title", string_type], ["name", string_type], ["gloss", string_type], ["formula", string_type], ["verdict", string_type], ["atoms", array_type(string_type)], ["rows", array_type(array_type(bool_type))], ["results", array_type(bool_type)], ["actual", int32_type], ["line", int32_type], ["premises", array_type(string_type)], ["conclusion", string_type], ["form", string_type], ["fallacy", string_type], ["note", string_type], ["suggestion", array_type(string_type)], ["proof", array_type(array_type(string_type))], ["relations", array_type(array_type(string_type))], ["model", array_type(string_type)], ["vennCircles", array_type(string_type)], ["vennCells", array_type(array_type(string_type))], ["vennPoints", array_type(array_type(string_type))]]);
+    return record_type("Meticulous.Api.BlockView", [], BlockView, () => [["kind", string_type], ["level", int32_type], ["title", string_type], ["name", string_type], ["gloss", string_type], ["formula", string_type], ["verdict", string_type], ["atoms", array_type(string_type)], ["rows", array_type(array_type(bool_type))], ["results", array_type(bool_type)], ["subHeaders", array_type(string_type)], ["subRows", array_type(array_type(bool_type))], ["actual", int32_type], ["line", int32_type], ["premises", array_type(string_type)], ["conclusion", string_type], ["form", string_type], ["fallacy", string_type], ["note", string_type], ["suggestion", array_type(string_type)], ["proof", array_type(array_type(string_type))], ["relations", array_type(array_type(string_type))], ["model", array_type(string_type)], ["vennCircles", array_type(string_type)], ["vennCells", array_type(array_type(string_type))], ["vennPoints", array_type(array_type(string_type))]]);
 }
 
-const empty = new BlockView("", 0, "", "", "", "", "", [], [], [], -1, 0, [], "", "", "", "", [], [], [], [], [], [], []);
+const empty = new BlockView("", 0, "", "", "", "", "", [], [], [], [], [], -1, 0, [], "", "", "", "", [], [], [], [], [], [], []);
 
 function verdictName(_arg) {
     switch (_arg.tag) {
@@ -117,17 +120,20 @@ function verdictNote(t) {
 
 function tableBlock(f) {
     const t = truthTable(f);
+    const subs = filter((s) => !equals(s, f), subformulasFor(f));
     const formula = toUnicode(f);
     const atoms = toArray(t.Atoms);
     const rows = toArray(map((tupledArg) => toArray(map((a) => FSharpMap__get_Item(tupledArg[0], a), t.Atoms)), t.Rows));
     const results = toArray(map((tuple) => tuple[1], t.Rows));
-    return new BlockView("table", empty.level, empty.title, empty.name, empty.gloss, formula, verdictName(t.Verdict), atoms, rows, results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, verdictNote(t), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+    const subHeaders = toArray(map(toUnicode, subs));
+    const subRows = toArray(map((tupledArg_1) => toArray(map((f_1) => eval$(tupledArg_1[0], f_1), subs)), t.Rows));
+    return new BlockView("table", empty.level, empty.title, empty.name, empty.gloss, formula, verdictName(t.Verdict), atoms, rows, results, subHeaders, subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, verdictNote(t), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
 }
 
 const tooLargeNote = "Too many atoms and modal operators to check exhaustively — the engine won\'t guess.";
 
 function modalBlock(kindName, f) {
-    const base$0027 = new BlockView(kindName, empty.level, empty.title, empty.name, empty.gloss, toUnicode(f), empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+    const base$0027 = new BlockView(kindName, empty.level, empty.title, empty.name, empty.gloss, toUnicode(f), empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
     const matchValue = s5Satisfy(new Formula(3, [f]));
     const matchValue_1 = s5Satisfy(f);
     let matchResult, actual, worlds;
@@ -166,15 +172,15 @@ function modalBlock(kindName, f) {
     }
     switch (matchResult) {
         case 0:
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Necessarily true: it holds at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Necessarily true: it holds at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         case 1:
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Impossible: it fails at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, "Impossible: it fails at every world of every possible arrangement of worlds.", base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         case 2:
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         default: {
             const names = atoms_1(f);
             const note_2 = "Contingent: its truth depends on the facts and on how the possibilities are arranged — here is an arrangement where it fails at the actual world.";
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", toArray(names), toArray(map((w) => toArray(map((a) => defaultArg(tryFind(a, w), false), names)), worlds)), toArray(map((w_1) => evalS5(worlds, w_1, f), worlds)), actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", toArray(names), toArray(map((w) => toArray(map((a) => defaultArg(tryFind(a, w), false), names)), worlds)), toArray(map((w_1) => evalS5(worlds, w_1, f), worlds)), base$0027.subHeaders, base$0027.subRows, actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         }
     }
 }
@@ -187,7 +193,7 @@ function vennBlock(defs, name, premises, conclusion) {
     const scope = (rc == null) ? premiseConj : (new Formula(4, [premiseConj, rc]));
     const arities = predicateArities(scope);
     const preds = map((tuple) => tuple[0], arities);
-    const notDrawable = (why) => (new BlockView("venn", empty.level, empty.title, name, empty.gloss, empty.formula, "not-drawable", empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, why, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints));
+    const notDrawable = (why) => (new BlockView("venn", empty.level, empty.title, name, empty.gloss, empty.formula, "not-drawable", empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, why, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints));
     const unaryCount = length(filter((tupledArg) => (tupledArg[1] === 1), arities)) | 0;
     if (exists((tupledArg_1) => (tupledArg_1[1] >= 2), arities)) {
         return notDrawable("A Venn diagram needs one-place predicates (properties like Man(x)); this argument uses a relation (a two-or-more-place predicate), which a Venn diagram can\'t picture.");
@@ -212,12 +218,39 @@ function vennBlock(defs, name, premises, conclusion) {
         const points = map((c_1) => [c_1, join("|", map(bits, toList_1(defaultArg(tryFind(c_1, a_1.Placement), empty_1({
             Compare: (x, y) => (comparePrimitives(x, y) | 0),
         })))))], consts);
-        return new BlockView("venn", empty.level, empty.title, name, empty.gloss, empty.formula, a_1.Consistent ? "consistent" : "contradiction", empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, (!a_1.Consistent ? "These premises can\'t all hold at once — no diagram satisfies them." : "Shaded regions are empty; a dot marks a region the premises guarantee is occupied.") + ((rc != null) ? ((c_2 = rc, (matchValue = checkArgumentFO(rp, c_2), (matchValue.tag === 1) ? ((arg_2 = toUnicode(c_2), toText(printf("  The conclusion (%s) is NOT forced — there is a model of the premises where it fails."))(arg_2))) : ((matchValue.tag === 2) ? "" : ((arg_1 = toUnicode(c_2), toText(printf("  The conclusion (%s) is already forced by the premises — the argument is valid."))(arg_1))))))) : ""), empty.suggestion, empty.proof, empty.relations, empty.model, toArray(preds), toArray(cells), toArray(points));
+        return new BlockView("venn", empty.level, empty.title, name, empty.gloss, empty.formula, a_1.Consistent ? "consistent" : "contradiction", empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, (!a_1.Consistent ? "These premises can\'t all hold at once — no diagram satisfies them." : "Shaded regions are empty; a dot marks a region the premises guarantee is occupied.") + ((rc != null) ? ((c_2 = rc, (matchValue = checkArgumentFO(rp, c_2), (matchValue.tag === 1) ? ((arg_2 = toUnicode(c_2), toText(printf("  The conclusion (%s) is NOT forced — there is a model of the premises where it fails."))(arg_2))) : ((matchValue.tag === 2) ? "" : ((arg_1 = toUnicode(c_2), toText(printf("  The conclusion (%s) is already forced by the premises — the argument is valid."))(arg_1))))))) : ""), empty.suggestion, empty.proof, empty.relations, empty.model, toArray(preds), toArray(cells), toArray(points));
     }
 }
 
+function squareBlock(rawS, rawP) {
+    const s = normalizeTerm(rawS);
+    const sx = new Formula(1, [s, singleton("x")]);
+    const px = new Formula(1, [normalizeTerm(rawP), singleton("x")]);
+    const cornerA = new Formula(11, ["x", new Formula(7, [sx, px])]);
+    const cornerE = new Formula(11, ["x", new Formula(7, [sx, new Formula(3, [px])])]);
+    const cornerI = new Formula(12, ["x", new Formula(4, [sx, px])]);
+    const cornerO = new Formula(12, ["x", new Formula(4, [sx, new Formula(3, [px])])]);
+    const holds = (f) => equals(valid(f), true);
+    const status = (f_2) => {
+        if (holds(f_2)) {
+            return "holds";
+        }
+        else if (holds(new Formula(7, [new Formula(12, ["x", sx]), f_2]))) {
+            return "aristotle";
+        }
+        else {
+            return "fails";
+        }
+    };
+    const edges = ofArray([["A", "contraries", "E", status(new Formula(3, [new Formula(4, [cornerA, cornerE])]))], ["I", "subcontraries", "O", status(new Formula(5, [cornerI, cornerO]))], ["A", "contradictories", "O", status(new Formula(8, [cornerA, new Formula(3, [cornerO])]))], ["E", "contradictories", "I", status(new Formula(8, [cornerE, new Formula(3, [cornerI])]))], ["A", "subalternation", "I", status(new Formula(7, [cornerA, cornerI]))], ["E", "subalternation", "O", status(new Formula(7, [cornerE, cornerO]))]]);
+    const vennCircles = [rawS, rawP];
+    const premises = map_2(toUnicode, [cornerA, cornerE, cornerI, cornerO]);
+    const relations = toArray(edges);
+    return new BlockView("square", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, premises, empty.conclusion, empty.form, empty.fallacy, toText(printf("Solid edges hold in modern logic; dashed amber edges hold only under Aristotle\'s *existential import* — the silent assumption that at least one %s exists. Only the contradictory diagonals survive without it."))(s), empty.suggestion, empty.proof, relations, empty.model, vennCircles, empty.vennCells, empty.vennPoints);
+}
+
 function foFormulaBlock(kindName, f) {
-    const base$0027 = new BlockView(kindName, empty.level, empty.title, empty.name, empty.gloss, toUnicode(f), empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+    const base$0027 = new BlockView(kindName, empty.level, empty.title, empty.name, empty.gloss, toUnicode(f), empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
     const card = (search) => {
         if (search.tag === 1) {
             return toArray(describeModel(search.fields[0], f));
@@ -266,17 +299,17 @@ function foFormulaBlock(kindName, f) {
     switch (matchResult) {
         case 0: {
             const note = "A quantified statement has no truth table. It is valid — true in every model checked (a bounded check, domains up to size 4). Here is one such model, where it holds as it does everywhere:";
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note, base$0027.suggestion, base$0027.proof, base$0027.relations, card(witness), base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "tautology", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note, base$0027.suggestion, base$0027.proof, base$0027.relations, card(witness), base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         }
         case 1: {
             const note_1 = "A quantified statement has no truth table. It is unsatisfiable: false in every model checked (domains up to size 4).";
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_1, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contradiction", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_1, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         }
         case 2:
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "unknown", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, tooLargeNote, base$0027.suggestion, base$0027.proof, base$0027.relations, base$0027.model, base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         default: {
             const note_2 = "A quantified statement has no truth table. Its truth depends on the domain and interpretation — here is a model where it is false:";
-            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations, card(new FOSearch(1, [falsifying])), base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
+            return new BlockView(base$0027.kind, base$0027.level, base$0027.title, base$0027.name, base$0027.gloss, base$0027.formula, "contingent", base$0027.atoms, base$0027.rows, base$0027.results, base$0027.subHeaders, base$0027.subRows, base$0027.actual, base$0027.line, base$0027.premises, base$0027.conclusion, base$0027.form, base$0027.fallacy, note_2, base$0027.suggestion, base$0027.proof, base$0027.relations, card(new FOSearch(1, [falsifying])), base$0027.vennCircles, base$0027.vennCells, base$0027.vennPoints);
         }
     }
 }
@@ -293,7 +326,8 @@ function proofRow(index, step) {
     return [int32ToString(index + 1), toUnicode(step.Formula), justification];
 }
 
-function argumentBlock(defs, name, premises, conclusion) {
+function argumentBlock(defs, glosses, name, premises, conclusion) {
+    let arg_2, f_4, f_6, f_7, f_9;
     const rp = map((formula) => resolve(defs, formula), premises);
     const rc = resolve(defs, conclusion);
     const fo = exists(containsFO, cons(rc, rp));
@@ -319,7 +353,17 @@ function argumentBlock(defs, name, premises, conclusion) {
     const cxRows = patternInput[3];
     const cxAtoms = patternInput[2];
     const cxActual = patternInput[4] | 0;
-    const recognized = unknown ? undefined : recognize(isValid ? validForms : fallacies, rp, rc);
+    let recognized;
+    if (unknown) {
+        recognized = undefined;
+    }
+    else if (isValid) {
+        recognized = recognize(validForms, rp, rc);
+    }
+    else {
+        const matchValue_2 = recognize(fallacies, rp, rc);
+        recognized = ((matchValue_2 == null) ? recognize(existentialImportForms, rp, rc) : matchValue_2);
+    }
     const displayTitle = (form) => {
         if (form.Aka === "") {
             return form.Title;
@@ -384,14 +428,32 @@ function argumentBlock(defs, name, premises, conclusion) {
     else {
         explanation = recognized.Note;
     }
-    const formLabel = !isValid ? "" : ((recognized == null) ? (isEmpty(rp) ? "tautology" : "") : displayTitle(recognized));
+    let explanation_1;
+    if (((isValid ? true : unknown) ? true : fo) ? true : modal) {
+        explanation_1 = explanation;
+    }
+    else if (isEmpty(cxRows)) {
+        explanation_1 = explanation;
+    }
+    else {
+        const reading = trimEnd(toEnglish((n) => tryFind(n, glosses), rc), ".");
+        explanation_1 = (explanation + ((arg_2 = describeSituation(head(cxRows)), toText(printf(" Picture the situation where %s: every premise holds — the columns show it — and yet “%s” fails."))(arg_2)(reading))));
+    }
+    const formLabel = (recognized != null) ? (((f_4 = recognized, isValid)) ? ((f_6 = recognized, displayTitle(f_6))) : (equals(recognized.Kind, new FormKind(2, [])) ? ((f_7 = recognized, displayTitle(f_7))) : ((isValid && isEmpty(rp)) ? "tautology" : ""))) : ((isValid && isEmpty(rp)) ? "tautology" : "");
     const premises_1 = toArray(map(toUnicode, rp));
     const conclusion_1 = toUnicode(rc);
     const verdict = unknown ? "unknown" : (isValid ? "valid" : "invalid");
-    const fallacy = defaultArg((isValid ? true : unknown) ? undefined : map_1(displayTitle, recognized), "");
+    const fallacy = defaultArg((recognized != null) ? (((!isValid && !unknown) && equals(recognized.Kind, new FormKind(1, []))) ? ((f_9 = recognized, displayTitle(f_9))) : undefined) : undefined, "");
     const suggestion = toArray(map(toUnicode, repairs));
     const proof = toArray(mapIndexed(proofRow, proofSteps));
-    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(cxAtoms), toArray(map((env) => toArray(map((a_1) => defaultArg(tryFind(a_1, env), false), cxAtoms)), cxRows)), (cxActual >= 0) ? toArray(map((w) => evalS5(cxRows, w, rc), cxRows)) : toArray(map((_arg) => false, cxRows)), cxActual, empty.line, premises_1, conclusion_1, formLabel, fallacy, explanation, suggestion, proof, empty.relations, toArray(patternInput[5]), empty.vennCircles, empty.vennCells, empty.vennPoints);
+    return new BlockView("argument", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, toArray(cxAtoms), toArray(map((env_1) => toArray(map((a_1) => defaultArg(tryFind(a_1, env_1), false), cxAtoms)), cxRows)), (cxActual >= 0) ? toArray(map((w) => evalS5(cxRows, w, rc), cxRows)) : toArray(map((_arg) => false, cxRows)), toArray(map(toUnicode, rp)), toArray(map((env_2) => toArray(map((p_1) => {
+        if (cxActual >= 0) {
+            return evalS5(cxRows, env_2, p_1);
+        }
+        else {
+            return eval$(env_2, p_1);
+        }
+    }, rp)), cxRows)), cxActual, empty.line, premises_1, conclusion_1, formLabel, fallacy, explanation_1, suggestion, proof, empty.relations, toArray(patternInput[5]), empty.vennCircles, empty.vennCells, empty.vennPoints);
 }
 
 function proofBlock(defs, name, lines) {
@@ -403,7 +465,7 @@ function proofBlock(defs, name, lines) {
     const enumerator = getEnumerator(lines);
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            let arg_2, arg_6, arg_7, arg_13, title, refs;
+            let arg_2, arg_7, arg_8, arg_14, title, refs;
             const line = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
             if (line.tag === 1) {
                 const ruleName = line.fields[2];
@@ -434,33 +496,37 @@ function proofBlock(defs, name, lines) {
                 }
                 else if (form != null) {
                     if (equals(form.Kind, new FormKind(1, []))) {
-                        const fm_2 = form;
-                        patternInput = ["bad", toText(printf("\'%s\' is a fallacy, not a rule — it cannot justify a step"))(fm_2.Title), fm_2.Title];
+                        const fm_3 = form;
+                        patternInput = ["bad", toText(printf("\'%s\' is a fallacy, not a rule — it cannot justify a step"))(fm_3.Title), fm_3.Title];
+                    }
+                    else if (equals(form.Kind, new FormKind(2, []))) {
+                        const fm_4 = form;
+                        patternInput = ["bad", toText(printf("\'%s\' holds only under Aristotle\'s existential import (that the classes aren\'t empty) — modern logic rejects this step"))(fm_4.Title), fm_4.Title];
                     }
                     else {
-                        const fm_3 = form;
+                        const fm_5 = form;
                         const cited = map((r_1) => FSharpMap__get_Item(known, r_1), refs_1);
-                        if (length(fm_3.Premises) !== length(cited)) {
-                            patternInput = ["bad", (arg_6 = (length(fm_3.Premises) | 0), (arg_7 = (length(cited) | 0), toText(printf("%s needs %d cited line(s) after `from`, got %d"))(fm_3.Title)(arg_6)(arg_7))), fm_3.Title];
+                        if (length(fm_5.Premises) !== length(cited)) {
+                            patternInput = ["bad", (arg_7 = (length(fm_5.Premises) | 0), (arg_8 = (length(cited) | 0), toText(printf("%s needs %d cited line(s) after `from`, got %d"))(fm_5.Title)(arg_7)(arg_8))), fm_5.Title];
                         }
-                        else if (checkStep(fm_3, cited, rf_1)) {
-                            patternInput = ["ok", "", fm_3.Title];
+                        else if (checkStep(fm_5, cited, rf_1)) {
+                            patternInput = ["ok", "", fm_5.Title];
                         }
                         else {
                             const matchValue = recognize(validForms, cited, rf_1);
                             if (matchValue == null) {
                                 if (exists(containsModal, cons(rf_1, cited))) {
                                     const matchValue_1 = checkArgumentS5(cited, rf_1);
-                                    patternInput = ((matchValue_1.tag === 1) ? ["bad", "it does not follow from the cited lines at all — some arrangement of possible worlds makes them true and this false", fm_3.Title] : ((matchValue_1.tag === 2) ? ["bad", tooLargeNote, fm_3.Title] : ["bad", toText(printf("it does follow from the cited lines (S5), but not by %s — and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title]));
+                                    patternInput = ((matchValue_1.tag === 1) ? ["bad", "it does not follow from the cited lines at all — some arrangement of possible worlds makes them true and this false", fm_5.Title] : ((matchValue_1.tag === 2) ? ["bad", tooLargeNote, fm_5.Title] : ["bad", toText(printf("it does follow from the cited lines (S5), but not by %s — and no single catalog rule derives it in one step"))(fm_5.Title), fm_5.Title]));
                                 }
                                 else {
                                     const semantic = checkArgument(cited, rf_1);
-                                    patternInput = (semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s — and no single catalog rule derives it in one step"))(fm_3.Title), fm_3.Title] : ["bad", (arg_13 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all — counterexample: %s"))(arg_13)), fm_3.Title]);
+                                    patternInput = (semantic.IsValid ? ["bad", toText(printf("it does follow from the cited lines, but not by %s — and no single catalog rule derives it in one step"))(fm_5.Title), fm_5.Title] : ["bad", (arg_14 = describeSituation(head(semantic.Counterexamples)), toText(printf("it does not follow from the cited lines at all — counterexample: %s"))(arg_14)), fm_5.Title]);
                                 }
                             }
                             else {
                                 const actual = matchValue;
-                                patternInput = ["bad", toText(printf("this step doesn\'t match %s — it is actually %s (%s)"))(fm_3.Title)(actual.Title)(actual.Note), fm_3.Title];
+                                patternInput = ["bad", toText(printf("this step doesn\'t match %s — it is actually %s (%s)"))(fm_5.Title)(actual.Title)(actual.Note), fm_5.Title];
                             }
                         }
                     }
@@ -496,7 +562,7 @@ function proofBlock(defs, name, lines) {
     }
     const verdict = allOk ? "valid" : "invalid";
     const note = allOk ? "Every step checks out — the conclusion follows from the premises. ∎" : "The first ✗ step is where the chain breaks — repair it and the proof may go through.";
-    return new BlockView("proof", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, defaultArg(map_1((l) => toUnicode(resolve(defs, (l.tag === 1) ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty.form, empty.fallacy, note, empty.suggestion, rows.slice(), empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+    return new BlockView("proof", empty.level, empty.title, name, empty.gloss, empty.formula, verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, defaultArg(map_1((l) => toUnicode(resolve(defs, (l.tag === 1) ? l.fields[1] : l.fields[1])), tryLast(lines)), ""), empty.form, empty.fallacy, note, empty.suggestion, rows.slice(), empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
 }
 
 function relationInfo(defs, glosses, left, kind, right) {
@@ -634,7 +700,7 @@ function relationWhy(_arg) {
 }
 
 function relationsBlock(claims) {
-    return new BlockView("relations", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, Array.from(delay(() => collect_1((i) => map_2((j) => {
+    return new BlockView("relations", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, Array.from(delay(() => collect_1((i) => map_3((j) => {
         const patternInput = item(i, claims);
         const nameA = patternInput[0];
         const patternInput_1 = item(j, claims);
@@ -654,11 +720,11 @@ function toBlock(defs, glosses, claims, relationRows, arguments$, st) {
     let matchValue_3, arg;
     switch (st.tag) {
         case 1:
-            return new BlockView("prose", empty.level, st.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("prose", empty.level, st.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         case 2:
-            return new BlockView("prop", empty.level, empty.title, st.fields[0], st.fields[1], empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("prop", empty.level, empty.title, st.fields[0], st.fields[1], empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         case 3:
-            return new BlockView("claim", empty.level, empty.title, st.fields[0], empty.gloss, toUnicode(st.fields[1]), empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toEnglish((name) => tryFind(name, glosses), resolve(defs, st.fields[1])), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("claim", empty.level, empty.title, st.fields[0], empty.gloss, toUnicode(st.fields[1]), empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toEnglish((name) => tryFind(name, glosses), resolve(defs, st.fields[1])), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         case 4: {
             const f_2 = (st.fields[0].tag === 0) ? resolve(defs, new Formula(0, [st.fields[0].fields[0]])) : resolve(defs, st.fields[0].fields[0]);
             if (containsFO(f_2)) {
@@ -680,7 +746,7 @@ function toBlock(defs, glosses, claims, relationRows, arguments$, st) {
                 let patternInput_1;
                 const matchValue_2 = equivalent2(ra, rb);
                 patternInput_1 = ((matchValue_2 == null) ? ["unknown", tooLargeNote] : (matchValue_2 ? (modal ? ["equivalent", "At every world of every arrangement the two sides carry the same truth value — two phrasings of one claim."] : ["equivalent", "In every possible situation the two sides carry the same truth value — two phrasings of one claim."]) : (modal ? ["not-equivalent", "They come apart in some arrangement of possible worlds: there, one holds and the other doesn\'t."] : ["not-equivalent", (matchValue_3 = distinguishing(ra, rb), (matchValue_3 == null) ? "" : ((arg = describeSituation(matchValue_3), toText(printf("They come apart when %s: then one holds and the other doesn\'t."))(arg))))])));
-                return new BlockView("check", empty.level, empty.title, empty.name, empty.gloss, (toUnicode(ra) + " ≡ ") + toUnicode(rb), patternInput_1[0], empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, patternInput_1[1], empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+                return new BlockView("check", empty.level, empty.title, empty.name, empty.gloss, (toUnicode(ra) + " ≡ ") + toUnicode(rb), patternInput_1[0], empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, patternInput_1[1], empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
             }
             else {
                 const rf = resolve(defs, st.fields[0].fields[0]);
@@ -692,11 +758,11 @@ function toBlock(defs, glosses, claims, relationRows, arguments$, st) {
                 }
                 else {
                     const bind$0040 = tableBlock(rf);
-                    return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.actual, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations, bind$0040.model, bind$0040.vennCircles, bind$0040.vennCells, bind$0040.vennPoints);
+                    return new BlockView("check", bind$0040.level, bind$0040.title, bind$0040.name, bind$0040.gloss, bind$0040.formula, bind$0040.verdict, bind$0040.atoms, bind$0040.rows, bind$0040.results, bind$0040.subHeaders, bind$0040.subRows, bind$0040.actual, bind$0040.line, bind$0040.premises, bind$0040.conclusion, bind$0040.form, bind$0040.fallacy, bind$0040.note, bind$0040.suggestion, bind$0040.proof, bind$0040.relations, bind$0040.model, bind$0040.vennCircles, bind$0040.vennCells, bind$0040.vennPoints);
                 }
             }
         case 6:
-            return argumentBlock(defs, st.fields[0], st.fields[1], st.fields[2]);
+            return argumentBlock(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
         case 7:
             return proofBlock(defs, st.fields[0], st.fields[1]);
         case 8:
@@ -704,22 +770,24 @@ function toBlock(defs, glosses, claims, relationRows, arguments$, st) {
         case 9: {
             const matchValue_4 = tryFind(st.fields[0], arguments$);
             if (matchValue_4 == null) {
-                return new BlockView("venn", empty.level, empty.title, st.fields[0], empty.gloss, empty.formula, "not-drawable", empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toText(printf("No argument named \'%s\' to draw — `venn` needs the name of an `argument` defined in this document."))(st.fields[0]), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+                return new BlockView("venn", empty.level, empty.title, st.fields[0], empty.gloss, empty.formula, "not-drawable", empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, toText(printf("No argument named \'%s\' to draw — `venn` needs the name of an `argument` defined in this document."))(st.fields[0]), empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
             }
             else {
                 return vennBlock(defs, st.fields[0], matchValue_4[0], matchValue_4[1]);
             }
         }
         case 10:
+            return squareBlock(st.fields[0], st.fields[1]);
+        case 11:
             return relationsBlock(claims);
-        case 11: {
+        case 12: {
             const patternInput_2 = relationInfo(defs, glosses, st.fields[0], st.fields[1], st.fields[2]);
-            return new BlockView("relation", empty.level, patternInput_2[1], empty.name, empty.gloss, patternInput_2[0], patternInput_2[3], empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, patternInput_2[2], empty.form, empty.fallacy, patternInput_2[4], empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("relation", empty.level, patternInput_2[1], empty.name, empty.gloss, patternInput_2[0], patternInput_2[3], empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, patternInput_2[2], empty.form, empty.fallacy, patternInput_2[4], empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         }
-        case 12:
-            return new BlockView("map", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, relationRows, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+        case 13:
+            return new BlockView("map", empty.level, empty.title, empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, relationRows, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         default:
-            return new BlockView("heading", st.fields[0], st.fields[1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("heading", st.fields[0], st.fields[1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, empty.line, empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
     }
 }
 
@@ -780,7 +848,7 @@ export function analyze(source) {
         Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
     });
     const relationRows = toArray(choose((_arg_5) => {
-        if (_arg_5.tag === 11) {
+        if (_arg_5.tag === 12) {
             const patternInput = relationInfo(defs, glosses, _arg_5.fields[0], _arg_5.fields[1], _arg_5.fields[2]);
             return [patternInput[0], patternInput[1], patternInput[2], patternInput[3]];
         }
@@ -823,9 +891,9 @@ export function analyze(source) {
         disposeSafe(enumerator);
     }
     flushProse();
-    return map_3((_arg_6) => {
+    return map_2((_arg_6) => {
         if (_arg_6.tag === 1) {
-            return new BlockView("error", empty.level, _arg_6.fields[0][1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, _arg_6.fields[0][0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+            return new BlockView("error", empty.level, _arg_6.fields[0][1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.subHeaders, empty.subRows, empty.actual, _arg_6.fields[0][0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         }
         else {
             return toBlock(defs, glosses, claims, relationRows, arguments$, _arg_6.fields[0]);
@@ -1029,7 +1097,9 @@ export function lint(source) {
                 return append(st_1.fields[1], ofArray(toArray_1(st_1.fields[2])));
             case 9:
                 return empty_2();
-            case 11:
+            case 10:
+                return empty_2();
+            case 12:
                 return choose((_arg_1) => {
                     if (_arg_1.tag === 1) {
                         return undefined;
@@ -1085,7 +1155,7 @@ export function lint(source) {
                 }
                 break;
             }
-            case 11: {
+            case 12: {
                 matchResult_4 = 1;
                 l_1 = st_4.fields[0];
                 r_2 = st_4.fields[2];

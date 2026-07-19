@@ -101,6 +101,7 @@ figure.statement figcaption { display: flex; align-items: center; gap: .5em; mar
 table.truth { border-collapse: collapse; font-family: var(--mono); font-size: .9rem; }
 table.truth th, table.truth td { border: 1px solid var(--border); padding: .2em .75em; text-align: center; }
 table.truth thead th { background: var(--surface); }
+table.truth th.sub { font-weight: 400; color: var(--muted); }
 table.truth td.t { color: var(--green); }
 table.truth td.f { color: var(--red); opacity: .85; }
 
@@ -200,6 +201,24 @@ svg.relmap .edge-label.failed { fill: var(--red); }
 svg.relmap .node rect { fill: var(--bg); stroke: var(--border); }
 svg.relmap .node.ad-hoc rect { stroke-dasharray: 4 3; }
 svg.relmap .node text { fill: var(--fg); font-size: 12px; font-family: var(--mono); }
+
+/* square of opposition */
+figure.square-figure { margin: 1.2rem 0; padding: .7rem 1rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+figure.square-figure figcaption { text-transform: uppercase; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .4rem; }
+svg.square { max-width: 580px; width: 100%; height: auto; }
+svg.square .sq-letter { fill: var(--fg); font-family: var(--mono); font-size: 26px; font-weight: 700; }
+svg.square .sq-english { fill: var(--fg); font-size: 12.5px; }
+svg.square .sq-formula { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
+svg.square .sq-edge { stroke-width: 1.6; fill: none; }
+svg.square .sq-edge.holds { stroke: var(--fg); }
+svg.square .sq-edge.aristotle { stroke: var(--amber); stroke-dasharray: 6 4; }
+svg.square .sq-edge.fails { stroke: var(--red); stroke-dasharray: 3 4; }
+svg.square .sq-label { font-size: 11.5px; fill: var(--muted); }
+svg.square .sq-label.aristotle { fill: var(--amber); }
+svg.square .sq-label.fails { fill: var(--red); }
+svg.square .sq-arrow.holds { fill: var(--fg); }
+svg.square .sq-arrow.aristotle { fill: var(--amber); }
+svg.square .sq-arrow.fails { fill: var(--red); }
 
 .error { color: var(--red); font-family: var(--mono); margin: .3rem 0; }
 .error-line { opacity: .6; margin-right: .5em; }
