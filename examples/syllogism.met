@@ -1,59 +1,39 @@
 # Predicates and quantifiers
 
-The classic move that propositional logic can't make: reasoning about
-*all* and *some*. Props name whole statements; predicates name properties
-that individuals may or may not have.
+The move propositional logic can't make: reasoning about *all* and *some*.
+Words like "all", "no", "some", and "every" become quantifiers, and a name
+like "Socrates" becomes an individual.
 
-prop socrates : (unused here — predicates carry the meaning now)
-
-// Man(x) reads "x is a man"; socrates is an individual, x a variable.
-
-argument socrates-is-mortal {
-  premise forall x. Man(x) -> Mortal(x)
-  premise Man(socrates)
-  ---
-  conclude Mortal(socrates)
-}
+All men are mortal. Socrates is a man. Therefore, Socrates is mortal.
 
 // Valid over every domain the engine checks — the textbook syllogism.
 
-// Draw that argument as a Venn diagram — just name it. "All Man are Mortal"
-// shades the Man-but-not-Mortal region empty, and socrates (a Man) is forced
-// into the Man ∩ Mortal lens, so you can see the conclusion.
-venn socrates-is-mortal
+# See it as a Venn diagram
 
-## Where quantifiers trip people up
+argument socrates {
+  premise All men are mortal
+  premise Socrates is a man
+  ---
+  conclude Socrates is mortal
+}
 
-// "Some are human, some are mortal" does NOT give "some are both". The
-// engine finds the two-individual world that pulls them apart.
+// "All men are mortal" shades the man-but-not-mortal region empty, and
+// Socrates (a man) is forced into the man ∩ mortal lens — the conclusion.
+venn socrates
+
+# Where quantifiers trip people up
+
+// From two "somes" you can't get a "some both": that some are human and
+// some are mortal does not make any one thing both. The engine finds the
+// two-individual model that pulls them apart.
 
 argument existential-slip {
-  premise exists x. Human(x)
-  premise exists x. Mortal(x)
+  premise Some humans are tall
+  premise Some humans are short
   ---
-  conclude exists x. Human(x) and Mortal(x)
+  conclude Some tall are short
 }
 
-// Order of quantifiers matters: "everyone loves someone" is not
-// "someone is loved by everyone".
-argument quantifier-order {
-  premise forall x. exists y. Loves(x, y)
-  ---
-  conclude exists y. forall x. Loves(x, y)
-}
+# A categorical chain (Barbara)
 
-## Theorems of pure quantification
-
-// True in every model, no premises needed — the duality of ∀ and ∃:
-argument not-all-means-some-not {
-  ---
-  conclude (not forall x. P(x)) <-> (exists x. not P(x))
-}
-
-// And the drinker paradox: in any non-empty pub there's someone such that,
-// if they are drinking, everyone is.
-claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
-// And the drinker paradox: in any non-empty pub there's someone such that,
-// if they are drinking, everyone is.
-claim C1: exists x. (Drinks(x) -> forall y. Drinks(y))
-table C1
+All dogs are mammals. All mammals are animals. Therefore, all dogs are animals.

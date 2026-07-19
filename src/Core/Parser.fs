@@ -127,24 +127,12 @@ module Parser =
                 | [] -> Ok f
                 | _ -> Error "Unexpected leftover input after the formula"))
 
-    // Words that only appear in the prose surface — their presence means a
-    // failed symbolic parse should report the *prose* error instead.
-    let private proseSignals =
-        set [ "if"; "then"; "all"; "no"; "some"; "every"; "either"; "neither"; "nor"; "is"; "are" ]
-
-    /// Parse a formula written either symbolically (p -> q) or as an English
-    /// sentence (If p, then q). Symbolic is tried first; prose is the fallback.
-    let parseAny (text: string) : Result<Formula, string> =
-        match parseFormula text with
-        | Ok f -> Ok f
-        | Error symErr ->
-            match Prose.parseSentence text with
-            | Ok f -> Ok f
-            | Error proseErr ->
-                let looksProse =
-                    text.Split([| ' '; '\t' |], System.StringSplitOptions.RemoveEmptyEntries)
-                    |> Array.exists (fun w -> Set.contains (w.ToLowerInvariant()) proseSignals)
-                Error(if looksProse then proseErr else symErr)
+    /// Parse the text of a statement's content. meticulous is written entirely
+    /// in prose now — "If P, then Q", "All men are mortal" — so this simply
+    /// delegates to the prose parser. (The symbolic `parseFormula` above is kept
+    /// only as an internal helper for tests and AST construction; it is not part
+    /// of the language surface.)
+    let parseAny (text: string) : Result<Formula, string> = Prose.parseSentence text
 
     // ---- Document parser -------------------------------------------------
 
@@ -183,11 +171,15 @@ module Parser =
             else Some(Named(s.Substring(0, len)), s.Substring len)
 
     let private relationVerbs =
-        [ "supports", Supports
+        // multi-word spellings first, so "is equivalent to" wins over any
+        // shorter prefix ever added later
+        [ "is equivalent to", EquivalentTo
+          "is-equivalent-to", EquivalentTo
+          "equivalent-to", EquivalentTo
+          "supports", Supports
           "presupposes", Presupposes
           "contradicts", Contradicts
-          "entails", Entails
-          "equivalent-to", EquivalentTo ]
+          "entails", Entails ]
 
     /// Recognise `<ref> <verb> <ref>` — e.g.  C1 supports C2  or
     /// `A entails "the streets flood"`. Anything that doesn't fit exactly
@@ -304,11 +296,11 @@ module Parser =
             elif line.Length >= 3 && line |> Seq.forall (fun c -> c = '-') then
                 () // the `---` inference line: decoration between premises and conclusion
             elif line.StartsWith "premise " then
-                match parseFormula (line.Substring 8) with
+                match parseAny (line.Substring 8) with
                 | Ok f -> premises <- premises @ [ f ]
                 | Error e -> errors <- errors @ [ no, e ]
             elif line.StartsWith "conclude " then
-                match parseFormula (line.Substring 9), conclusion with
+                match parseAny (line.Substring 9), conclusion with
                 | Ok f, None -> conclusion <- Some f
                 | Ok _, Some _ -> errors <- errors @ [ no, "an argument can only have one `conclude`" ]
                 | Error e, _ -> errors <- errors @ [ no, e ]
@@ -348,7 +340,7 @@ module Parser =
                     errors <- errors @ [ no, "every proof line starts with its number — e.g.  3. wet by modus-ponens from 1, 2" ]
                 | Some(number, rest) ->
                     if rest.StartsWith "premise " then
-                        match parseFormula (rest.Substring 8) with
+                        match parseAny (rest.Substring 8) with
                         | Ok f -> steps <- steps @ [ ProofPremise(number, f) ]
                         | Error e -> errors <- errors @ [ no, e ]
                     else
@@ -364,8 +356,10 @@ module Parser =
                                 match justification.IndexOf " from " with
                                 | -1 -> justification, ""
                                 | j -> justification.Substring(0, j).Trim(), justification.Substring(j + 6)
+                            // citations read naturally: "from 1 and 2", "from 1, 2 and 3"
                             let refs =
-                                refsText.Split(',')
+                                refsText.Replace(" and ", ",").Replace(" And ", ",")
+                                    .Split(',')
                                 |> Array.map (fun s -> s.Trim())
                                 |> Array.filter (fun s -> s <> "")
                                 |> Array.toList
@@ -375,7 +369,7 @@ module Parser =
                             elif not (List.isEmpty badRefs) then
                                 errors <- errors @ [ no, sprintf "citations after `from` must be line numbers, not %A" (List.head badRefs) ]
                             else
-                                match parseFormula formulaText with
+                                match parseAny formulaText with
                                 | Ok f -> steps <- steps @ [ ProofDerived(number, f, rule, refs |> List.map int) ]
                                 | Error e -> errors <- errors @ [ no, e ]
 
@@ -397,11 +391,11 @@ module Parser =
             if line = "" then ()
             elif line.Length >= 3 && line |> Seq.forall (fun c -> c = '-') then ()
             elif line.StartsWith "premise " then
-                match parseFormula (line.Substring 8) with
+                match parseAny (line.Substring 8) with
                 | Ok f -> premises <- premises @ [ f ]
                 | Error e -> errors <- errors @ [ no, e ]
             elif line.StartsWith "conclude " then
-                match parseFormula (line.Substring 9), conclusion with
+                match parseAny (line.Substring 9), conclusion with
                 | Ok f, None -> conclusion <- Some f
                 | Ok _, Some _ -> errors <- errors @ [ no, "a venn block can only have one `conclude`" ]
                 | Error e, _ -> errors <- errors @ [ no, e ]

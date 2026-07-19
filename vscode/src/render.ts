@@ -794,8 +794,11 @@ function renderBlock(block: BlockView): string {
       return `<h${level}>${escapeHtml(block.title)}</h${level}>`;
     }
 
-    case "prose":
-      return `<p class="prose">${escapeHtml(block.title)}</p>`;
+    case "prose": {
+      // Minimal inline markup, applied AFTER escaping: *word* renders emphasized.
+      const text = escapeHtml(block.title).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      return `<p class="prose">${text}</p>`;
+    }
 
     case "prop":
       return `<div class="prop"><span class="atom">${escapeHtml(block.name)}</span><span class="colon">:</span><span class="gloss">${escapeHtml(block.gloss)}</span></div>`;

@@ -13,8 +13,8 @@ prop god : God — both omnipotent and omnibenevolent — exists
 
 # The two hinges
 
-claim Definition : god -> (omnipotent and omnibenevolent)
-claim Prevention : (omnipotent and omnibenevolent) -> not evil
+claim Definition : if god then (omnipotent and omnibenevolent)
+claim Prevention : if (omnipotent and omnibenevolent) then not evil
 claim Reality : evil
 
 # The argument
@@ -30,8 +30,8 @@ argument problem-of-evil {
 // Valid. And here is the derivation, step by step:
 
 proof epicurus {
-  1. premise god -> (omnipotent and omnibenevolent)
-  2. premise (omnipotent and omnibenevolent) -> not evil
+  1. premise if god then (omnipotent and omnibenevolent)
+  2. premise if (omnipotent and omnibenevolent) then not evil
   3. premise evil
   4. not not evil by double-negation-intro from 3
   5. not (omnipotent and omnibenevolent) by modus-tollens from 2, 4

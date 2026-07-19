@@ -30,8 +30,6 @@ claim E : No men are mortal
 claim I : Some men are mortal
 claim O : Some men are not mortal
 
-# Mixing is fine
-
-Prose and symbols mean the same thing — write whichever reads better:
+# Claims and checks work in prose too
 
 check (If P, then Q) equivalent (not P or Q)

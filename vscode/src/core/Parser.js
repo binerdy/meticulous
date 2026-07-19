@@ -1,15 +1,14 @@
 
 import { Result_Map, FSharpResult$2, Result_Bind } from "./fable_modules/fable-library-js.5.6.0/Result.js";
 import { ProofLine, CheckKind, TableTarget, Statement, RelationKind, RelRef, Formula } from "./Ast.js";
-import { choose, ofSeq as ofSeq_1, map as map_1, filter, tryPick, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { choose, ofSeq, map as map_1, filter, tryPick, ofArray, singleton, append, empty, tail, head, isEmpty } from "./fable_modules/fable-library-js.5.6.0/List.js";
 import { tokenize } from "./Tokenizer.js";
-import { contains, ofSeq } from "./fable_modules/fable-library-js.5.6.0/Set.js";
-import { disposeSafe, getEnumerator, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { tryParseArgument, parseSentence } from "./Prose.js";
-import { replace, printf, toText, trimStart, substring, split } from "./fable_modules/fable-library-js.5.6.0/String.js";
+import { printf, toText, replace, split, trimStart, substring } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { isDigit, isLetterOrDigit, isLetter } from "./fable_modules/fable-library-js.5.6.0/Char.js";
 import { takeWhile, length, forAll } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { bind } from "./fable_modules/fable-library-js.5.6.0/Option.js";
+import { disposeSafe, getEnumerator } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { parse } from "./fable_modules/fable-library-js.5.6.0/Int32.js";
 import { item, map } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 
@@ -415,29 +414,15 @@ export function parseFormula(text) {
     }, parseIff(tokens)), tokenize(text));
 }
 
-const proseSignals = ofSeq(["if", "then", "all", "no", "some", "every", "either", "neither", "nor", "is", "are"], {
-    Compare: (x, y) => (comparePrimitives(x, y) | 0),
-});
-
 /**
- * Parse a formula written either symbolically (p -> q) or as an English
- * sentence (If p, then q). Symbolic is tried first; prose is the fallback.
+ * Parse the text of a statement's content. meticulous is written entirely
+ * in prose now — "If P, then Q", "All men are mortal" — so this simply
+ * delegates to the prose parser. (The symbolic `parseFormula` above is kept
+ * only as an internal helper for tests and AST construction; it is not part
+ * of the language surface.)
  */
 export function parseAny(text) {
-    let array;
-    const matchValue = parseFormula(text);
-    if (matchValue.tag === 1) {
-        const matchValue_1 = parseSentence(text);
-        if (matchValue_1.tag === 1) {
-            return new FSharpResult$2(1, [((array = split(text, [" ", "\t"], undefined, 1), array.some((w) => contains(w.toLowerCase(), proseSignals)))) ? matchValue_1.fields[0] : matchValue.fields[0]]);
-        }
-        else {
-            return new FSharpResult$2(0, [matchValue_1.fields[0]]);
-        }
-    }
-    else {
-        return new FSharpResult$2(0, [matchValue.fields[0]]);
-    }
+    return parseSentence(text);
 }
 
 function stripComment(line) {
@@ -508,7 +493,7 @@ function tryRef(s) {
     }
 }
 
-const relationVerbs = ofArray([["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])], ["equivalent-to", new RelationKind(4, [])]]);
+const relationVerbs = ofArray([["is equivalent to", new RelationKind(4, [])], ["is-equivalent-to", new RelationKind(4, [])], ["equivalent-to", new RelationKind(4, [])], ["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])]]);
 
 function tryParseRelation(line) {
     return bind((tupledArg) => {
@@ -654,7 +639,7 @@ function parseArgumentBlock(name, headerLine, body) {
             else if ((line.length >= 3) && forAll((c) => (c === "-"), line.split(""))) {
             }
             else if (line.startsWith("premise ")) {
-                const matchValue = parseFormula(substring(line, 8));
+                const matchValue = parseAny(substring(line, 8));
                 if (matchValue.tag === 1) {
                     errors = append(errors, singleton([no, matchValue.fields[0]]));
                 }
@@ -663,7 +648,7 @@ function parseArgumentBlock(name, headerLine, body) {
                 }
             }
             else if (line.startsWith("conclude ")) {
-                const matchValue_1 = parseFormula(substring(line, 9));
+                const matchValue_1 = parseAny(substring(line, 9));
                 const conclusion_1 = conclusion;
                 const copyOfStruct = matchValue_1;
                 if (copyOfStruct.tag === 1) {
@@ -721,7 +706,7 @@ function parseProofBlock(name, headerLine, body) {
                     const rest = matchValue[1];
                     const number = matchValue[0] | 0;
                     if (rest.startsWith("premise ")) {
-                        const matchValue_1 = parseFormula(substring(rest, 8));
+                        const matchValue_1 = parseAny(substring(rest, 8));
                         if (matchValue_1.tag === 1) {
                             errors = append(errors, singleton([no, matchValue_1.fields[0]]));
                         }
@@ -748,7 +733,7 @@ function parseProofBlock(name, headerLine, body) {
                                 patternInput = [substring(justification, 0, j).trim(), substring(justification, j + 6)];
                             }
                             const rule = patternInput[0];
-                            const refs = ofArray((array_1 = map((s) => s.trim(), split(patternInput[1], [","], undefined, 0)), array_1.filter((s_1) => (s_1 !== ""))));
+                            const refs = ofArray((array_1 = map((s) => s.trim(), split(replace(replace(patternInput[1], " and ", ","), " And ", ","), [","], undefined, 0)), array_1.filter((s_1) => (s_1 !== ""))));
                             const badRefs = filter((r) => !forAll(isDigit, r.split("")), refs);
                             if (rule === "") {
                                 errors = append(errors, singleton([no, "missing rule name after `by`"]));
@@ -757,7 +742,7 @@ function parseProofBlock(name, headerLine, body) {
                                 errors = append(errors, singleton([no, (arg = head(badRefs), toText(printf("citations after `from` must be line numbers, not %A"))(arg))]));
                             }
                             else {
-                                const matchValue_4 = parseFormula(formulaText);
+                                const matchValue_4 = parseAny(formulaText);
                                 if (matchValue_4.tag === 1) {
                                     errors = append(errors, singleton([no, matchValue_4.fields[0]]));
                                 }
@@ -807,7 +792,7 @@ function parseVennBlock(name, headerLine, body) {
             else if ((line.length >= 3) && forAll((c) => (c === "-"), line.split(""))) {
             }
             else if (line.startsWith("premise ")) {
-                const matchValue = parseFormula(substring(line, 8));
+                const matchValue = parseAny(substring(line, 8));
                 if (matchValue.tag === 1) {
                     errors = append(errors, singleton([no, matchValue.fields[0]]));
                 }
@@ -816,7 +801,7 @@ function parseVennBlock(name, headerLine, body) {
                 }
             }
             else if (line.startsWith("conclude ")) {
-                const matchValue_1 = parseFormula(substring(line, 9));
+                const matchValue_1 = parseAny(substring(line, 9));
                 const conclusion_1 = conclusion;
                 const copyOfStruct = matchValue_1;
                 if (copyOfStruct.tag === 1) {
@@ -893,7 +878,7 @@ export function parseLines(source) {
                 i = (lines.length | 0);
             }
             else {
-                const matchValue_1 = parseBlock(name_3)(no)(ofSeq_1(body_3));
+                const matchValue_1 = parseBlock(name_3)(no)(ofSeq(body_3));
                 if (matchValue_1.tag === 1) {
                     const enumerator = getEnumerator(matchValue_1.fields[0]);
                     try {
@@ -913,7 +898,7 @@ export function parseLines(source) {
             }
         }
     }
-    return ofSeq_1(results);
+    return ofSeq(results);
 }
 
 /**

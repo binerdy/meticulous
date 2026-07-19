@@ -8,9 +8,9 @@ as assertions.
 prop policy : The tax cut was enacted
 prop growth : The economy grew
 
-claim A : policy -> growth
+claim A : if policy then growth
 claim B : not policy or growth
-claim C : growth -> policy
+claim C : if growth then policy
 claim D : policy and not growth
 
 // Formal assertions — each one is checked:

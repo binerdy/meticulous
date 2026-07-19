@@ -4,6 +4,7 @@ import { analyze } from "./core-bridge";
 import { renderDocument } from "./render";
 import { registerCompletions } from "./completion";
 import { registerDiagnostics } from "./diagnostics";
+import { registerHover } from "./hover";
 
 // Styling for the preview. Uses VS Code theme variables so it matches the
 // user's editor theme (light/dark) automatically.
@@ -149,6 +150,7 @@ function wrapHtml(body: string): string {
 export function activate(context: vscode.ExtensionContext) {
   registerCompletions(context);
   registerDiagnostics(context);
+  registerHover(context);
 
   let panel: vscode.WebviewPanel | undefined;
   let trackedUri: vscode.Uri | undefined;

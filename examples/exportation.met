@@ -4,10 +4,10 @@ prop rain : It is raining
 prop cold : It is cold
 prop snow : It snows
 
-claim C1 : (rain and cold) -> snow
+claim C1 : if (rain and cold) then snow
 
 argument exportation {
   premise C1
   ---
-  conclude rain -> (cold -> snow)
+  conclude if rain then (if cold then snow)
 }

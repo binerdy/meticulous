@@ -39,6 +39,15 @@ module InferenceRules =
     let private χ = Atom "χ"
     let private ω = Atom "ω"
 
+    // Categorical building blocks: capital Greek letters are *predicate-name*
+    // metavariables and α is a *term* metavariable (see Recognition.matchPattern).
+    // Φx reads "x is a Φ", Φα reads "α is a Φ" for some named individual α.
+    let private Φx = Pred("Φ", [ "x" ])
+    let private Ψx = Pred("Ψ", [ "x" ])
+    let private Σx = Pred("Σ", [ "x" ])
+    let private Φα = Pred("Φ", [ "α" ])
+    let private Ψα = Pred("Ψ", [ "α" ])
+
     let forms: ArgumentForm list =
         [ // ---- valid inference rules ----
           { Name = "modus-ponens"
@@ -259,6 +268,47 @@ module InferenceRules =
             Kind = ValidForm
             Note = "No proposition both holds and fails at once." }
 
+          // ---- categorical syllogisms: the classic named moods --------------
+          { Name = "universal-instantiation"
+            Title = "universal instantiation"
+            Aka = "singular syllogism"
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Φα ]
+            Conclusion = Ψα
+            Kind = ValidForm
+            Note = "What holds of every Φ holds of this one in particular." }
+
+          { Name = "barbara"
+            Title = "Barbara"
+            Aka = "AAA-1"
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Forall("x", Implies(Σx, Φx)) ]
+            Conclusion = Forall("x", Implies(Σx, Ψx))
+            Kind = ValidForm
+            Note = "All Φ are Ψ; all Σ are Φ; so all Σ are Ψ — the first and firmest of the syllogisms." }
+
+          { Name = "celarent"
+            Title = "Celarent"
+            Aka = "EAE-1"
+            Premises = [ Forall("x", Implies(Φx, Not Ψx)); Forall("x", Implies(Σx, Φx)) ]
+            Conclusion = Forall("x", Implies(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Φ are Ψ; all Σ are Φ; so no Σ are Ψ." }
+
+          { Name = "darii"
+            Title = "Darii"
+            Aka = "AII-1"
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Exists("x", And(Σx, Φx)) ]
+            Conclusion = Exists("x", And(Σx, Ψx))
+            Kind = ValidForm
+            Note = "All Φ are Ψ; some Σ are Φ; so some Σ are Ψ." }
+
+          { Name = "ferio"
+            Title = "Ferio"
+            Aka = "EIO-1"
+            Premises = [ Forall("x", Implies(Φx, Not Ψx)); Exists("x", And(Σx, Φx)) ]
+            Conclusion = Exists("x", And(Σx, Not Ψx))
+            Kind = ValidForm
+            Note = "No Φ are Ψ; some Σ are Φ; so some Σ are not Ψ." }
+
           // ---- modal rules (S5): reasoning about necessity and possibility ----
           { Name = "axiom-t"
             Title = "axiom T"
@@ -387,7 +437,15 @@ module InferenceRules =
             Premises = [ Implies(φ, ψ) ]
             Conclusion = Implies(ψ, φ)
             Kind = FallacyForm
-            Note = "An implication does not run backwards." } ]
+            Note = "An implication does not run backwards." }
+
+          { Name = "undistributed-middle"
+            Title = "undistributed middle"
+            Aka = ""
+            Premises = [ Forall("x", Implies(Φx, Ψx)); Forall("x", Implies(Σx, Ψx)) ]
+            Conclusion = Forall("x", Implies(Σx, Φx))
+            Kind = FallacyForm
+            Note = "Sharing a predicate doesn't connect two classes — all cats and all dogs are animals, yet no dogs are cats." } ]
 
     let validForms = forms |> List.filter (fun f -> f.Kind = ValidForm)
     let fallacies = forms |> List.filter (fun f -> f.Kind = FallacyForm)

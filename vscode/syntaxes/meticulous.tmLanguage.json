@@ -51,7 +51,8 @@
       "name": "string.quoted.double.meticulous"
     },
     "operator": {
-      "match": "->|<->|<>|→|↔|∧|∨|¬|⊕|□|◇|∀|∃|\\[\\]|&|\\||~|!|\\b(and|or|not|implies|iff|xor|necessarily|possibly|forall|exists)\\b",
+      "comment": "logical words — meticulous is written in prose, so no symbol operators",
+      "match": "\\b(and|or|not|implies|iff|xor|necessarily|possibly|forall|exists)\\b",
       "name": "keyword.operator.logical.meticulous"
     },
     "prose": {
@@ -59,17 +60,21 @@
       "name": "keyword.other.prose.meticulous"
     },
     "term-subject": {
-      "comment": "the class term after a quantifier — the 'x' in 'All x are ...'",
-      "match": "\\b(?i:all|no|some|every)\\s+([A-Za-z][\\w-]*)",
+      "comment": "quantifier word + its class term — 'All men' → keyword + variable. Every consumed word gets a scope, or it would render unhighlighted.",
+      "match": "\\b((?i:all|no|some|every))\\s+([A-Za-z][\\w-]*)",
       "captures": {
-        "1": { "name": "variable.other.term.meticulous" }
+        "1": { "name": "keyword.other.prose.meticulous" },
+        "2": { "name": "variable.other.term.meticulous" }
       }
     },
     "term-predicate": {
-      "comment": "the class term after a copula — the 'y' in '... are y' / '... is a y'",
-      "match": "\\b(?i:are|is)\\s+(?i:not\\s+)?(?i:an?\\s+)?([A-Za-z][\\w-]*)",
+      "comment": "copula (+ optional not/article) + its class term — 'is a man' → keywords + variable",
+      "match": "\\b((?i:are|is))\\s+((?i:not)\\s+)?((?i:an?)\\s+)?([A-Za-z][\\w-]*)",
       "captures": {
-        "1": { "name": "variable.other.term.meticulous" }
+        "1": { "name": "keyword.other.prose.meticulous" },
+        "2": { "name": "keyword.other.prose.meticulous" },
+        "3": { "name": "keyword.other.prose.meticulous" },
+        "4": { "name": "variable.other.term.meticulous" }
       }
     },
     "constant": {

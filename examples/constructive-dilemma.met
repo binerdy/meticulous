@@ -9,8 +9,8 @@ prop snow : It is snowing
 prop cloudy : The sky is cloudy
 
 claim C1 : rain or snow
-claim C2 : rain -> cloudy
-claim C3 : snow -> cloudy
+claim C2 : if rain then cloudy
+claim C3 : if snow then cloudy
 
 argument same-destination {
   premise C1
@@ -24,7 +24,7 @@ argument same-destination {
 
 prop cold : It is cold
 
-claim C4 : snow -> cold
+claim C4 : if snow then cold
 
 argument different-destinations {
   premise C1

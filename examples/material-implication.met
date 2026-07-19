@@ -3,7 +3,7 @@
 prop study : You study
 prop pass : You pass the exam
 
-claim C1 : study -> pass
+claim C1 : if study then pass
 
 argument material-implication {
   premise C1

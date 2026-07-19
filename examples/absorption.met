@@ -3,12 +3,12 @@
 prop rain : It is raining
 prop wet : The street is wet
 
-claim C1 : rain -> wet
+claim C1 : if rain then wet
 
 argument absorption {
   premise C1
   ---
-  conclude rain -> (rain and wet)
+  conclude if rain then (rain and wet)
 }
 
 table C1

@@ -1,22 +1,23 @@
 
 import { toString, Record } from "./fable_modules/fable-library-js.5.6.0/Types.js";
 import { record_type, bool_type, array_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.6.0/Reflection.js";
-import { ofArray, choose, item, find, tryLast, head, tryFind as tryFind_1, mapIndexed, singleton, append, collect, fold, empty as empty_2, cons, exists, reduce, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
-import { join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
+import { ofArray, ofSeq, choose, item, find, tryLast, head, tryFind as tryFind_1, mapIndexed, singleton, append, collect, fold, empty as empty_2, cons, exists, reduce, isEmpty, map, toArray, filter, length } from "./fable_modules/fable-library-js.5.6.0/List.js";
+import { replace, split, join, printf, toText } from "./fable_modules/fable-library-js.5.6.0/String.js";
 import { equivalent2, Relation, relate, distinguishing, valid, Verdict, ModalSearch, checkArgument, checkArgumentS5, containsModal, containsFO, FOSearch, foSatisfy, describeModel, checkArgumentFO, analyzeMonadic, individuals, predicateArities, resolve, evalS5, atoms as atoms_1, s5Satisfy, truthTable } from "./Engine.js";
 import { toEnglish, toUnicode } from "./Render.js";
 import { ofList, add, containsKey, empty as empty_3, toList, tryFind, FSharpMap__get_Item } from "./fable_modules/fable-library-js.5.6.0/Map.js";
-import { Formula } from "./Ast.js";
+import { Statement, Formula } from "./Ast.js";
 import { toArray as toArray_1, map as map_1, defaultArg } from "./fable_modules/fable-library-js.5.6.0/Option.js";
-import { initialize } from "./fable_modules/fable-library-js.5.6.0/Array.js";
+import { map as map_3, initialize } from "./fable_modules/fable-library-js.5.6.0/Array.js";
 import { contains, ofList as ofList_1, empty as empty_1, toList as toList_1 } from "./fable_modules/fable-library-js.5.6.0/Set.js";
-import { disposeSafe, getEnumerator, equals, stringHash, int32ToString, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
+import { clear, disposeSafe, getEnumerator, equals, stringHash, int32ToString, comparePrimitives } from "./fable_modules/fable-library-js.5.6.0/Util.js";
 import { List_distinct } from "./fable_modules/fable-library-js.5.6.0/Seq2.js";
 import { checkStep, suggestRepairs, prove, recognize } from "./Recognition.js";
 import { FormKind, forms, fallacies, validForms } from "./InferenceRules.js";
 import { map as map_2, collect as collect_1, delay } from "./fable_modules/fable-library-js.5.6.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.6.0/Range.js";
 import { parseLines } from "./Parser.js";
+import { FSharpChoice$2 } from "./fable_modules/fable-library-js.5.6.0/Choice.js";
 
 /**
  * One rendered block. Every field always exists; which ones are meaningful
@@ -411,7 +412,19 @@ function proofBlock(defs, name, lines) {
                 const rf_1 = resolve(defs, line.fields[1]);
                 const duplicate = containsKey(n_1, known);
                 const missing = filter((r) => !containsKey(r, known), refs_1);
-                const form = tryFind_1((fm) => (fm.Name === ruleName), forms);
+                const normalizeRule = (s) => join("-", split(replace(replace(s.trim().toLowerCase(), "(", ""), ")", ""), [" ", "-"], undefined, 1));
+                const wanted = normalizeRule(ruleName);
+                const form = tryFind_1((fm) => {
+                    if ((fm.Name === wanted) ? true : (normalizeRule(fm.Title) === wanted)) {
+                        return true;
+                    }
+                    else if (fm.Aka !== "") {
+                        return normalizeRule(fm.Aka) === wanted;
+                    }
+                    else {
+                        return false;
+                    }
+                }, forms);
                 let patternInput;
                 if (duplicate) {
                     patternInput = ["bad", toText(printf("line number %d is used twice"))(n_1), ruleName];
@@ -453,7 +466,7 @@ function proofBlock(defs, name, lines) {
                     }
                 }
                 else {
-                    patternInput = ["bad", toText(printf("unknown rule \'%s\' — rule names are the kebab-case catalog names, e.g. modus-ponens"))(ruleName), ruleName];
+                    patternInput = ["bad", toText(printf("unknown rule \'%s\' — write it naturally (by modus ponens) or kebab-case (by modus-ponens); Latin aliases work too"))(ruleName), ruleName];
                 }
                 const status = patternInput[0];
                 if (status === "bad") {
@@ -775,18 +788,49 @@ export function analyze(source) {
             return undefined;
         }
     }, statements));
-    return toArray(choose((tupledArg_1) => {
-        const r_2 = tupledArg_1[1];
-        if (r_2.tag === 1) {
-            return new BlockView("error", empty.level, r_2.fields[0], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, tupledArg_1[0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
+    const entries = [];
+    const proseBuffer = [];
+    const flushProse = () => {
+        if (proseBuffer.length > 0) {
+            void (entries.push(new FSharpChoice$2(0, [new Statement(1, [join(" ", ofSeq(proseBuffer))])])));
+            clear(proseBuffer);
         }
-        else if (r_2.fields[0] != null) {
-            return toBlock(defs, glosses, claims, relationRows, arguments$, r_2.fields[0]);
+    };
+    const enumerator = getEnumerator(parsed);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const r_2 = forLoopVar[1];
+            if (r_2.tag === 1) {
+                flushProse();
+                void (entries.push(new FSharpChoice$2(1, [[forLoopVar[0], r_2.fields[0]]])));
+            }
+            else if (r_2.fields[0] == null) {
+                flushProse();
+            }
+            else if (r_2.fields[0].tag === 1) {
+                const text = r_2.fields[0].fields[0];
+                void (proseBuffer.push(text));
+            }
+            else {
+                const st_1 = r_2.fields[0];
+                flushProse();
+                void (entries.push(new FSharpChoice$2(0, [st_1])));
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    flushProse();
+    return map_3((_arg_6) => {
+        if (_arg_6.tag === 1) {
+            return new BlockView("error", empty.level, _arg_6.fields[0][1], empty.name, empty.gloss, empty.formula, empty.verdict, empty.atoms, empty.rows, empty.results, empty.actual, _arg_6.fields[0][0], empty.premises, empty.conclusion, empty.form, empty.fallacy, empty.note, empty.suggestion, empty.proof, empty.relations, empty.model, empty.vennCircles, empty.vennCells, empty.vennPoints);
         }
         else {
-            return undefined;
+            return toBlock(defs, glosses, claims, relationRows, arguments$, _arg_6.fields[0]);
         }
-    }, parsed));
+    }, entries.slice());
 }
 
 /**

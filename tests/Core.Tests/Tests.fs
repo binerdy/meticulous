@@ -86,7 +86,7 @@ let ``a document parses props, claims, and requests`` () =
     let source =
         "# Title\n\
          prop p : it rains\n\
-         claim C1 : p -> p\n\
+         claim C1 : if p then p\n\
          table C1\n\
          // a comment line\n"
     match parseDocument source with
@@ -123,7 +123,7 @@ open Meticulous.Api
 
 [<Fact>]
 let ``analyze produces blocks with a truth table and verdict`` () =
-    let blocks = analyze "claim C1 : p -> q\ntable C1\n"
+    let blocks = analyze "claim C1 : if p then q\ntable C1\n"
     Assert.Equal(2, blocks.Length)
     let tbl = blocks |> Array.find (fun b -> b.kind = "table")
     Assert.Equal<string[]>([| "p"; "q" |], tbl.atoms)
@@ -233,7 +233,7 @@ let ``relate classifies the square of opposition`` () =
 // ---- M3: end to end through the Api --------------------------------------------
 
 let private argumentDoc =
-    "claim C1 : p -> q\n\
+    "claim C1 : if p then q\n\
      argument mp {\n\
        premise C1\n\
        premise p\n\
@@ -241,7 +241,7 @@ let private argumentDoc =
        conclude q\n\
      }\n\
      argument oops {\n\
-       premise p -> q\n\
+       premise if p then q\n\
        premise q\n\
        ---\n\
        conclude p\n\
@@ -265,8 +265,8 @@ let ``analyze handles argument blocks and names forms and fallacies`` () =
 [<Fact>]
 let ``the problem of evil is valid and denying a premise makes it invalid`` () =
     let core =
-        "claim Def : god -> (omnipotent and omnibenevolent)\n\
-         claim Prev : (omnipotent and omnibenevolent) -> not evil\n\
+        "claim Def : if god then (omnipotent and omnibenevolent)\n\
+         claim Prev : if (omnipotent and omnibenevolent) then not evil\n\
          claim Real : evil\n"
     let valid =
         analyze (core + "argument poe {\npremise Def\npremise Prev\npremise Real\n---\nconclude not god\n}\n")
@@ -278,6 +278,20 @@ let ``the problem of evil is valid and denying a premise makes it invalid`` () =
         |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("invalid", escaped.verdict)
     Assert.Equal(1, escaped.rows.Length)
+
+[<Fact>]
+let ``consecutive prose lines merge into one paragraph`` () =
+    let doc =
+        "The move propositional logic can't make.\n\
+         Words like these become quantifiers.\n\
+         And a name becomes an individual.\n\
+         \n\
+         A second paragraph, after a blank line.\n"
+    let blocks = analyze doc
+    let paragraphs = blocks |> Array.filter (fun b -> b.kind = "prose")
+    Assert.Equal(2, paragraphs.Length)
+    Assert.Contains("can't make. Words like", paragraphs.[0].title)
+    Assert.Equal("A second paragraph, after a blank line.", paragraphs.[1].title)
 
 [<Fact>]
 let ``an unclosed argument block is one error, not a cascade`` () =
@@ -294,7 +308,7 @@ let ``a claim reads back as an English sentence using the glosses`` () =
     let doc =
         "prop rain : It is raining\n\
          prop wet : The ground is wet\n\
-         claim C1 : rain -> wet\n"
+         claim C1 : if rain then wet\n"
     let claim = analyze doc |> Array.find (fun b -> b.kind = "claim")
     Assert.Equal("If it is raining, then the ground is wet.", claim.note)
 
@@ -320,7 +334,7 @@ let ``a failed equivalence check names the situation where the sides come apart`
 
 [<Fact>]
 let ``every relation pair carries its explanation`` () =
-    let doc = "claim A : p -> q\nclaim B : not p or q\nanalyze\n"
+    let doc = "claim A : if p then q\nclaim B : not p or q\nanalyze\n"
     let rel = analyze doc |> Array.find (fun b -> b.kind = "relations")
     let pair = rel.relations.[0]
     Assert.Equal(4, pair.Length)
@@ -334,7 +348,7 @@ let ``a premise-less argument is a theorem exactly when its conclusion is a taut
     Assert.Equal("valid", arg.verdict)
     Assert.Equal("law of excluded middle (tertium non datur)", arg.form)
     // ...an unnamed theorem still gets the generic tautology chip...
-    let generic = analyze "argument refl {\n  ---\n  conclude p -> p\n}\n" |> Array.find (fun b -> b.kind = "argument")
+    let generic = analyze "argument refl {\n  ---\n  conclude if p then p\n}\n" |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("valid", generic.verdict)
     Assert.Equal("tautology", generic.form)
     Assert.Contains("theorem", generic.note)
@@ -376,8 +390,8 @@ let ``a correct proof checks out step by step`` () =
     let proof =
         findProof
             "proof chain {\n\
-               1. premise p -> q\n\
-               2. premise q -> r\n\
+               1. premise if p then q\n\
+               2. premise if q then r\n\
                3. premise p\n\
                4. q by modus-ponens from 1, 3\n\
                5. r by modus-ponens from 2, 4\n\
@@ -392,7 +406,7 @@ let ``citing the wrong rule names the rule it actually is`` () =
     let proof =
         findProof
             "proof oops {\n\
-               1. premise p -> q\n\
+               1. premise if p then q\n\
                2. premise p\n\
                3. q by modus-tollens from 1, 2\n\
              }\n"
@@ -417,7 +431,7 @@ let ``citing a fallacy as a rule is rejected by name`` () =
     let proof =
         findProof
             "proof cheeky {\n\
-               1. premise p -> q\n\
+               1. premise if p then q\n\
                2. premise q\n\
                3. p by affirming-the-consequent from 1, 2\n\
              }\n"
@@ -427,7 +441,7 @@ let ``citing a fallacy as a rule is rejected by name`` () =
 let ``laws need no citations and claim references resolve in proofs`` () =
     let proof =
         findProof
-            "claim C1 : p -> q\n\
+            "claim C1 : if p then q\n\
              proof themed {\n\
                1. p or not p by excluded-middle\n\
                2. premise C1\n\
@@ -441,7 +455,7 @@ let ``forward and dangling citations are caught`` () =
     let proof =
         findProof
             "proof timey {\n\
-               1. premise p -> q\n\
+               1. premise if p then q\n\
                2. q by modus-ponens from 1, 3\n\
                3. premise p\n\
              }\n"
@@ -452,7 +466,7 @@ let ``forward and dangling citations are caught`` () =
 let private relationDoc =
     "prop policy : The tax cut was enacted\n\
      prop growth : The economy grew\n\
-     claim A : policy -> growth\n\
+     claim A : if policy then growth\n\
      claim B : not policy or growth\n\
      claim D : policy and not growth\n\
      A equivalent-to B\n\
@@ -558,6 +572,72 @@ let ``prose works inside claims and a plain paragraph stays prose`` () =
     let blocks = analyze "This is just a note about the argument.\n"
     Assert.Equal("prose", blocks.[0].kind)
 
+// ---- Natural rule citations and relation verbs --------------------------------------
+
+[<Fact>]
+let ``proof steps accept natural rule names, aliases, and 'and' in citations`` () =
+    let proof =
+        findProof
+            "proof natural {\n\
+               1. premise if p then q\n\
+               2. premise p\n\
+               3. q by modus ponens from 1 and 2\n\
+               4. premise either r or s\n\
+               5. premise not r\n\
+               6. s by modus tollendo ponens from 4 and 5\n\
+             }\n"
+    Assert.Equal("valid", proof.verdict)
+    Assert.Equal("ok", proof.proof.[2].[3])
+    // the alias resolves to the catalog form, displayed by its title
+    Assert.Contains("disjunctive syllogism", proof.proof.[5].[2])
+
+[<Fact>]
+let ``a syllogism can be cited by its medieval name in a proof`` () =
+    let proof =
+        findProof
+            "proof chain {\n\
+               1. premise All mammals are animals\n\
+               2. premise All dogs are mammals\n\
+               3. All dogs are animals by Barbara from 1 and 2\n\
+             }\n"
+    Assert.Equal("valid", proof.verdict)
+
+[<Fact>]
+let ``relations accept the natural 'is equivalent to'`` () =
+    let doc =
+        "claim A : if p then q\nclaim B : not p or q\nA is equivalent to B\n"
+    let rel = analyze doc |> Array.find (fun b -> b.kind = "relation")
+    Assert.Equal("holds", rel.verdict)
+
+// ---- Categorical syllogisms: the named moods ---------------------------------------
+
+let private formOf doc =
+    (analyze doc |> Array.find (fun (b: BlockView) -> b.kind = "argument")).form
+
+[<Fact>]
+let ``the classic syllogisms are recognized by their medieval names`` () =
+    Assert.Equal("Barbara (AAA-1)",
+        formOf "All mammals are animals. All dogs are mammals. Therefore, all dogs are animals.\n")
+    Assert.Equal("Celarent (EAE-1)",
+        formOf "No reptiles are mammals. All snakes are reptiles. Therefore, no snakes are mammals.\n")
+    Assert.Equal("Darii (AII-1)",
+        formOf "All philosophers are wise. Some men are philosophers. Therefore, some men are wise.\n")
+    Assert.Equal("Ferio (EIO-1)",
+        formOf "No liars are trustworthy. Some men are liars. Therefore, some men are not trustworthy.\n")
+
+[<Fact>]
+let ``the Socrates argument is named universal instantiation`` () =
+    Assert.Equal("universal instantiation (singular syllogism)",
+        formOf "All men are mortal. Socrates is a man. Therefore, Socrates is mortal.\n")
+
+[<Fact>]
+let ``the undistributed middle is named as a fallacy`` () =
+    let arg =
+        analyze "All cats are animals. All dogs are animals. Therefore, all dogs are cats.\n"
+        |> Array.find (fun b -> b.kind = "argument")
+    Assert.Equal("invalid", arg.verdict)
+    Assert.Equal("undistributed middle", arg.fallacy)
+
 // ---- Venn diagrams: monadic analysis ----------------------------------------------
 
 [<Fact>]
@@ -565,16 +645,16 @@ let ``the syllogism Venn shades Man-not-Mortal and marks Man-and-Mortal`` () =
     // All Man are Mortal; socrates is a Man.
     let doc =
         "venn socrates {\n\
-           premise forall x. Man(x) -> Mortal(x)\n\
-           premise Man(socrates)\n\
+           premise All men are mortal\n\
+           premise Socrates is a man\n\
          }\n"
     let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
     Assert.Equal("consistent", v.verdict)
-    Assert.Equal<string[]>([| "Man"; "Mortal" |], v.vennCircles)
+    Assert.Equal<string[]>([| "man"; "mortal" |], v.vennCircles)
     let cell bits = v.vennCells |> Array.find (fun c -> c.[0] = bits)
-    // bit 0 = Man, bit 1 = Mortal
-    Assert.Equal("empty", (cell "10").[1])      // Man ∧ ¬Mortal — ruled out
-    Assert.Equal("occupied", (cell "11").[1])   // Man ∧ Mortal — socrates forces it
+    // bit 0 = man, bit 1 = mortal
+    Assert.Equal("empty", (cell "10").[1])      // man ∧ ¬mortal — ruled out
+    Assert.Equal("occupied", (cell "11").[1])   // man ∧ mortal — socrates forces it
     // socrates must sit in the Man∩Mortal cell
     let socrates = v.vennPoints |> Array.find (fun p -> p.[0] = "socrates")
     Assert.Equal("11", socrates.[1])
@@ -583,21 +663,21 @@ let ``the syllogism Venn shades Man-not-Mortal and marks Man-and-Mortal`` () =
 let ``venn can reference an argument by name`` () =
     let doc =
         "argument s {\n\
-           premise forall x. Man(x) -> Mortal(x)\n\
-           premise Man(socrates)\n\
+           premise All men are mortal\n\
+           premise Socrates is a man\n\
            ---\n\
-           conclude Mortal(socrates)\n\
+           conclude Socrates is mortal\n\
          }\n\
          venn s\n"
     let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
     Assert.Equal("consistent", v.verdict)
-    Assert.Equal<string[]>([| "Man"; "Mortal" |], v.vennCircles)
+    Assert.Equal<string[]>([| "man"; "mortal" |], v.vennCircles)
     Assert.Contains("valid", v.note)   // conclusion forced
 
 [<Fact>]
 let ``venn of a propositional argument declines with guidance`` () =
     let doc =
-        "argument mp {\n  premise p -> q\n  premise p\n  ---\n  conclude q\n}\nvenn mp\n"
+        "argument mp {\n  premise if p then q\n  premise p\n  ---\n  conclude q\n}\nvenn mp\n"
     let v = analyze doc |> Array.find (fun b -> b.kind = "venn")
     Assert.Equal("not-drawable", v.verdict)
     Assert.Contains("propositional", v.note)
@@ -610,9 +690,11 @@ let ``venn of an unknown argument name is reported`` () =
 
 [<Fact>]
 let ``a venn declines relations and reports contradictions`` () =
-    let rel = analyze "venn r {\n  premise Loves(a, b)\n}\n" |> Array.find (fun b -> b.kind = "venn")
-    Assert.Equal("not-drawable", rel.verdict)
-    let bad = analyze "venn c {\n  premise forall x. P(x)\n  premise exists x. not P(x)\n}\n" |> Array.find (fun b -> b.kind = "venn")
+    // a propositional premise has no one-place predicate to draw
+    let prop = analyze "venn r {\n  premise if p then q\n}\n" |> Array.find (fun b -> b.kind = "venn")
+    Assert.Equal("not-drawable", prop.verdict)
+    // "all men are mortal" together with "some men are not mortal" can't both hold
+    let bad = analyze "venn c {\n  premise All men are mortal\n  premise Some men are not mortal\n}\n" |> Array.find (fun b -> b.kind = "venn")
     Assert.Equal("contradiction", bad.verdict)
 
 // ---- Modal logic: S5 ------------------------------------------------------------
@@ -724,7 +806,7 @@ let ``modal forms and fallacies are recognized by name`` () =
 [<Fact>]
 let ``the full modal ontological argument is valid through the Api`` () =
     let doc =
-        "argument anselm {\n  premise possibly god\n  premise necessarily (god -> necessarily god)\n  ---\n  conclude god\n}\n"
+        "argument anselm {\n  premise possibly god\n  premise necessarily (if god then necessarily god)\n  ---\n  conclude god\n}\n"
     let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("valid", arg.verdict)
     Assert.Contains("S5", arg.note)
@@ -751,14 +833,15 @@ let ``a modal proof checks with the S5 rules`` () =
 [<Fact>]
 let ``the Socrates syllogism is valid through the Api`` () =
     let doc =
-        "argument s {\n  premise forall x. Man(x) -> Mortal(x)\n  premise Man(socrates)\n  ---\n  conclude Mortal(socrates)\n}\n"
+        "argument s {\n  premise All men are mortal\n  premise Socrates is a man\n  ---\n  conclude Socrates is mortal\n}\n"
     let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("valid", arg.verdict)
 
 [<Fact>]
 let ``an invalid FO argument shows a model card`` () =
+    // Affirming the "consequent" categorically: mortal ⊬ man.
     let doc =
-        "argument e {\n  premise exists x. Human(x)\n  premise exists x. Mortal(x)\n  ---\n  conclude exists x. Human(x) and Mortal(x)\n}\n"
+        "argument e {\n  premise All men are mortal\n  premise Socrates is mortal\n  ---\n  conclude Socrates is a man\n}\n"
     let arg = analyze doc |> Array.find (fun b -> b.kind = "argument")
     Assert.Equal("invalid", arg.verdict)
     Assert.NotEmpty arg.model
@@ -766,7 +849,7 @@ let ``an invalid FO argument shows a model card`` () =
 
 [<Fact>]
 let ``a FO table reports bounded validity with a sample model`` () =
-    let block = analyze "table forall x. P(x) -> P(x)\n" |> Array.find (fun b -> b.kind = "table")
+    let block = analyze "table All men are men\n" |> Array.find (fun b -> b.kind = "table")
     Assert.Equal("tautology", block.verdict)
     Assert.Contains("bounded", block.note)
     // even a valid quantified statement now shows a concrete model
@@ -774,17 +857,10 @@ let ``a FO table reports bounded validity with a sample model`` () =
     Assert.Contains(block.model, fun (line: string) -> line.StartsWith "domain =")
 
 [<Fact>]
-let ``the drinker paradox table shows a witnessing model`` () =
-    let doc = "claim C1 : exists x. (Drinks(x) -> forall y. Drinks(y))\ntable C1\n"
-    let block = analyze doc |> Array.find (fun b -> b.kind = "table")
-    Assert.Equal("tautology", block.verdict)
-    Assert.NotEmpty block.model
-
-[<Fact>]
 let ``FO claims read back in English with the unary shorthand`` () =
-    let doc = "claim S : forall x. Man(x) -> Mortal(x)\n"
+    let doc = "claim S : All men are mortal\n"
     let claim = analyze doc |> Array.find (fun b -> b.kind = "claim")
-    Assert.Equal("For every x, if x is Man, then x is Mortal.", claim.note)
+    Assert.Equal("For every x, if x is man, then x is mortal.", claim.note)
 
 // ---- Editor extras: catalog and lint -------------------------------------------
 
@@ -800,7 +876,7 @@ let ``the catalog is exposed for the editor with patterns intact`` () =
 
 [<Fact>]
 let ``lint flags props that never appear in a formula`` () =
-    let warnings = lint "prop ghost : Never used\nprop p : Used\nclaim C1 : p -> p\n"
+    let warnings = lint "prop ghost : Never used\nprop p : Used\nclaim C1 : if p then p\n"
     let w = Assert.Single warnings
     Assert.Equal(1, w.line)
     Assert.Contains("ghost", w.message)
@@ -809,7 +885,7 @@ let ``lint flags props that never appear in a formula`` () =
 let ``lint counts a prop used only as a predicate argument`` () =
     // socrates appears in Man(socrates) / Mortal(socrates) — that IS usage.
     let warnings =
-        lint "prop socrates : the philosopher\nclaim S : Man(socrates) -> Mortal(socrates)\n"
+        lint "prop socrates : the philosopher\nclaim S : Socrates is a man\n"
     Assert.Empty warnings
 
 [<Fact>]

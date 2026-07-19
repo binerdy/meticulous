@@ -5,7 +5,7 @@ The mode that denies by denying.
 prop rain : It is raining
 prop wet : The street is wet
 
-claim C1 : rain -> wet
+claim C1 : if rain then wet
 claim C2 : not wet
 
 argument tollendo-tollens {

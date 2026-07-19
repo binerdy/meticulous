@@ -6,8 +6,8 @@ prop cloudy : The sky is cloudy
 prop cold : It is cold
 
 claim C1 : not cloudy or not cold
-claim C2 : rain -> cloudy
-claim C3 : snow -> cold
+claim C2 : if rain then cloudy
+claim C3 : if snow then cold
 
 argument destructive-dilemma {
   premise C1

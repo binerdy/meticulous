@@ -431,7 +431,21 @@ module Api =
                 let duplicate = Map.containsKey n known
                 // A citation is valid only if that line already exists above us.
                 let missing = refs |> List.filter (fun r -> not (Map.containsKey r known))
-                let form = forms |> List.tryFind (fun fm -> fm.Name = ruleName)
+                // Rules can be cited naturally — "by modus ponens", "by modus
+                // tollendo ponens", "by Barbara" — or in kebab-case. Everything
+                // is normalized (lowercase, parens dropped, spaces → hyphens)
+                // and matched against each form's name, title, and alias.
+                let normalizeRule (s: string) =
+                    s.Trim().ToLowerInvariant().Replace("(", "").Replace(")", "")
+                        .Split([| ' '; '-' |], System.StringSplitOptions.RemoveEmptyEntries)
+                    |> String.concat "-"
+                let wanted = normalizeRule ruleName
+                let form =
+                    forms
+                    |> List.tryFind (fun fm ->
+                        fm.Name = wanted
+                        || normalizeRule fm.Title = wanted
+                        || (fm.Aka <> "" && normalizeRule fm.Aka = wanted))
 
                 // Work out the step's verdict and, when it fails, the most
                 // helpful thing we can say about *why*.
@@ -443,7 +457,7 @@ module Api =
                     else
                         match form with
                         | None ->
-                            "bad", sprintf "unknown rule '%s' — rule names are the kebab-case catalog names, e.g. modus-ponens" ruleName, ruleName
+                            "bad", sprintf "unknown rule '%s' — write it naturally (by modus ponens) or kebab-case (by modus-ponens); Latin aliases work too" ruleName, ruleName
                         | Some fm when fm.Kind = FallacyForm ->
                             "bad", sprintf "'%s' is a fallacy, not a rule — it cannot justify a step" fm.Title, fm.Title
                         | Some fm ->
@@ -714,13 +728,28 @@ module Api =
                 | _ -> None)
             |> List.toArray
 
-        parsed
-        |> List.choose (fun (lineNo, r) ->
+        // Paragraph grouping, Markdown-style: consecutive prose lines with no
+        // blank line between them merge into one paragraph; a blank (or comment)
+        // line, or any other statement, ends the current paragraph.
+        let entries = ResizeArray<Choice<Statement, int * string>>()
+        let proseBuffer = ResizeArray<string>()
+        let flushProse () =
+            if proseBuffer.Count > 0 then
+                entries.Add(Choice1Of2(Prose(String.concat " " (List.ofSeq proseBuffer))))
+                proseBuffer.Clear()
+
+        for (lineNo, r) in parsed do
             match r with
-            | Ok None -> None
-            | Ok(Some st) -> Some(toBlock defs glosses claims relationRows arguments st)
-            | Error msg -> Some { empty with kind = "error"; line = lineNo; title = msg })
-        |> List.toArray
+            | Ok(Some(Prose text)) -> proseBuffer.Add text
+            | Ok None -> flushProse ()
+            | Ok(Some st) -> flushProse (); entries.Add(Choice1Of2 st)
+            | Error msg -> flushProse (); entries.Add(Choice2Of2(lineNo, msg))
+        flushProse ()
+
+        entries.ToArray()
+        |> Array.map (function
+            | Choice1Of2 st -> toBlock defs glosses claims relationRows arguments st
+            | Choice2Of2(lineNo, msg) -> { empty with kind = "error"; line = lineNo; title = msg })
 
     // ---- Extras for the editor tooling --------------------------------------
 

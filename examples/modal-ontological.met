@@ -6,7 +6,7 @@ was formalizing. In S5, meticulous can check every step of it.
 prop god : A maximally great being exists
 
 claim Possibility : possibly god
-claim Stability : necessarily (god -> necessarily god)
+claim Stability : necessarily (if god then necessarily god)
 
 // Greatness is meant to include necessary existence — that is what
 // Stability encodes. Reading the claims back:

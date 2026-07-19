@@ -1,51 +1,40 @@
-// Completions for meticulous:
-//   * keywords (Ctrl+Space) — each inserts a ready-to-fill snippet
-//   * argument-form snippets — type `/` (or Ctrl+Space) to expand e.g.
-//     /modus-ponens into an argument skeleton with mirrored placeholders
-//   * rule names after `by ` inside proof blocks
+// Completions for meticulous (written entirely in prose now):
+//   * keywords (Ctrl+Space) — each inserts a ready-to-fill prose snippet
+//   * `/name` — expands a classic argument into a whole prose sentence, e.g.
+//     /modus-ponens → "If P, then Q. P. Therefore, Q."
+//   * rule names after `by ` inside proof blocks (still the kebab-case names)
 //   * prop/claim names declared in the current document
-//
-// The form snippets are generated from the same F# catalog that powers
-// recognition, proofs, and fallacy naming — one source of truth.
 
 import * as vscode from "vscode";
 import { catalog } from "./core-bridge";
 
-/** Map each Greek metavariable to a mirrored snippet placeholder, so filling
- *  in `p` once fills every φ in the skeleton. */
-function toPlaceholders(pattern: string): string {
-  return pattern
-    .replace(/φ/g, "${1:p}")
-    .replace(/ψ/g, "${2:q}")
-    .replace(/χ/g, "${3:r}")
-    .replace(/ω/g, "${4:s}");
-}
-
-/** The argument-block snippet for one catalog form. */
-function formSnippet(form: ReturnType<typeof catalog>[number]): string {
-  const premises = form.premises.map((p) => `  premise ${toPlaceholders(p)}`).join("\n");
-  const body = premises === "" ? "" : `${premises}\n`;
-  return `argument \${5:${form.name}} {\n${body}  ---\n  conclude ${toPlaceholders(form.conclusion)}\n}`;
-}
+/** Classic forms as ready-to-fill prose sentences. Placeholders repeat, so
+ *  filling `P` once fills every P. */
+const PROSE_FORMS: { name: string; title: string; body: string }[] = [
+  { name: "modus-ponens", title: "modus ponens", body: "If ${1:P}, then ${2:Q}. ${1:P}. Therefore, ${2:Q}." },
+  { name: "modus-tollens", title: "modus tollens", body: "If ${1:P}, then ${2:Q}. Not ${2:Q}. Therefore, not ${1:P}." },
+  { name: "hypothetical-syllogism", title: "hypothetical syllogism", body: "If ${1:P}, then ${2:Q}. If ${2:Q}, then ${3:R}. Therefore, if ${1:P}, then ${3:R}." },
+  { name: "disjunctive-syllogism", title: "disjunctive syllogism", body: "Either ${1:P} or ${2:Q}. Not ${1:P}. Therefore, ${2:Q}." },
+  { name: "constructive-dilemma", title: "constructive dilemma", body: "Either ${1:P} or ${2:R}. If ${1:P}, then ${3:Q}. If ${2:R}, then ${4:S}. Therefore, either ${3:Q} or ${4:S}." },
+  { name: "syllogism", title: "categorical syllogism", body: "All ${1:men} are ${2:mortal}. ${3:Socrates} is a ${1:men}. Therefore, ${3:Socrates} is ${2:mortal}." },
+];
 
 const KEYWORD_SNIPPETS: { label: string; detail: string; body: string }[] = [
-  { label: "prop", detail: "declare an atomic proposition", body: "prop ${1:p} : ${2:its meaning in plain language}" },
-  { label: "claim", detail: "name a compound formula", body: "claim ${1:C1} : ${2:p -> q}" },
+  { label: "prop", detail: "name an atomic proposition", body: "prop ${1:p} : ${2:its meaning in plain language}" },
+  { label: "claim", detail: "name a claim, in prose", body: "claim ${1:C1} : ${2:if p then q}" },
   { label: "table", detail: "truth table + verdict", body: "table ${1:C1}" },
-  { label: "check", detail: "verdict for a formula", body: "check ${1:p -> q}" },
-  { label: "check equivalent", detail: "are two formulas the same claim?", body: "check ${1:A} equivalent ${2:B}" },
-  { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
-  { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
-  { label: "venn", detail: "a categorical Venn diagram of one-place predicates", body: "venn ${1:name} {\n  premise forall x. ${2:Man}(x) -> ${3:Mortal}(x)\n  premise ${2:Man}(${4:socrates})\n}" },
+  { label: "check", detail: "verdict for a claim", body: "check ${1:if p then q}" },
+  { label: "check equivalent", detail: "are two claims the same?", body: "check ${1:A} equivalent ${2:B}" },
+  { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:if p then q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
+  { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:if p then q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
+  { label: "venn", detail: "a categorical Venn diagram", body: "venn ${1:name} {\n  premise All ${2:men} are ${3:mortal}\n  premise ${4:Socrates} is a ${2:men}\n}" },
   { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
   { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
-  { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
+  { label: "relation", detail: "assert a relation between two claims", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
   { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" },
-  { label: "necessarily", detail: "modal □ — true in every possible world", body: "necessarily ${1:p}" },
-  { label: "possibly", detail: "modal ◇ — true in some possible world", body: "possibly ${1:p}" },
-  { label: "forall", detail: "∀ — holds for every individual", body: "forall ${1:x}. ${2:P(x)}" },
-  { label: "exists", detail: "∃ — holds for some individual", body: "exists ${1:x}. ${2:P(x)}" },
+  { label: "necessarily", detail: "modal — true in every possible world", body: "necessarily ${1:p}" },
+  { label: "possibly", detail: "modal — true in some possible world", body: "possibly ${1:p}" },
 ];
 
 export function registerCompletions(context: vscode.ExtensionContext) {
@@ -68,22 +57,17 @@ export function registerCompletions(context: vscode.ExtensionContext) {
         return items;
       }
 
-      // `/modus-ponens` style: replace the slash-word with the full skeleton.
+      // `/modus-ponens` style: replace the slash-word with a whole prose argument.
       const slash = prefix.match(/\/[\w-]*$/);
       const slashRange = slash
         ? new vscode.Range(position.line, position.character - slash[0].length, position.line, position.character)
         : undefined;
 
-      for (const form of forms.filter((f) => !f.isFallacy)) {
-        const item = new vscode.CompletionItem(
-          `/${form.name}`,
-          vscode.CompletionItemKind.Snippet
-        );
-        item.detail = form.aka ? `${form.title} (${form.aka})` : form.title;
-        item.documentation = new vscode.MarkdownString(
-          `\`${form.premises.join("\`,  \`")}\`  ⊢  \`${form.conclusion}\`\n\n${form.note}`
-        );
-        item.insertText = new vscode.SnippetString(formSnippet(form));
+      for (const form of PROSE_FORMS) {
+        const item = new vscode.CompletionItem(`/${form.name}`, vscode.CompletionItemKind.Snippet);
+        item.detail = form.title;
+        item.documentation = new vscode.MarkdownString(form.body.replace(/\$\{\d+:(\w+)\}/g, "$1"));
+        item.insertText = new vscode.SnippetString(form.body);
         item.filterText = `/${form.name} ${form.name}`;
         if (slashRange) item.range = slashRange;
         items.push(item);

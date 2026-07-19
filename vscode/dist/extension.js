@@ -34,7 +34,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode3 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var path = __toESM(require("path"));
 
 // src/core/fable_modules/fable-library-js.5.6.0/Util.js
@@ -360,6 +360,13 @@ function compare(x, y) {
     return y instanceof Date ? compareDates(x, y) : -1;
   } else {
     return Object.getPrototypeOf(x)?.constructor === Object ? compareObjects(x, y) : -1;
+  }
+}
+function clear(col) {
+  if (isArrayLike(col)) {
+    col.splice(0);
+  } else {
+    col.clear();
   }
 }
 var curried = /* @__PURE__ */ new WeakMap();
@@ -1638,6 +1645,18 @@ function ArgumentNullException_$ctor_Z384F8060(paramName, message) {
 function ArgumentNullException_$ctor_Z721C83C5(paramName) {
   return ArgumentNullException_$ctor_Z384F8060(paramName, SR_ArgumentNull_Generic);
 }
+
+// src/core/fable_modules/fable-library-js.5.6.0/Choice.js
+var FSharpChoice$2 = class extends Union {
+  constructor(tag, fields) {
+    super();
+    this.tag = tag;
+    this.fields = fields;
+  }
+  cases() {
+    return ["Choice1Of2", "Choice2Of2"];
+  }
+};
 
 // src/core/fable_modules/fable-library-js.5.6.0/Native.js
 function Helpers_allocateArrayFromCons(cons2, len) {
@@ -6396,16 +6415,42 @@ var \u03C6 = new Formula(0, ["\u03C6"]);
 var \u03C8 = new Formula(0, ["\u03C8"]);
 var \u03C7 = new Formula(0, ["\u03C7"]);
 var \u03C9 = new Formula(0, ["\u03C9"]);
-var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C8])]), new Formula(3, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C8, \u03C7])]), new Formula(7, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [\u03C6, \u03C7])]), new Formula(5, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(7, [\u03C6, \u03C7]), new Formula(7, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [new Formula(3, [\u03C8]), new Formula(3, [\u03C9])])]), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(4, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(5, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(3, [new Formula(3, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(3, [new Formula(3, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(4, [\u03C6, \u03C8])])), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(5, [\u03C6, \u03C8])])), new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(5, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [new Formula(3, [\u03C8]), new Formula(3, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(7, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(7, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(5, [new Formula(3, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), \u03C8])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7])), new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])])), new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(5, [\u03C6, new Formula(3, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(3, [new Formula(4, [\u03C6, new Formula(3, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("axiom-t", "axiom T", "necessity elimination", singleton3(new Formula(9, [\u03C6])), \u03C6, new FormKind(0, []), "What is necessary is actually so."), new ArgumentForm("possibility-intro", "possibility introduction", "", singleton3(\u03C6), new Formula(10, [\u03C6]), new FormKind(0, []), "What is actually so is possible."), new ArgumentForm("k-distribution", "K distribution", "", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), new Formula(9, [\u03C6])]), new Formula(9, [\u03C8]), new FormKind(0, []), "Necessity distributes over implication: a necessary if\u2013then with a necessary if gives a necessary then."), new ArgumentForm("axiom-4", "axiom 4", "", singleton3(new Formula(9, [\u03C6])), new Formula(9, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is necessary is necessarily necessary."), new ArgumentForm("axiom-5", "axiom 5", "", singleton3(new Formula(10, [\u03C6])), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is possible is necessarily possible \u2014 possibility doesn't vary between worlds (S5)."), new ArgumentForm("axiom-b", "axiom B", "", singleton3(\u03C6), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is so is necessarily possible."), new ArgumentForm("s5-collapse", "S5 collapse", "", singleton3(new Formula(10, [new Formula(9, [\u03C6])])), new Formula(9, [\u03C6]), new FormKind(0, []), "Possibly necessary is necessary \u2014 the load-bearing step of the modal ontological argument."), new ArgumentForm("dual-box", "modal duality", "", singleton3(new Formula(3, [new Formula(10, [\u03C6])])), new Formula(9, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not possible means necessarily not \u2014 \u25C7 and \u25A1 are two sides of one coin."), new ArgumentForm("dual-diamond", "modal duality", "", singleton3(new Formula(3, [new Formula(9, [\u03C6])])), new Formula(10, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not necessary means possibly not \u2014 \u25A1 and \u25C7 are two sides of one coin."), new ArgumentForm("illicit-necessitation", "illicit necessitation", "", singleton3(\u03C6), new Formula(9, [\u03C6]), new FormKind(1, []), "True doesn't mean necessarily true \u2014 the world could have been otherwise."), new ArgumentForm("actualizing-the-possible", "actualizing the possible", "", singleton3(new Formula(10, [\u03C6])), \u03C6, new FormKind(1, []), "Possible doesn't mean actual \u2014 some possibilities stay unrealized."), new ArgumentForm("necessity-of-the-consequent", "necessity of the consequent", "modal scope fallacy", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), \u03C6]), new Formula(9, [\u03C8]), new FormKind(1, []), "The necessity governs the whole if\u2013then, not its then: a contingent if only yields a contingent then."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), new Formula(3, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(5, [\u03C6, \u03C8]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards.")]);
+var \u03A6x = new Formula(1, ["\u03A6", singleton3("x")]);
+var \u03A8x = new Formula(1, ["\u03A8", singleton3("x")]);
+var \u03A3x = new Formula(1, ["\u03A3", singleton3("x")]);
+var \u03A6\u03B1 = new Formula(1, ["\u03A6", singleton3("\u03B1")]);
+var \u03A8\u03B1 = new Formula(1, ["\u03A8", singleton3("\u03B1")]);
+var forms = ofArray([new ArgumentForm("modus-ponens", "modus ponens", "modus ponendo ponens", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C6]), \u03C8, new FormKind(0, []), "From an if\u2013then and its if, the then follows."), new ArgumentForm("modus-tollens", "modus tollens", "modus tollendo tollens", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C8])]), new Formula(3, [\u03C6]), new FormKind(0, []), "If the consequence failed, the condition cannot have held."), new ArgumentForm("hypothetical-syllogism", "hypothetical syllogism", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C8, \u03C7])]), new Formula(7, [\u03C6, \u03C7]), new FormKind(0, []), "Implication chains: if \u03C6 leads to \u03C8 and \u03C8 leads to \u03C7, \u03C6 leads to \u03C7."), new ArgumentForm("disjunctive-syllogism", "disjunctive syllogism", "modus tollendo ponens", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), \u03C8, new FormKind(0, []), "One of two options; the first is out; so it's the second \u2014 affirming by denying."), new ArgumentForm("ponendo-tollens", "modus ponendo tollens", "", ofArray([new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(0, []), "The two can't both hold; the first does; so the second fails \u2014 denying by affirming."), new ArgumentForm("constructive-dilemma", "constructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [\u03C6, \u03C7])]), new Formula(5, [\u03C8, \u03C9]), new FormKind(0, []), "Either way one of the two conditions holds, so one of the two results does."), new ArgumentForm("proof-by-cases", "proof by cases", "disjunction elimination", ofArray([new Formula(5, [\u03C6, \u03C8]), new Formula(7, [\u03C6, \u03C7]), new Formula(7, [\u03C8, \u03C7])]), \u03C7, new FormKind(0, []), "Whichever option holds, the same conclusion follows \u2014 so it follows outright."), new ArgumentForm("destructive-dilemma", "destructive dilemma", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(7, [\u03C7, \u03C9]), new Formula(5, [new Formula(3, [\u03C8]), new Formula(3, [\u03C9])])]), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C7])]), new FormKind(0, []), "One of the two results fails, so one of the two conditions must fail."), new ArgumentForm("absorption", "absorption", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "If \u03C6 brings \u03C8, then \u03C6 brings both itself and \u03C8."), new ArgumentForm("absorption-rev", "absorption", "", singleton3(new Formula(7, [\u03C6, new Formula(4, [\u03C6, \u03C8])])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "If \u03C6 brings both itself and \u03C8, it brings \u03C8."), new ArgumentForm("simplification", "simplification", "", singleton3(new Formula(4, [\u03C6, \u03C8])), \u03C6, new FormKind(0, []), "From a conjunction, take either half."), new ArgumentForm("conjunction", "conjunction", "", ofArray([\u03C6, \u03C8]), new Formula(4, [\u03C6, \u03C8]), new FormKind(0, []), "Two things known separately are known together."), new ArgumentForm("addition", "addition", "", singleton3(\u03C6), new Formula(5, [\u03C6, \u03C8]), new FormKind(0, []), "Anything true may be weakened to an 'or'."), new ArgumentForm("double-negation-intro", "double negation (intro)", "", singleton3(\u03C6), new Formula(3, [new Formula(3, [\u03C6])]), new FormKind(0, []), "What is true is not not-true."), new ArgumentForm("double-negation-elim", "double negation (elim)", "", singleton3(new Formula(3, [new Formula(3, [\u03C6])])), \u03C6, new FormKind(0, []), "Two negations cancel (classically)."), new ArgumentForm("de-morgan-nand", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(4, [\u03C6, \u03C8])])), new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Not both' means at least one fails: negation flips \u2227 into \u2228."), new ArgumentForm("de-morgan-nor", "De Morgan's law", "", singleton3(new Formula(3, [new Formula(5, [\u03C6, \u03C8])])), new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])]), new FormKind(0, []), "'Neither' means each one fails: negation flips \u2228 into \u2227."), new ArgumentForm("de-morgan-nand-rev", "De Morgan's law", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(4, [\u03C6, \u03C8])]), new FormKind(0, []), "At least one fails, so they cannot both hold."), new ArgumentForm("de-morgan-nor-rev", "De Morgan's law", "", singleton3(new Formula(4, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(3, [new Formula(5, [\u03C6, \u03C8])]), new FormKind(0, []), "Each one fails, so neither holds."), new ArgumentForm("contraposition", "contraposition", "transposition", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [new Formula(3, [\u03C8]), new Formula(3, [\u03C6])]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("contraposition-rev", "contraposition", "transposition", singleton3(new Formula(7, [new Formula(3, [\u03C6]), new Formula(3, [\u03C8])])), new Formula(7, [\u03C8, \u03C6]), new FormKind(0, []), "An implication and its contrapositive say the same thing."), new ArgumentForm("material-implication", "material implication", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(5, [new Formula(3, [\u03C6]), \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("material-implication-rev", "material implication", "", singleton3(new Formula(5, [new Formula(3, [\u03C6]), \u03C8])), new Formula(7, [\u03C6, \u03C8]), new FormKind(0, []), "'If \u03C6 then \u03C8' just says: either \u03C6 fails, or \u03C8 holds."), new ArgumentForm("exportation", "exportation", "", singleton3(new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7])), new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])]), new FormKind(0, []), "'Both together give \u03C7' is the same as 'the first gives: the second gives \u03C7'."), new ArgumentForm("exportation-rev", "exportation", "importation", singleton3(new Formula(7, [\u03C6, new Formula(7, [\u03C8, \u03C7])])), new Formula(7, [new Formula(4, [\u03C6, \u03C8]), \u03C7]), new FormKind(0, []), "'The first gives: the second gives \u03C7' is the same as 'both together give \u03C7'."), new ArgumentForm("excluded-middle", "law of excluded middle", "tertium non datur", empty2(), new Formula(5, [\u03C6, new Formula(3, [\u03C6])]), new FormKind(0, []), "Every proposition either holds or fails \u2014 there is no third option."), new ArgumentForm("non-contradiction", "law of non-contradiction", "", empty2(), new Formula(3, [new Formula(4, [\u03C6, new Formula(3, [\u03C6])])]), new FormKind(0, []), "No proposition both holds and fails at once."), new ArgumentForm("universal-instantiation", "universal instantiation", "singular syllogism", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, \u03A8x])]), \u03A6\u03B1]), \u03A8\u03B1, new FormKind(0, []), "What holds of every \u03A6 holds of this one in particular."), new ArgumentForm("barbara", "Barbara", "AAA-1", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, \u03A8x])]), new Formula(11, ["x", new Formula(7, [\u03A3x, \u03A6x])])]), new Formula(11, ["x", new Formula(7, [\u03A3x, \u03A8x])]), new FormKind(0, []), "All \u03A6 are \u03A8; all \u03A3 are \u03A6; so all \u03A3 are \u03A8 \u2014 the first and firmest of the syllogisms."), new ArgumentForm("celarent", "Celarent", "EAE-1", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, new Formula(3, [\u03A8x])])]), new Formula(11, ["x", new Formula(7, [\u03A3x, \u03A6x])])]), new Formula(11, ["x", new Formula(7, [\u03A3x, new Formula(3, [\u03A8x])])]), new FormKind(0, []), "No \u03A6 are \u03A8; all \u03A3 are \u03A6; so no \u03A3 are \u03A8."), new ArgumentForm("darii", "Darii", "AII-1", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, \u03A8x])]), new Formula(12, ["x", new Formula(4, [\u03A3x, \u03A6x])])]), new Formula(12, ["x", new Formula(4, [\u03A3x, \u03A8x])]), new FormKind(0, []), "All \u03A6 are \u03A8; some \u03A3 are \u03A6; so some \u03A3 are \u03A8."), new ArgumentForm("ferio", "Ferio", "EIO-1", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, new Formula(3, [\u03A8x])])]), new Formula(12, ["x", new Formula(4, [\u03A3x, \u03A6x])])]), new Formula(12, ["x", new Formula(4, [\u03A3x, new Formula(3, [\u03A8x])])]), new FormKind(0, []), "No \u03A6 are \u03A8; some \u03A3 are \u03A6; so some \u03A3 are not \u03A8."), new ArgumentForm("axiom-t", "axiom T", "necessity elimination", singleton3(new Formula(9, [\u03C6])), \u03C6, new FormKind(0, []), "What is necessary is actually so."), new ArgumentForm("possibility-intro", "possibility introduction", "", singleton3(\u03C6), new Formula(10, [\u03C6]), new FormKind(0, []), "What is actually so is possible."), new ArgumentForm("k-distribution", "K distribution", "", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), new Formula(9, [\u03C6])]), new Formula(9, [\u03C8]), new FormKind(0, []), "Necessity distributes over implication: a necessary if\u2013then with a necessary if gives a necessary then."), new ArgumentForm("axiom-4", "axiom 4", "", singleton3(new Formula(9, [\u03C6])), new Formula(9, [new Formula(9, [\u03C6])]), new FormKind(0, []), "What is necessary is necessarily necessary."), new ArgumentForm("axiom-5", "axiom 5", "", singleton3(new Formula(10, [\u03C6])), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is possible is necessarily possible \u2014 possibility doesn't vary between worlds (S5)."), new ArgumentForm("axiom-b", "axiom B", "", singleton3(\u03C6), new Formula(9, [new Formula(10, [\u03C6])]), new FormKind(0, []), "What is so is necessarily possible."), new ArgumentForm("s5-collapse", "S5 collapse", "", singleton3(new Formula(10, [new Formula(9, [\u03C6])])), new Formula(9, [\u03C6]), new FormKind(0, []), "Possibly necessary is necessary \u2014 the load-bearing step of the modal ontological argument."), new ArgumentForm("dual-box", "modal duality", "", singleton3(new Formula(3, [new Formula(10, [\u03C6])])), new Formula(9, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not possible means necessarily not \u2014 \u25C7 and \u25A1 are two sides of one coin."), new ArgumentForm("dual-diamond", "modal duality", "", singleton3(new Formula(3, [new Formula(9, [\u03C6])])), new Formula(10, [new Formula(3, [\u03C6])]), new FormKind(0, []), "Not necessary means possibly not \u2014 \u25A1 and \u25C7 are two sides of one coin."), new ArgumentForm("illicit-necessitation", "illicit necessitation", "", singleton3(\u03C6), new Formula(9, [\u03C6]), new FormKind(1, []), "True doesn't mean necessarily true \u2014 the world could have been otherwise."), new ArgumentForm("actualizing-the-possible", "actualizing the possible", "", singleton3(new Formula(10, [\u03C6])), \u03C6, new FormKind(1, []), "Possible doesn't mean actual \u2014 some possibilities stay unrealized."), new ArgumentForm("necessity-of-the-consequent", "necessity of the consequent", "modal scope fallacy", ofArray([new Formula(9, [new Formula(7, [\u03C6, \u03C8])]), \u03C6]), new Formula(9, [\u03C8]), new FormKind(1, []), "The necessity governs the whole if\u2013then, not its then: a contingent if only yields a contingent then."), new ArgumentForm("affirming-the-consequent", "affirming the consequent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), \u03C8]), \u03C6, new FormKind(1, []), "\u03C8 may hold for other reasons \u2014 the arrow only runs one way."), new ArgumentForm("denying-the-antecedent", "denying the antecedent", "", ofArray([new Formula(7, [\u03C6, \u03C8]), new Formula(3, [\u03C6])]), new Formula(3, [\u03C8]), new FormKind(1, []), "Losing one reason for \u03C8 does not disprove \u03C8."), new ArgumentForm("affirming-a-disjunct", "affirming a disjunct", "", ofArray([new Formula(5, [\u03C6, \u03C8]), \u03C6]), new Formula(3, [\u03C8]), new FormKind(1, []), "An inclusive 'or' allows both sides to be true at once."), new ArgumentForm("illicit-conversion", "illicit conversion", "", singleton3(new Formula(7, [\u03C6, \u03C8])), new Formula(7, [\u03C8, \u03C6]), new FormKind(1, []), "An implication does not run backwards."), new ArgumentForm("undistributed-middle", "undistributed middle", "", ofArray([new Formula(11, ["x", new Formula(7, [\u03A6x, \u03A8x])]), new Formula(11, ["x", new Formula(7, [\u03A3x, \u03A8x])])]), new Formula(11, ["x", new Formula(7, [\u03A3x, \u03A6x])]), new FormKind(1, []), "Sharing a predicate doesn't connect two classes \u2014 all cats and all dogs are animals, yet no dogs are cats.")]);
 var validForms = filter2((f) => equals(f.Kind, new FormKind(0, [])), forms);
 var fallacies = filter2((f) => equals(f.Kind, new FormKind(1, [])), forms);
 
 // src/core/Recognition.js
+var predMetas = ofSeq3(["\u03A6", "\u03A8", "\u03A3"], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+var termMetas = ofSeq3(["\u03B1", "\u03B2"], {
+  Compare: (x, y) => comparePrimitives(x, y) | 0
+});
+function bindName(key, value2, subst) {
+  const matchValue = tryFind2(key, subst);
+  if (matchValue == null) {
+    return add2(key, new Formula(0, [value2]), subst);
+  } else if (matchValue.tag === 0) {
+    const bound = matchValue.fields[0];
+    if (bound === value2) {
+      return subst;
+    } else {
+      return void 0;
+    }
+  } else {
+    return void 0;
+  }
+}
 function matchPattern(pattern_mut, target_mut, subst_mut) {
   matchPattern:
     while (true) {
       const pattern = pattern_mut, target = target_mut, subst = subst_mut;
-      let matchResult, t_2, v, a_1, b_1, a1_1, a2_1, n1_1, n2_1, p_2, t_3, x1_2, x2_2, p_3, t_4, x1_3, x2_3, p_4, t_5, p1, p2, t1, t2;
+      let matchResult, t_2, v, a_1, b_1, pargs_1, pn_1, targs_1, tn_1, p_2, t_3, x1_2, x2_2, p_3, t_4, x1_3, x2_3, p_4, t_5, p1, p2, t1, t2;
       switch (pattern.tag) {
         case 2: {
           if (target.tag === 2) {
@@ -6423,12 +6468,12 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
         }
         case 1: {
           if (target.tag === 1) {
-            if (pattern.fields[0] === target.fields[0] && equals(pattern.fields[1], target.fields[1])) {
+            if (length(pattern.fields[1]) === length(target.fields[1])) {
               matchResult = 2;
-              a1_1 = pattern.fields[1];
-              a2_1 = target.fields[1];
-              n1_1 = pattern.fields[0];
-              n2_1 = target.fields[0];
+              pargs_1 = pattern.fields[1];
+              pn_1 = pattern.fields[0];
+              targs_1 = target.fields[1];
+              tn_1 = target.fields[0];
             } else {
               matchResult = 7;
             }
@@ -6579,7 +6624,19 @@ function matchPattern(pattern_mut, target_mut, subst_mut) {
         case 1:
           return subst;
         case 2:
-          return subst;
+          return fold3((acc, tupledArg) => {
+            const pa = tupledArg[0];
+            const ta = tupledArg[1];
+            return bind((s) => {
+              if (contains2(pa, termMetas)) {
+                return bindName("term:" + pa, ta, s);
+              } else if (pa === ta) {
+                return s;
+              } else {
+                return void 0;
+              }
+            }, acc);
+          }, contains2(pn_1, predMetas) ? bindName("pred:" + pn_1, tn_1, subst) : pn_1 === tn_1 ? subst : void 0, zip(pargs_1, targs_1));
         case 3: {
           pattern_mut = p_2;
           target_mut = t_3;
@@ -6776,10 +6833,11 @@ function prove(premises, goal) {
   }) * 2 + 2 | 0;
   let found = known(goal);
   let round = 0;
+  const chainRules = filter2((r) => !(containsFO(r.Conclusion) ? true : exists2(containsFO, r.Premises)), validForms);
   while (!found && round < 6 && steps.length < 120) {
     round = round + 1 | 0;
     const snapshot = steps.length | 0;
-    const enumerator_1 = getEnumerator(validForms);
+    const enumerator_1 = getEnumerator(chainRules);
     try {
       while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
         let matchValue;
@@ -6826,7 +6884,7 @@ function prove(premises, goal) {
   } else {
     const neededFrom = (idx, acc) => {
       const patternInput_1 = item(idx, steps);
-      return fold3((a, r) => neededFrom(r - 1, a), add(idx, acc), patternInput_1[2]);
+      return fold3((a, r_1) => neededFrom(r_1 - 1, a), add(idx, acc), patternInput_1[2]);
     };
     const needed = sort(toList2(neededFrom(findIndex((tupledArg_1) => equals(tupledArg_1[0], goal), steps), empty3({
       Compare: (x_2, y_2) => comparePrimitives(x_2, y_2) | 0
@@ -6838,7 +6896,7 @@ function prove(premises, goal) {
     });
     return map4((oldIdx_1) => {
       const patternInput_2 = item(oldIdx_1, steps);
-      return new ProofStep(patternInput_2[0], patternInput_2[1], map4((r_1) => FSharpMap__get_Item(renumber, r_1 - 1) | 0, patternInput_2[2]));
+      return new ProofStep(patternInput_2[0], patternInput_2[1], map4((r_2) => FSharpMap__get_Item(renumber, r_2 - 1) | 0, patternInput_2[2]));
     }, needed);
   }
 }
@@ -6927,308 +6985,6 @@ function Result_Bind(binder, result) {
   }
 }
 
-// src/core/Tokenizer.js
-var Token = class extends Union {
-  constructor(tag, fields) {
-    super();
-    this.tag = tag;
-    this.fields = fields;
-  }
-  cases() {
-    return ["TIdent", "TTrue", "TFalse", "TNot", "TAnd", "TOr", "TXor", "TImplies", "TIff", "TBox", "TDiamond", "TForall", "TExists", "TDot", "TComma", "TLParen", "TRParen"];
-  }
-};
-function isIdentChar(c) {
-  if (isLetterOrDigit(c)) {
-    return true;
-  } else {
-    return c === "_";
-  }
-}
-function wordToToken(word) {
-  switch (word) {
-    case "not":
-      return new Token(3, []);
-    case "and":
-      return new Token(4, []);
-    case "or":
-      return new Token(5, []);
-    case "xor":
-      return new Token(6, []);
-    case "implies":
-      return new Token(7, []);
-    case "iff":
-      return new Token(8, []);
-    case "necessarily":
-      return new Token(9, []);
-    case "possibly":
-      return new Token(10, []);
-    case "forall":
-      return new Token(11, []);
-    case "exists":
-      return new Token(12, []);
-    case "true":
-      return new Token(1, []);
-    case "false":
-      return new Token(2, []);
-    default:
-      return new Token(0, [word]);
-  }
-}
-function tokenize(input) {
-  const loop = (i_mut, acc_mut) => {
-    loop:
-      while (true) {
-        const i = i_mut, acc = acc_mut;
-        if (i >= input.length) {
-          return new FSharpResult$2(0, [reverse2(acc)]);
-        } else {
-          const c = input[i];
-          let matchResult, other;
-          switch (c) {
-            case "	":
-            case " ": {
-              matchResult = 0;
-              break;
-            }
-            case "!":
-            case "~":
-            case "\xAC": {
-              matchResult = 9;
-              break;
-            }
-            case "&":
-            case "\u2227": {
-              matchResult = 7;
-              break;
-            }
-            case "(": {
-              matchResult = 1;
-              break;
-            }
-            case ")": {
-              matchResult = 2;
-              break;
-            }
-            case ",": {
-              matchResult = 3;
-              break;
-            }
-            case ".": {
-              matchResult = 4;
-              break;
-            }
-            case "|":
-            case "\u2228": {
-              matchResult = 8;
-              break;
-            }
-            case "\u2192": {
-              matchResult = 11;
-              break;
-            }
-            case "\u2194": {
-              matchResult = 12;
-              break;
-            }
-            case "\u2200": {
-              matchResult = 5;
-              break;
-            }
-            case "\u2203": {
-              matchResult = 6;
-              break;
-            }
-            case "\u2295": {
-              matchResult = 10;
-              break;
-            }
-            case "\u22A4": {
-              matchResult = 13;
-              break;
-            }
-            case "\u22A5": {
-              matchResult = 14;
-              break;
-            }
-            case "\u25A1": {
-              matchResult = 15;
-              break;
-            }
-            case "\u25C7": {
-              matchResult = 16;
-              break;
-            }
-            case "-": {
-              if (i + 1 < input.length && input[i + 1] === ">") {
-                matchResult = 18;
-              } else if (isLetter(c)) {
-                matchResult = 21;
-              } else {
-                matchResult = 22;
-                other = c;
-              }
-              break;
-            }
-            case "<": {
-              if (i + 2 < input.length && input[i + 1] === "-" && input[i + 2] === ">") {
-                matchResult = 19;
-              } else if (i + 1 < input.length && input[i + 1] === ">") {
-                matchResult = 20;
-              } else if (isLetter(c)) {
-                matchResult = 21;
-              } else {
-                matchResult = 22;
-                other = c;
-              }
-              break;
-            }
-            case "[": {
-              if (i + 1 < input.length && input[i + 1] === "]") {
-                matchResult = 17;
-              } else if (isLetter(c)) {
-                matchResult = 21;
-              } else {
-                matchResult = 22;
-                other = c;
-              }
-              break;
-            }
-            default:
-              if (isLetter(c)) {
-                matchResult = 21;
-              } else {
-                matchResult = 22;
-                other = c;
-              }
-          }
-          switch (matchResult) {
-            case 0: {
-              i_mut = i + 1;
-              acc_mut = acc;
-              continue loop;
-            }
-            case 1: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(15, []), acc);
-              continue loop;
-            }
-            case 2: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(16, []), acc);
-              continue loop;
-            }
-            case 3: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(14, []), acc);
-              continue loop;
-            }
-            case 4: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(13, []), acc);
-              continue loop;
-            }
-            case 5: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(11, []), acc);
-              continue loop;
-            }
-            case 6: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(12, []), acc);
-              continue loop;
-            }
-            case 7: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(4, []), acc);
-              continue loop;
-            }
-            case 8: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(5, []), acc);
-              continue loop;
-            }
-            case 9: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(3, []), acc);
-              continue loop;
-            }
-            case 10: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(6, []), acc);
-              continue loop;
-            }
-            case 11: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(7, []), acc);
-              continue loop;
-            }
-            case 12: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(8, []), acc);
-              continue loop;
-            }
-            case 13: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(1, []), acc);
-              continue loop;
-            }
-            case 14: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(2, []), acc);
-              continue loop;
-            }
-            case 15: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(9, []), acc);
-              continue loop;
-            }
-            case 16: {
-              i_mut = i + 1;
-              acc_mut = cons(new Token(10, []), acc);
-              continue loop;
-            }
-            case 17: {
-              i_mut = i + 2;
-              acc_mut = cons(new Token(9, []), acc);
-              continue loop;
-            }
-            case 18: {
-              i_mut = i + 2;
-              acc_mut = cons(new Token(7, []), acc);
-              continue loop;
-            }
-            case 19: {
-              i_mut = i + 3;
-              acc_mut = cons(new Token(8, []), acc);
-              continue loop;
-            }
-            case 20: {
-              i_mut = i + 2;
-              acc_mut = cons(new Token(10, []), acc);
-              continue loop;
-            }
-            case 21: {
-              const start = i | 0;
-              let j = i;
-              while (j < input.length && (isIdentChar(input[j]) ? true : input[j] === "-" && j + 1 < input.length && isLetterOrDigit(input[j + 1]))) {
-                j = j + 1 | 0;
-              }
-              const word = substring(input, start, j - start);
-              i_mut = j;
-              acc_mut = cons(wordToToken(word), acc);
-              continue loop;
-            }
-            default:
-              return new FSharpResult$2(1, [toText(printf("Unexpected character '%c' in formula"))(other)]);
-          }
-        }
-        break;
-      }
-  };
-  return loop(0, empty2());
-}
-
 // src/core/Prose.js
 var reserved = ofSeq3(["if", "then", "and", "or", "not", "either", "neither", "nor", "implies", "iff", "necessarily", "possibly", "all", "no", "some", "every", "are", "is", "a", "an", "therefore", "thus", "hence", "true", "false"], {
   Compare: (x, y) => comparePrimitives(x, y) | 0
@@ -7239,7 +6995,7 @@ function lower(w) {
 function normalize(s) {
   return replace(replace(replace(replace(replace(trimEnd(s.trim(), "."), ",", " "), " if and only if ", " iff "), "it is not the case that ", "not "), "it is necessary that ", "necessarily "), "it is possible that ", "possibly ");
 }
-function tokenize2(s) {
+function tokenize(s) {
   return ofArray(split(replace(replace(normalize(s), "(", " ( "), ")", " ) "), [" ", "	"], void 0, 1));
 }
 function isName(w) {
@@ -7982,7 +7738,7 @@ function parseAtom(ts) {
   }
 }
 function parseSentence(text) {
-  const ws = tokenize2(text);
+  const ws = tokenize(text);
   if (isEmpty(ws)) {
     return new FSharpResult$2(1, ["empty sentence"]);
   } else {
@@ -8198,382 +7954,8 @@ function parse(str, style, unsigned, bitsize, radix) {
 }
 
 // src/core/Parser.js
-function parseIff2(tokens) {
-  return Result_Bind((tupledArg) => {
-    const loop = (l, toks) => {
-      let matchResult, more;
-      if (!isEmpty(toks)) {
-        if (head(toks).tag === 8) {
-          matchResult = 0;
-          more = tail(toks);
-        } else {
-          matchResult = 1;
-        }
-      } else {
-        matchResult = 1;
-      }
-      switch (matchResult) {
-        case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(8, [l, tupledArg_1[0]]), tupledArg_1[1]), parseImplies(more));
-        default:
-          return new FSharpResult$2(0, [[l, toks]]);
-      }
-    };
-    return loop(tupledArg[0], tupledArg[1]);
-  }, parseImplies(tokens));
-}
-function parseImplies(tokens) {
-  return Result_Bind((tupledArg) => {
-    const left = tupledArg[0];
-    const rest = tupledArg[1];
-    let matchResult, more;
-    if (!isEmpty(rest)) {
-      if (head(rest).tag === 7) {
-        matchResult = 0;
-        more = tail(rest);
-      } else {
-        matchResult = 1;
-      }
-    } else {
-      matchResult = 1;
-    }
-    switch (matchResult) {
-      case 0:
-        return Result_Map((tupledArg_1) => [new Formula(7, [left, tupledArg_1[0]]), tupledArg_1[1]], parseImplies(more));
-      default:
-        return new FSharpResult$2(0, [[left, rest]]);
-    }
-  }, parseXor(tokens));
-}
-function parseXor(tokens) {
-  return Result_Bind((tupledArg) => {
-    const loop = (l, toks) => {
-      let matchResult, more;
-      if (!isEmpty(toks)) {
-        if (head(toks).tag === 6) {
-          matchResult = 0;
-          more = tail(toks);
-        } else {
-          matchResult = 1;
-        }
-      } else {
-        matchResult = 1;
-      }
-      switch (matchResult) {
-        case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(6, [l, tupledArg_1[0]]), tupledArg_1[1]), parseOr2(more));
-        default:
-          return new FSharpResult$2(0, [[l, toks]]);
-      }
-    };
-    return loop(tupledArg[0], tupledArg[1]);
-  }, parseOr2(tokens));
-}
-function parseOr2(tokens) {
-  return Result_Bind((tupledArg) => {
-    const loop = (l, toks) => {
-      let matchResult, more;
-      if (!isEmpty(toks)) {
-        if (head(toks).tag === 5) {
-          matchResult = 0;
-          more = tail(toks);
-        } else {
-          matchResult = 1;
-        }
-      } else {
-        matchResult = 1;
-      }
-      switch (matchResult) {
-        case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(5, [l, tupledArg_1[0]]), tupledArg_1[1]), parseAnd2(more));
-        default:
-          return new FSharpResult$2(0, [[l, toks]]);
-      }
-    };
-    return loop(tupledArg[0], tupledArg[1]);
-  }, parseAnd2(tokens));
-}
-function parseAnd2(tokens) {
-  return Result_Bind((tupledArg) => {
-    const loop = (l, toks) => {
-      let matchResult, more;
-      if (!isEmpty(toks)) {
-        if (head(toks).tag === 4) {
-          matchResult = 0;
-          more = tail(toks);
-        } else {
-          matchResult = 1;
-        }
-      } else {
-        matchResult = 1;
-      }
-      switch (matchResult) {
-        case 0:
-          return Result_Bind((tupledArg_1) => loop(new Formula(4, [l, tupledArg_1[0]]), tupledArg_1[1]), parseUnary(more));
-        default:
-          return new FSharpResult$2(0, [[l, toks]]);
-      }
-    };
-    return loop(tupledArg[0], tupledArg[1]);
-  }, parseUnary(tokens));
-}
-function parseUnary(tokens) {
-  let matchResult, more, more_1, more_2, more_3, x, more_4, x_1;
-  if (!isEmpty(tokens)) {
-    switch (head(tokens).tag) {
-      case 3: {
-        matchResult = 0;
-        more = tail(tokens);
-        break;
-      }
-      case 9: {
-        matchResult = 1;
-        more_1 = tail(tokens);
-        break;
-      }
-      case 10: {
-        matchResult = 2;
-        more_2 = tail(tokens);
-        break;
-      }
-      case 11: {
-        if (!isEmpty(tail(tokens))) {
-          if (head(tail(tokens)).tag === 0) {
-            if (!isEmpty(tail(tail(tokens)))) {
-              if (head(tail(tail(tokens))).tag === 13) {
-                matchResult = 3;
-                more_3 = tail(tail(tail(tokens)));
-                x = head(tail(tokens)).fields[0];
-              } else {
-                matchResult = 5;
-              }
-            } else {
-              matchResult = 5;
-            }
-          } else {
-            matchResult = 5;
-          }
-        } else {
-          matchResult = 5;
-        }
-        break;
-      }
-      case 12: {
-        if (!isEmpty(tail(tokens))) {
-          if (head(tail(tokens)).tag === 0) {
-            if (!isEmpty(tail(tail(tokens)))) {
-              if (head(tail(tail(tokens))).tag === 13) {
-                matchResult = 4;
-                more_4 = tail(tail(tail(tokens)));
-                x_1 = head(tail(tokens)).fields[0];
-              } else {
-                matchResult = 5;
-              }
-            } else {
-              matchResult = 5;
-            }
-          } else {
-            matchResult = 5;
-          }
-        } else {
-          matchResult = 5;
-        }
-        break;
-      }
-      default:
-        matchResult = 6;
-    }
-  } else {
-    matchResult = 6;
-  }
-  switch (matchResult) {
-    case 0:
-      return Result_Map((tupledArg) => [new Formula(3, [tupledArg[0]]), tupledArg[1]], parseUnary(more));
-    case 1:
-      return Result_Map((tupledArg_1) => [new Formula(9, [tupledArg_1[0]]), tupledArg_1[1]], parseUnary(more_1));
-    case 2:
-      return Result_Map((tupledArg_2) => [new Formula(10, [tupledArg_2[0]]), tupledArg_2[1]], parseUnary(more_2));
-    case 3:
-      return Result_Map((tupledArg_3) => [new Formula(11, [x, tupledArg_3[0]]), tupledArg_3[1]], parseIff2(more_3));
-    case 4:
-      return Result_Map((tupledArg_4) => [new Formula(12, [x_1, tupledArg_4[0]]), tupledArg_4[1]], parseIff2(more_4));
-    case 5:
-      return new FSharpResult$2(1, ["a quantifier needs a variable then '.', e.g.  forall x. Human(x)"]);
-    default:
-      return parseAtom2(tokens);
-  }
-}
-function parseTermList(tokens) {
-  let matchResult, rest;
-  if (!isEmpty(tokens)) {
-    if (head(tokens).tag === 16) {
-      matchResult = 0;
-      rest = tail(tokens);
-    } else {
-      matchResult = 1;
-    }
-  } else {
-    matchResult = 1;
-  }
-  switch (matchResult) {
-    case 0:
-      return new FSharpResult$2(0, [[empty2(), rest]]);
-    default: {
-      const loop = (acc_mut, toks_mut) => {
-        loop:
-          while (true) {
-            const acc = acc_mut, toks = toks_mut;
-            let matchResult_1, more, t, more_1, t_1;
-            if (!isEmpty(toks)) {
-              if (head(toks).tag === 0) {
-                if (!isEmpty(tail(toks))) {
-                  switch (head(tail(toks)).tag) {
-                    case 14: {
-                      matchResult_1 = 0;
-                      more = tail(tail(toks));
-                      t = head(toks).fields[0];
-                      break;
-                    }
-                    case 16: {
-                      matchResult_1 = 1;
-                      more_1 = tail(tail(toks));
-                      t_1 = head(toks).fields[0];
-                      break;
-                    }
-                    default:
-                      matchResult_1 = 2;
-                  }
-                } else {
-                  matchResult_1 = 2;
-                }
-              } else {
-                matchResult_1 = 2;
-              }
-            } else {
-              matchResult_1 = 2;
-            }
-            switch (matchResult_1) {
-              case 0: {
-                acc_mut = append(acc, singleton3(t));
-                toks_mut = more;
-                continue loop;
-              }
-              case 1:
-                return new FSharpResult$2(0, [[append(acc, singleton3(t_1)), more_1]]);
-              default:
-                return new FSharpResult$2(1, ["expected a term (a name), ',' or ')' in the predicate's arguments"]);
-            }
-            break;
-          }
-      };
-      return loop(empty2(), tokens);
-    }
-  }
-}
-function parseAtom2(tokens) {
-  let matchResult, name, rest, name_1, rest_1, rest_2, rest_3, rest_4;
-  if (isEmpty(tokens)) {
-    matchResult = 5;
-  } else {
-    switch (head(tokens).tag) {
-      case 0: {
-        if (!isEmpty(tail(tokens))) {
-          if (head(tail(tokens)).tag === 15) {
-            matchResult = 0;
-            name = head(tokens).fields[0];
-            rest = tail(tail(tokens));
-          } else {
-            matchResult = 1;
-            name_1 = head(tokens).fields[0];
-            rest_1 = tail(tokens);
-          }
-        } else {
-          matchResult = 1;
-          name_1 = head(tokens).fields[0];
-          rest_1 = tail(tokens);
-        }
-        break;
-      }
-      case 1: {
-        matchResult = 2;
-        rest_2 = tail(tokens);
-        break;
-      }
-      case 2: {
-        matchResult = 3;
-        rest_3 = tail(tokens);
-        break;
-      }
-      case 15: {
-        matchResult = 4;
-        rest_4 = tail(tokens);
-        break;
-      }
-      default:
-        matchResult = 6;
-    }
-  }
-  switch (matchResult) {
-    case 0:
-      return Result_Map((tupledArg) => [new Formula(1, [name, tupledArg[0]]), tupledArg[1]], parseTermList(rest));
-    case 1:
-      return new FSharpResult$2(0, [[new Formula(0, [name_1]), rest_1]]);
-    case 2:
-      return new FSharpResult$2(0, [[new Formula(2, [true]), rest_2]]);
-    case 3:
-      return new FSharpResult$2(0, [[new Formula(2, [false]), rest_3]]);
-    case 4:
-      return Result_Bind((tupledArg_1) => {
-        const rest$0027_1 = tupledArg_1[1];
-        let matchResult_1, rest$0027$0027;
-        if (!isEmpty(rest$0027_1)) {
-          if (head(rest$0027_1).tag === 16) {
-            matchResult_1 = 0;
-            rest$0027$0027 = tail(rest$0027_1);
-          } else {
-            matchResult_1 = 1;
-          }
-        } else {
-          matchResult_1 = 1;
-        }
-        switch (matchResult_1) {
-          case 0:
-            return new FSharpResult$2(0, [[tupledArg_1[0], rest$0027$0027]]);
-          default:
-            return new FSharpResult$2(1, ["Expected a closing ')'"]);
-        }
-      }, parseIff2(rest_4));
-    case 5:
-      return new FSharpResult$2(1, ["Unexpected end of formula"]);
-    default:
-      return new FSharpResult$2(1, ["Expected a proposition, a constant, or '('"]);
-  }
-}
-function parseFormula(text) {
-  return Result_Bind((tokens) => Result_Bind((tupledArg) => {
-    if (isEmpty(tupledArg[1])) {
-      return new FSharpResult$2(0, [tupledArg[0]]);
-    } else {
-      return new FSharpResult$2(1, ["Unexpected leftover input after the formula"]);
-    }
-  }, parseIff2(tokens)), tokenize(text));
-}
-var proseSignals = ofSeq3(["if", "then", "all", "no", "some", "every", "either", "neither", "nor", "is", "are"], {
-  Compare: (x, y) => comparePrimitives(x, y) | 0
-});
 function parseAny(text) {
-  let array;
-  const matchValue = parseFormula(text);
-  if (matchValue.tag === 1) {
-    const matchValue_1 = parseSentence(text);
-    if (matchValue_1.tag === 1) {
-      return new FSharpResult$2(1, [(array = split(text, [" ", "	"], void 0, 1), array.some((w) => contains2(w.toLowerCase(), proseSignals))) ? matchValue_1.fields[0] : matchValue.fields[0]]);
-    } else {
-      return new FSharpResult$2(0, [matchValue_1.fields[0]]);
-    }
-  } else {
-    return new FSharpResult$2(0, [matchValue.fields[0]]);
-  }
+  return parseSentence(text);
 }
 function stripComment(line) {
   const matchValue = line.indexOf("//") | 0;
@@ -8631,7 +8013,7 @@ function tryRef(s) {
     }
   }
 }
-var relationVerbs = ofArray([["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])], ["equivalent-to", new RelationKind(4, [])]]);
+var relationVerbs = ofArray([["is equivalent to", new RelationKind(4, [])], ["is-equivalent-to", new RelationKind(4, [])], ["equivalent-to", new RelationKind(4, [])], ["supports", new RelationKind(0, [])], ["presupposes", new RelationKind(1, [])], ["contradicts", new RelationKind(2, [])], ["entails", new RelationKind(3, [])]]);
 function tryParseRelation(line) {
   return bind((tupledArg) => {
     const rest_1 = tupledArg[1].trimStart();
@@ -8748,14 +8130,14 @@ function parseArgumentBlock(name, headerLine, body) {
       if (line === "") {
       } else if (line.length >= 3 && forAll((c) => c === "-", line.split(""))) {
       } else if (line.startsWith("premise ")) {
-        const matchValue = parseFormula(substring(line, 8));
+        const matchValue = parseAny(substring(line, 8));
         if (matchValue.tag === 1) {
           errors = append(errors, singleton3([no, matchValue.fields[0]]));
         } else {
           premises = append(premises, singleton3(matchValue.fields[0]));
         }
       } else if (line.startsWith("conclude ")) {
-        const matchValue_1 = parseFormula(substring(line, 9));
+        const matchValue_1 = parseAny(substring(line, 9));
         const conclusion_1 = conclusion;
         const copyOfStruct = matchValue_1;
         if (copyOfStruct.tag === 1) {
@@ -8805,7 +8187,7 @@ function parseProofBlock(name, headerLine, body) {
           const rest = matchValue[1];
           const number = matchValue[0] | 0;
           if (rest.startsWith("premise ")) {
-            const matchValue_1 = parseFormula(substring(rest, 8));
+            const matchValue_1 = parseAny(substring(rest, 8));
             if (matchValue_1.tag === 1) {
               errors = append(errors, singleton3([no, matchValue_1.fields[0]]));
             } else {
@@ -8828,14 +8210,14 @@ function parseProofBlock(name, headerLine, body) {
                 patternInput = [substring(justification, 0, j).trim(), substring(justification, j + 6)];
               }
               const rule = patternInput[0];
-              const refs = ofArray((array_1 = map2((s) => s.trim(), split(patternInput[1], [","], void 0, 0)), array_1.filter((s_1) => s_1 !== "")));
+              const refs = ofArray((array_1 = map2((s) => s.trim(), split(replace(replace(patternInput[1], " and ", ","), " And ", ","), [","], void 0, 0)), array_1.filter((s_1) => s_1 !== "")));
               const badRefs = filter2((r) => !forAll(isDigit, r.split("")), refs);
               if (rule === "") {
                 errors = append(errors, singleton3([no, "missing rule name after `by`"]));
               } else if (!isEmpty(badRefs)) {
                 errors = append(errors, singleton3([no, (arg = head(badRefs), toText(printf("citations after `from` must be line numbers, not %A"))(arg))]));
               } else {
-                const matchValue_4 = parseFormula(formulaText);
+                const matchValue_4 = parseAny(formulaText);
                 if (matchValue_4.tag === 1) {
                   errors = append(errors, singleton3([no, matchValue_4.fields[0]]));
                 } else {
@@ -8877,14 +8259,14 @@ function parseVennBlock(name, headerLine, body) {
       if (line === "") {
       } else if (line.length >= 3 && forAll((c) => c === "-", line.split(""))) {
       } else if (line.startsWith("premise ")) {
-        const matchValue = parseFormula(substring(line, 8));
+        const matchValue = parseAny(substring(line, 8));
         if (matchValue.tag === 1) {
           errors = append(errors, singleton3([no, matchValue.fields[0]]));
         } else {
           premises = append(premises, singleton3(matchValue.fields[0]));
         }
       } else if (line.startsWith("conclude ")) {
-        const matchValue_1 = parseFormula(substring(line, 9));
+        const matchValue_1 = parseAny(substring(line, 9));
         const conclusion_1 = conclusion;
         const copyOfStruct = matchValue_1;
         if (copyOfStruct.tag === 1) {
@@ -9306,7 +8688,17 @@ function proofBlock(defs, name, lines) {
         const rf_1 = resolve(defs, line.fields[1]);
         const duplicate = containsKey(n_1, known);
         const missing = filter2((r) => !containsKey(r, known), refs_1);
-        const form = tryFind((fm) => fm.Name === ruleName, forms);
+        const normalizeRule = (s) => join("-", split(replace(replace(s.trim().toLowerCase(), "(", ""), ")", ""), [" ", "-"], void 0, 1));
+        const wanted = normalizeRule(ruleName);
+        const form = tryFind((fm) => {
+          if (fm.Name === wanted ? true : normalizeRule(fm.Title) === wanted) {
+            return true;
+          } else if (fm.Aka !== "") {
+            return normalizeRule(fm.Aka) === wanted;
+          } else {
+            return false;
+          }
+        }, forms);
         let patternInput;
         if (duplicate) {
           patternInput = ["bad", toText(printf("line number %d is used twice"))(n_1), ruleName];
@@ -9340,7 +8732,7 @@ function proofBlock(defs, name, lines) {
             }
           }
         } else {
-          patternInput = ["bad", toText(printf("unknown rule '%s' \u2014 rule names are the kebab-case catalog names, e.g. modus-ponens"))(ruleName), ruleName];
+          patternInput = ["bad", toText(printf("unknown rule '%s' \u2014 write it naturally (by modus ponens) or kebab-case (by modus-ponens); Latin aliases work too"))(ruleName), ruleName];
         }
         const status = patternInput[0];
         if (status === "bad") {
@@ -9623,16 +9015,44 @@ function analyze(source) {
       return void 0;
     }
   }, statements));
-  return toArray2(choose2((tupledArg_1) => {
-    const r_2 = tupledArg_1[1];
-    if (r_2.tag === 1) {
-      return new BlockView("error", empty5.level, r_2.fields[0], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, tupledArg_1[0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model, empty5.vennCircles, empty5.vennCells, empty5.vennPoints);
-    } else if (r_2.fields[0] != null) {
-      return toBlock(defs, glosses, claims, relationRows, arguments$, r_2.fields[0]);
-    } else {
-      return void 0;
+  const entries = [];
+  const proseBuffer = [];
+  const flushProse = () => {
+    if (proseBuffer.length > 0) {
+      void entries.push(new FSharpChoice$2(0, [new Statement(1, [join(" ", ofSeq(proseBuffer))])]));
+      clear(proseBuffer);
     }
-  }, parsed));
+  };
+  const enumerator = getEnumerator(parsed);
+  try {
+    while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+      const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+      const r_2 = forLoopVar[1];
+      if (r_2.tag === 1) {
+        flushProse();
+        void entries.push(new FSharpChoice$2(1, [[forLoopVar[0], r_2.fields[0]]]));
+      } else if (r_2.fields[0] == null) {
+        flushProse();
+      } else if (r_2.fields[0].tag === 1) {
+        const text = r_2.fields[0].fields[0];
+        void proseBuffer.push(text);
+      } else {
+        const st_1 = r_2.fields[0];
+        flushProse();
+        void entries.push(new FSharpChoice$2(0, [st_1]));
+      }
+    }
+  } finally {
+    disposeSafe(enumerator);
+  }
+  flushProse();
+  return map2((_arg_6) => {
+    if (_arg_6.tag === 1) {
+      return new BlockView("error", empty5.level, _arg_6.fields[0][1], empty5.name, empty5.gloss, empty5.formula, empty5.verdict, empty5.atoms, empty5.rows, empty5.results, empty5.actual, _arg_6.fields[0][0], empty5.premises, empty5.conclusion, empty5.form, empty5.fallacy, empty5.note, empty5.suggestion, empty5.proof, empty5.relations, empty5.model, empty5.vennCircles, empty5.vennCells, empty5.vennPoints);
+    } else {
+      return toBlock(defs, glosses, claims, relationRows, arguments$, _arg_6.fields[0]);
+    }
+  }, entries.slice());
 }
 var FormView = class extends Record {
   constructor(name, title, aka, note, premises, conclusion, isFallacy) {
@@ -10432,8 +9852,10 @@ function renderBlock(block) {
       const level = Math.min(Math.max(block.level, 1), 6);
       return `<h${level}>${escapeHtml(block.title)}</h${level}>`;
     }
-    case "prose":
-      return `<p class="prose">${escapeHtml(block.title)}</p>`;
+    case "prose": {
+      const text = escapeHtml(block.title).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      return `<p class="prose">${text}</p>`;
+    }
     case "prop":
       return `<div class="prop"><span class="atom">${escapeHtml(block.name)}</span><span class="colon">:</span><span class="gloss">${escapeHtml(block.gloss)}</span></div>`;
     case "claim": {
@@ -10482,36 +9904,30 @@ function renderDocument(blocks) {
 
 // src/completion.ts
 var vscode = __toESM(require("vscode"));
-function toPlaceholders(pattern) {
-  return pattern.replace(/φ/g, "${1:p}").replace(/ψ/g, "${2:q}").replace(/χ/g, "${3:r}").replace(/ω/g, "${4:s}");
-}
-function formSnippet(form) {
-  const premises = form.premises.map((p) => `  premise ${toPlaceholders(p)}`).join("\n");
-  const body = premises === "" ? "" : `${premises}
-`;
-  return `argument \${5:${form.name}} {
-${body}  ---
-  conclude ${toPlaceholders(form.conclusion)}
-}`;
-}
+var PROSE_FORMS = [
+  { name: "modus-ponens", title: "modus ponens", body: "If ${1:P}, then ${2:Q}. ${1:P}. Therefore, ${2:Q}." },
+  { name: "modus-tollens", title: "modus tollens", body: "If ${1:P}, then ${2:Q}. Not ${2:Q}. Therefore, not ${1:P}." },
+  { name: "hypothetical-syllogism", title: "hypothetical syllogism", body: "If ${1:P}, then ${2:Q}. If ${2:Q}, then ${3:R}. Therefore, if ${1:P}, then ${3:R}." },
+  { name: "disjunctive-syllogism", title: "disjunctive syllogism", body: "Either ${1:P} or ${2:Q}. Not ${1:P}. Therefore, ${2:Q}." },
+  { name: "constructive-dilemma", title: "constructive dilemma", body: "Either ${1:P} or ${2:R}. If ${1:P}, then ${3:Q}. If ${2:R}, then ${4:S}. Therefore, either ${3:Q} or ${4:S}." },
+  { name: "syllogism", title: "categorical syllogism", body: "All ${1:men} are ${2:mortal}. ${3:Socrates} is a ${1:men}. Therefore, ${3:Socrates} is ${2:mortal}." }
+];
 var KEYWORD_SNIPPETS = [
-  { label: "prop", detail: "declare an atomic proposition", body: "prop ${1:p} : ${2:its meaning in plain language}" },
-  { label: "claim", detail: "name a compound formula", body: "claim ${1:C1} : ${2:p -> q}" },
+  { label: "prop", detail: "name an atomic proposition", body: "prop ${1:p} : ${2:its meaning in plain language}" },
+  { label: "claim", detail: "name a claim, in prose", body: "claim ${1:C1} : ${2:if p then q}" },
   { label: "table", detail: "truth table + verdict", body: "table ${1:C1}" },
-  { label: "check", detail: "verdict for a formula", body: "check ${1:p -> q}" },
-  { label: "check equivalent", detail: "are two formulas the same claim?", body: "check ${1:A} equivalent ${2:B}" },
-  { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:p -> q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
-  { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:p -> q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
-  { label: "venn", detail: "a categorical Venn diagram of one-place predicates", body: "venn ${1:name} {\n  premise forall x. ${2:Man}(x) -> ${3:Mortal}(x)\n  premise ${2:Man}(${4:socrates})\n}" },
+  { label: "check", detail: "verdict for a claim", body: "check ${1:if p then q}" },
+  { label: "check equivalent", detail: "are two claims the same?", body: "check ${1:A} equivalent ${2:B}" },
+  { label: "argument", detail: "premises + conclusion, validity checked", body: "argument ${1:name} {\n  premise ${2:if p then q}\n  premise ${3:p}\n  ---\n  conclude ${4:q}\n}" },
+  { label: "proof", detail: "your own derivation, graded step by step", body: "proof ${1:name} {\n  1. premise ${2:if p then q}\n  2. premise ${3:p}\n  3. ${4:q} by ${5:modus-ponens} from ${6:1, 2}\n}" },
+  { label: "venn", detail: "a categorical Venn diagram", body: "venn ${1:name} {\n  premise All ${2:men} are ${3:mortal}\n  premise ${4:Socrates} is a ${2:men}\n}" },
   { label: "analyze", detail: "relate every claim to every other", body: "analyze" },
   { label: "map", detail: "draw all asserted relations as a graph", body: "map" },
-  { label: "relation", detail: "assert a relation between two statements", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
+  { label: "relation", detail: "assert a relation between two claims", body: "${1:C1} ${2|supports,presupposes,contradicts,entails,equivalent-to|} ${3:C2}" },
   { label: "premise", detail: "a premise inside an argument", body: "premise ${1:p}" },
   { label: "conclude", detail: "the conclusion of an argument", body: "conclude ${1:q}" },
-  { label: "necessarily", detail: "modal \u25A1 \u2014 true in every possible world", body: "necessarily ${1:p}" },
-  { label: "possibly", detail: "modal \u25C7 \u2014 true in some possible world", body: "possibly ${1:p}" },
-  { label: "forall", detail: "\u2200 \u2014 holds for every individual", body: "forall ${1:x}. ${2:P(x)}" },
-  { label: "exists", detail: "\u2203 \u2014 holds for some individual", body: "exists ${1:x}. ${2:P(x)}" }
+  { label: "necessarily", detail: "modal \u2014 true in every possible world", body: "necessarily ${1:p}" },
+  { label: "possibly", detail: "modal \u2014 true in some possible world", body: "possibly ${1:p}" }
 ];
 function registerCompletions(context) {
   const forms2 = catalog2();
@@ -10531,18 +9947,11 @@ ${form.note}`;
       }
       const slash = prefix.match(/\/[\w-]*$/);
       const slashRange = slash ? new vscode.Range(position.line, position.character - slash[0].length, position.line, position.character) : void 0;
-      for (const form of forms2.filter((f) => !f.isFallacy)) {
-        const item3 = new vscode.CompletionItem(
-          `/${form.name}`,
-          vscode.CompletionItemKind.Snippet
-        );
-        item3.detail = form.aka ? `${form.title} (${form.aka})` : form.title;
-        item3.documentation = new vscode.MarkdownString(
-          `\`${form.premises.join("`,  `")}\`  \u22A2  \`${form.conclusion}\`
-
-${form.note}`
-        );
-        item3.insertText = new vscode.SnippetString(formSnippet(form));
+      for (const form of PROSE_FORMS) {
+        const item3 = new vscode.CompletionItem(`/${form.name}`, vscode.CompletionItemKind.Snippet);
+        item3.detail = form.title;
+        item3.documentation = new vscode.MarkdownString(form.body.replace(/\$\{\d+:(\w+)\}/g, "$1"));
+        item3.insertText = new vscode.SnippetString(form.body);
         item3.filterText = `/${form.name} ${form.name}`;
         if (slashRange) item3.range = slashRange;
         items.push(item3);
@@ -10618,6 +10027,116 @@ function registerDiagnostics(context) {
     vscode2.workspace.onDidOpenTextDocument((d) => refresh(d, collection)),
     vscode2.workspace.onDidChangeTextDocument((e) => scheduleRefresh(e.document)),
     vscode2.workspace.onDidCloseTextDocument((d) => collection.delete(d.uri))
+  );
+}
+
+// src/hover.ts
+var vscode3 = __toESM(require("vscode"));
+var KEYWORDS = {
+  prop: "**prop** declares an *atomic proposition* \u2014 a smallest statement that is simply true or false \u2014 and glosses it in plain language:\n\n```\nprop rain : It is raining\n```",
+  claim: "**claim** names a compound statement so it can be reused, tabled, and compared:\n\n```\nclaim C1 : if rain then wet\n```",
+  table: "**table** computes a truth table and a verdict \u2014 *tautology* (always true), *contradiction* (never true), or *contingent* (depends on the facts).",
+  check: "**check** asks for a verdict, or compares two claims:\n\n```\ncheck C1 equivalent (not rain or wet)\n```",
+  argument: "**argument** lists premises and a conclusion. The engine checks validity, names the inference form (or the fallacy), shows counterexamples, suggests missing premises, and derives a proof.",
+  premise: "A **premise** \u2014 something granted for the sake of the argument.",
+  conclude: "**conclude** states what is supposed to follow from the premises. Valid means: no possible situation makes every premise true and this false.",
+  proof: "**proof** is a derivation *you* write, one numbered step per line \u2014 the engine grades every step:\n\n```\n3. q by modus-ponens from 1, 2\n```",
+  by: "**by** names the inference rule that justifies this step (hover the rule name for its pattern).",
+  from: "**from** cites the earlier line numbers this step builds on.",
+  venn: "**venn** draws a categorical argument as a Venn diagram \u2014 shaded regions are provably empty, a dot marks a region that must be occupied.",
+  analyze: "**analyze** compares every claim with every other: equivalent, contradictory, contrary, subcontrary, entails, or independent.",
+  map: "**map** draws all asserted relations (supports, contradicts, \u2026) as an argument map."
+};
+var LOGIC = {
+  if: "**if \u2026 then \u2026** builds a *material implication*, rendered **\u2192**. It is false only when the *if* part holds and the *then* part fails \u2014 so a false *if* makes the whole thing true (vacuously).",
+  then: "**if \u2026 then \u2026** builds a *material implication*, rendered **\u2192**. It is false only when the *if* part holds and the *then* part fails.",
+  and: "**and** is *conjunction*, rendered **\u2227**: true exactly when both sides are true.",
+  or: "**or** is *inclusive disjunction*, rendered **\u2228**: true when at least one side is true \u2014 possibly both.",
+  not: "**not** is *negation*, rendered **\xAC**: flips true and false.",
+  either: "**either \u2026 or \u2026** is the same inclusive **\u2228** \u2014 the *either* just marks where the choice starts.",
+  neither: "**neither \u2026 nor \u2026** means both fail: \xACA \u2227 \xACB.",
+  nor: "**neither \u2026 nor \u2026** means both fail: \xACA \u2227 \xACB.",
+  iff: "**iff** \u2014 *if and only if*, rendered **\u2194**: the two sides always share a truth value.",
+  implies: "**implies** is the material conditional, rendered **\u2192**.",
+  necessarily: "**necessarily** is the modal operator **\u25A1**: true in *every* possible world (S5). What is necessary is actual \u2014 but not vice versa.",
+  possibly: "**possibly** is the modal operator **\u25C7**: true in *some* possible world (S5). Possible does not mean actual.",
+  all: "**All S are P** becomes **\u2200x. S(x) \u2192 P(x)**: being S guarantees being P. It says nothing about whether any S exists.",
+  no: "**No S are P** becomes **\u2200x. S(x) \u2192 \xACP(x)**: nothing is both.",
+  some: "**Some S are P** becomes **\u2203x. S(x) \u2227 P(x)**: at least one thing is both. *Some S are not P* is its negative twin, \u2203x. S(x) \u2227 \xACP(x).",
+  every: "**Every S is a P** \u2014 same as *All S are P*: **\u2200x. S(x) \u2192 P(x)**.",
+  is: "**X is a P** predicates P of the individual X: **P(x)**. Plurals are matched up, so *man*/*men* name the same class.",
+  are: "The copula of a categorical sentence \u2014 *All/No/Some S **are** P*. The words around it decide the quantifier.",
+  therefore: "**Therefore** marks the conclusion of a one-line argument:\n\n```\nIf P, then Q. P. Therefore, Q.\n```\n\nThe engine checks it, names the form, and derives a proof.",
+  thus: "**Thus** marks a conclusion \u2014 same as *Therefore*.",
+  hence: "**Hence** marks a conclusion \u2014 same as *Therefore*.",
+  supports: "**supports** asserts an *informal* relation \u2014 recorded on the map, but not checked by the engine.",
+  presupposes: "**presupposes** asserts an *informal* reliance \u2014 recorded on the map, but not checked.",
+  contradicts: "**contradicts** is *checked*: the engine verifies the two claims can never both be true (or shows a situation where they can).",
+  entails: "**entails** is *checked*: whenever the first claim holds, the second must \u2014 or the engine shows a counterexample.",
+  "equivalent-to": "**equivalent-to** is *checked*: the two claims carry the same truth value in every situation \u2014 or the engine shows where they come apart.",
+  equivalent: "**equivalent** asks whether two claims always share a truth value \u2014 two phrasings of one claim."
+};
+function registerHover(context) {
+  const forms2 = catalog2();
+  const byName = new Map(forms2.map((f) => [f.name, f]));
+  const cache = { key: "", blocks: [] };
+  const blocksFor = (document) => {
+    const key = `${document.uri.toString()}@${document.version}`;
+    if (cache.key !== key) {
+      try {
+        cache.blocks = analyze2(document.getText());
+        cache.key = key;
+      } catch {
+        return cache.blocks;
+      }
+    }
+    return cache.blocks;
+  };
+  const provider = {
+    provideHover(document, position) {
+      const range = document.getWordRangeAtPosition(position, /[A-Za-z][\w-]*/);
+      if (!range) return void 0;
+      const word = document.getText(range);
+      const lower2 = word.toLowerCase();
+      const md = (s) => new vscode3.Hover(new vscode3.MarkdownString(s), range);
+      const form = byName.get(lower2);
+      if (form) {
+        const aka = form.aka ? ` *(${form.aka})*` : "";
+        const pattern = form.premises.length > 0 ? `\`${form.premises.join("`,  `")}\`  \u22A2  \`${form.conclusion}\`` : `\u22A2  \`${form.conclusion}\``;
+        const kind = form.isFallacy ? "\u26A0 a **fallacy**, not a rule" : "an inference rule";
+        return md(`**${form.title}**${aka} \u2014 ${kind}
+
+${pattern}
+
+${form.note}`);
+      }
+      for (const block of blocksFor(document)) {
+        if (block.kind === "prop" && block.name === word) {
+          return md(`**prop ${block.name}** \u2014 \u201C${block.gloss}\u201D
+
+An atomic proposition: simply true or false.`);
+        }
+        if (block.kind === "claim" && block.name === word) {
+          const reading = block.note ? `
+
+*${block.note}*` : "";
+          return md(`**claim ${block.name}**  =  \`${block.formula}\`${reading}`);
+        }
+        if (block.kind === "argument" && block.name === word) {
+          const label = block.form || block.fallacy;
+          const named = label ? ` \u2014 recognized as **${label}**` : "";
+          return md(`**argument ${block.name}** \u2014 ${block.verdict.toUpperCase()}${named}
+
+${block.note}`);
+        }
+      }
+      if (KEYWORDS[lower2]) return md(KEYWORDS[lower2]);
+      if (LOGIC[lower2]) return md(LOGIC[lower2]);
+      return void 0;
+    }
+  };
+  context.subscriptions.push(
+    vscode3.languages.registerHoverProvider({ language: "meticulous" }, provider)
   );
 }
 
@@ -10761,12 +10280,13 @@ function wrapHtml(body) {
 function activate(context) {
   registerCompletions(context);
   registerDiagnostics(context);
+  registerHover(context);
   let panel;
   let trackedUri;
   let debounce;
   const render = () => {
     if (!panel || !trackedUri) return;
-    const doc = vscode3.workspace.textDocuments.find(
+    const doc = vscode4.workspace.textDocuments.find(
       (d) => d.uri.toString() === trackedUri.toString()
     );
     if (!doc) return;
@@ -10779,17 +10299,17 @@ function activate(context) {
     }
   };
   const openPreview = () => {
-    const editor = vscode3.window.activeTextEditor;
+    const editor = vscode4.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "meticulous") {
-      vscode3.window.showInformationMessage("Open a .met file to preview it.");
+      vscode4.window.showInformationMessage("Open a .met file to preview it.");
       return;
     }
     trackedUri = editor.document.uri;
     if (!panel) {
-      panel = vscode3.window.createWebviewPanel(
+      panel = vscode4.window.createWebviewPanel(
         "meticulousPreview",
         "meticulous preview",
-        { viewColumn: vscode3.ViewColumn.Beside, preserveFocus: true },
+        { viewColumn: vscode4.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: false }
       );
       panel.onDidDispose(
@@ -10805,9 +10325,9 @@ function activate(context) {
     render();
   };
   context.subscriptions.push(
-    vscode3.commands.registerCommand("meticulous.showPreview", openPreview),
+    vscode4.commands.registerCommand("meticulous.showPreview", openPreview),
     // Live update: re-render (debounced) whenever the tracked document changes.
-    vscode3.workspace.onDidChangeTextDocument((e) => {
+    vscode4.workspace.onDidChangeTextDocument((e) => {
       if (trackedUri && e.document.uri.toString() === trackedUri.toString()) {
         if (debounce) clearTimeout(debounce);
         debounce = setTimeout(render, 150);

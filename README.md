@@ -40,27 +40,8 @@ VS Code run *Extensions: Install from VSIX…* (or
 
 ## A taste of the language
 
-```meticulous
-# Rain and Wetness
-
-prop rain : It is raining
-prop wet  : The ground is wet
-
-claim C1 : rain -> wet        // renders as  rain → wet, and reads itself
-                              // back: "If it is raining, then the ground is wet."
-
-table C1                      // truth table + verdict (contingent, with counts)
-
-check C1 equivalent (not rain or wet)   // EQUIVALENT — two phrasings of one claim
-```
-
-Operators come in three spellings — words (`and or not implies iff xor`),
-ASCII (`& | ~ -> <->`), or Unicode (`∧ ∨ ¬ → ↔ ⊕`) — and all render as real
-logic symbols.
-
-### …or just write it in English
-
-Don't want symbols at all? Write arguments the way you'd say them:
+You write meticulous in **plain English** — no symbols. Whole arguments are a
+sentence apiece, with "Therefore" marking the conclusion:
 
 ```meticulous
 If P, then Q. P. Therefore, Q.
@@ -68,15 +49,26 @@ Either P or Q. Not P. Therefore, Q.
 All men are mortal. Socrates is a man. Therefore, Socrates is mortal.
 ```
 
-Each is parsed, checked, its inference form named, and its proof found —
-exactly as if you'd written the symbols. "All/no/some" become quantifiers,
-"If … then …" becomes `→`, and plurals are matched up for you.
+Each is parsed, checked, its inference form named, and its proof found.
+"If … then …", "either … or …", "all/no/some" — the engine reads them as
+logic and *renders* the clean symbols (∧ ∨ ¬ → ↔, ∀ ∃, □ ◇) back to you.
+You can also name things:
+
+```meticulous
+prop rain : It is raining
+prop wet  : The ground is wet
+
+claim C1 : if rain then wet     // reads back: "If it is raining, then the ground is wet."
+
+table C1                        // truth table + verdict (contingent, with counts)
+check C1 equivalent (not rain or wet)   // EQUIVALENT — two phrasings of one claim
+```
 
 ### Arguments are checked, named, and explained
 
 ```meticulous
 argument pundit {
-  premise rain -> wet
+  premise if rain then wet
   premise wet
   ---
   conclude rain
@@ -106,9 +98,9 @@ premises are called out honestly: *valid, but vacuously — ex falso quodlibet.*
 ### Compare every claim with every other
 
 ```meticulous
-claim A : policy -> growth
+claim A : if policy then growth
 claim B : not policy or growth
-claim C : growth -> policy
+claim C : if growth then policy
 
 analyze
 ```

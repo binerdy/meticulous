@@ -18,6 +18,19 @@ module Recognition =
     // metavariable must stand for the same formula everywhere — that's the
     // check against `subst` below.
 
+    // In patterns, capital Greek letters (Φ, Ψ, Σ) stand for *predicate names*
+    // and α for an *individual term*, so categorical shapes like Barbara are
+    // recognized whatever the classes are called. Their bindings live in the
+    // same substitution map, name-spaced and encoded as atoms.
+    let private predMetas = set [ "Φ"; "Ψ"; "Σ" ]
+    let private termMetas = set [ "α"; "β" ]
+
+    let private bindName (key: string) (value: string) (subst: Map<string, Formula>) =
+        match Map.tryFind key subst with
+        | Some(Atom bound) -> if bound = value then Some subst else None
+        | Some _ -> None
+        | None -> Some(Map.add key (Atom value) subst)
+
     let rec private matchPattern (pattern: Formula) (target: Formula) (subst: Map<string, Formula>) : Map<string, Formula> option =
         match pattern, target with
         | Atom v, t ->
@@ -25,7 +38,20 @@ module Recognition =
             | Some bound -> if bound = t then Some subst else None
             | None -> Some(Map.add v t subst)
         | Const a, Const b when a = b -> Some subst
-        | Pred(n1, a1), Pred(n2, a2) when n1 = n2 && a1 = a2 -> Some subst
+        | Pred(pn, pargs), Pred(tn, targs) when List.length pargs = List.length targs ->
+            let afterName =
+                if Set.contains pn predMetas then bindName ("pred:" + pn) tn subst
+                elif pn = tn then Some subst
+                else None
+            List.zip pargs targs
+            |> List.fold
+                (fun acc (pa, ta) ->
+                    acc
+                    |> Option.bind (fun s ->
+                        if Set.contains pa termMetas then bindName ("term:" + pa) ta s
+                        elif pa = ta then Some s
+                        else None))
+                afterName
         | Forall(x1, p), Forall(x2, t) when x1 = x2 -> matchPattern p t subst
         | Exists(x1, p), Exists(x2, t) when x1 = x2 -> matchPattern p t subst
         | Not p, Not t
@@ -157,11 +183,19 @@ module Recognition =
         let mutable found = known goal
         let mutable round = 0
 
+        // Quantified (categorical) rules are for recognition and for grading
+        // hand-written proof steps; instantiating their predicate-name
+        // metavariables blindly would flood the forward search, so it sticks
+        // to the propositional and modal rules.
+        let chainRules =
+            validForms
+            |> List.filter (fun r -> not (containsFO r.Conclusion || List.exists containsFO r.Premises))
+
         while not found && round < 6 && steps.Count < 120 do
             round <- round + 1
             let snapshot = steps.Count
 
-            for rule in validForms do
+            for rule in chainRules do
                 // Every way of picking one known step per premise slot.
                 let candidates =
                     match List.length rule.Premises with

@@ -1,14 +1,6 @@
 # Modus ponendo ponens
 
-prop rain : It is raining
-prop wet : The street is wet
+The mode that affirms by affirming: given a conditional and its antecedent,
+the consequent follows.
 
-claim C1 : rain -> wet
-claim C2 : rain
-
-argument ponendo-ponens {
-  premise C1
-  premise C2
-  ---
-  conclude wet
-}
+If rain, then wet. rain. Therefore, wet.

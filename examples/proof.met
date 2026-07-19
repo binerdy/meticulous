@@ -7,8 +7,8 @@ prop rain : It is raining
 prop wet : The street is wet
 prop slippery : The street is slippery
 
-claim C1 : rain -> wet
-claim C2 : wet -> slippery
+claim C1 : if rain then wet
+claim C2 : if wet then slippery
 
 proof wet-streets {
   1. premise C1
@@ -24,7 +24,7 @@ The engine doesn't just say no — it tells you what the step actually is,
 or shows the situation where it fails.
 
 proof lessons {
-  1. premise rain -> wet
+  1. premise if rain then wet
   2. premise rain
   3. wet by modus-ponens from 1, 2
   4. wet or slippery by addition from 3
